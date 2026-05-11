@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState, useCallback, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
 import {
@@ -6,7 +7,7 @@ import {
   ResponsiveContainer, RadarChart, Radar,
   PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from "recharts";
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../../lib/supabaseClient";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,7 @@ function buildFinalHeaders(data, hIdx) {
   return h1.map((v, i) => {
     const top = v ? String(v).trim() : "";
     const sub = h2[i] ? String(h2[i]).trim() : "";
+    // eslint-disable-next-line no-useless-assignment
     let label = "";
     if (top && sub && top !== sub) label = `${top} — ${sub}`;
     else label = top || sub;
@@ -402,6 +404,7 @@ export default function BaliwagExtractor() {
     e.preventDefault();
     setDragging(false);
     handleFile(e.dataTransfer.files[0]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const resetUpload = () => {
