@@ -2,8 +2,10 @@ import { Routes, Route } from 'react-router-dom'
 
 // pages (we'll create these one by one)
 
-import LandingPage from './pages/LandingPage'
-import BaliwagExtractor from './pages/BaliwagExtractor'
+
+import LandingPage from './pages/LandingPage/LandingPage.jsx'
+import BaliwagExtractor from './utils/ExcelParsers/BaliwagExtractor.jsx'
+import ManageUsers from './pages/ManageUsers/ManageUsers.jsx'
 
 
 function App() {
@@ -12,7 +14,7 @@ function App() {
       {/* public routes - no login needed */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/test" element={<BaliwagExtractor />} />
-      
+      <Route path="/manage-user" element={<ManageUsers />} />
     </Routes>
   )
 }
