@@ -1,9 +1,12 @@
 import { Routes, Route } from 'react-router-dom'
 
-// pages (we'll create these one by one)
+// shared layout
+import { AppLayout } from './components/AppLayout'
 
-
+// pages
 import LandingPage from './pages/LandingPage/LandingPage.jsx'
+import LoginPage from './pages/Login/LoginPage.jsx'
+import Dashboard from './pages/Dashboard/Dashboard.jsx'
 import BaliwagExtractor from './utils/ExcelParsers/BaliwagExtractor.jsx'
 import ManageUsers from './pages/ManageUsers/ManageUsers.jsx'
 
@@ -11,12 +14,18 @@ import ManageUsers from './pages/ManageUsers/ManageUsers.jsx'
 function App() {
   return (
     <Routes>
-      {/* public routes - no login needed */}
+      {/* Public routes — no sidebar/header */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<LoginPage />} />
       <Route path="/test" element={<BaliwagExtractor />} />
-      <Route path="/manage-user" element={<ManageUsers />} />
+
+      {/* Authenticated routes — wrapped with AppLayout */}
+      <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
+      <Route path="/manage-user" element={<AppLayout><ManageUsers /></AppLayout>} />
     </Routes>
   )
 }
 
 export default App
+
+
