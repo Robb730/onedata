@@ -3,6 +3,8 @@ import { Eye, EyeOff } from "lucide-react";
 import { LoginFormInput } from "./LoginFormInput";
 import { LoginButton } from "./LoginButton";
 import { LoginCheckbox } from "./LoginCheckbox";
+import {supabase} from '../../lib/supabaseClient';
+import { useNavigate } from "react-router-dom";
 
 /**
  * LoginForm — Right-side form panel containing welcome header,
@@ -10,17 +12,32 @@ import { LoginCheckbox } from "./LoginCheckbox";
  * login button, forgot-password link and copyright footer.
  */
 export function LoginForm() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const [error, setError] = useState(null);
+
   const [showPassword, setShowPassword] = useState(false);
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // TODO: integrate with Supabase auth
-    setTimeout(() => setLoading(false), 2000);
+    setError(null);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setError(error.message);
+    } else {
+      navigate("/dashboard");
+    }
+    setLoading(false);
   };
 
   return (
@@ -30,7 +47,8 @@ export function LoginForm() {
         <h1
           className="text-[1.9rem] font-extrabold tracking-tight"
           style={{
-            background: "linear-gradient(135deg, #1a6fe0 0%, #2986e8 60%, #1daa74 100%)",
+            background:
+              "linear-gradient(135deg, #1a6fe0 0%, #2986e8 60%, #1daa74 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             backgroundClip: "text",
@@ -43,16 +61,16 @@ export function LoginForm() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        {/* Username */}
+      <form onSubmit={handleLogin} className="flex flex-col gap-5">
+        {/* Email */}
         <LoginFormInput
-          id="login-username"
-          label="Username:"
-          type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="Enter your username"
-          autoComplete="username"
+          id="login-email"
+          label="Email:"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Enter your email"
+          autoComplete="email"
         />
 
         {/* Password */}

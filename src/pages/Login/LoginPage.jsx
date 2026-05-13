@@ -1,5 +1,7 @@
 import React from "react";
+import {useState} from "react";
 import { LoginBranding, LoginForm } from "../../components/LoginPageComponents";
+import {supabase} from '../../lib/supabaseClient';
 
 /**
  * LoginPage — Full-screen login page.
@@ -12,6 +14,9 @@ import { LoginBranding, LoginForm } from "../../components/LoginPageComponents";
  * multiple layered decorative blobs and a subtle noise texture.
  */
 export default function LoginPage() {
+
+  
+
   return (
     <div
       id="login-page"
