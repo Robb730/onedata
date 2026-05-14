@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import express from "express";
 import { createClient } from "@supabase/supabase-js";
 import SibApiV3Sdk from "sib-api-v3-sdk";
