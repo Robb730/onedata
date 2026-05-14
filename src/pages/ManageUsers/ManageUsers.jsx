@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Search,
   Edit2,
@@ -6,8 +6,9 @@ import {
   UserPlus,
   Users as UsersIcon,
   UserX,
+  RefreshCw,
   UserCheck,
-} from "lucide-react";
+} from "lucide-react";  
 import EditUserModal from "../../components/ManageUsersComponents/EditUserModal";
 import DeleteConfirmationModal from "../../components/ManageUsersComponents/DeleteConfirmationModal";
 import UserLogsModal from "../../components/ManageUsersComponents/UserLogsModal";
