@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { use, useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
+import {supabase} from '../lib/supabaseClient';
+import {useNavigate} from "react-router-dom";
 
 /**
  * AppLayout — Shared layout wrapper providing the sidebar + top header
@@ -21,6 +23,12 @@ export function AppLayout({
   userRole = "Administrator",
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    supabase.auth.signOut();
+    navigate("/login");
+  }
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#eef2f7" }}>
@@ -37,6 +45,7 @@ export function AppLayout({
           userName={userName}
           userRole={userRole}
           onMenuToggle={() => setSidebarCollapsed((v) => !v)}
+          onLogout={handleLogout}
         />
 
         {/* Page content — scrollable */}
