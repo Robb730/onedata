@@ -6,6 +6,7 @@ import {
   UserPlus,
   Users as UsersIcon,
   UserX,
+  // eslint-disable-next-line no-unused-vars
   RefreshCw,
   UserCheck,
 } from "lucide-react";  
@@ -83,6 +84,7 @@ export default function ManageUsers() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchUsers();
   }, []);
 
