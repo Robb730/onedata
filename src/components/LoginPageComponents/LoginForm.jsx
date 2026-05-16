@@ -3,8 +3,9 @@ import { Eye, EyeOff } from "lucide-react";
 import { LoginFormInput } from "./LoginFormInput";
 import { LoginButton } from "./LoginButton";
 import { LoginCheckbox } from "./LoginCheckbox";
-import {supabase} from '../../lib/supabaseClient';
+import { supabase } from "../../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../../contexts/UserContext";
 
 /**
  * LoginForm — Right-side form panel containing welcome header,
@@ -20,6 +21,7 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { setUserProfile } = useUser();
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -27,16 +29,22 @@ export function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      setError(error.message);
-    } else {
-      navigate("/dashboard");
-    }
+    if (error) { setError(error.message); setLoading(false); return; }
+
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("id, full_name, role, must_change_password")
+      .eq("id", data.user.id)
+      .single();
+
+    if (userError) { setError(userError.message); setLoading(false); return; }
+
+    localStorage.setItem("userProfile", JSON.stringify(userData));
+    setUserProfile(userData); // ✅ update context immediately — no refresh needed
+
+    navigate("/dashboard");
     setLoading(false);
   };
 
