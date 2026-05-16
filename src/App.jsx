@@ -9,6 +9,7 @@ import LoginPage from './pages/Login/LoginPage.jsx'
 import Dashboard from './pages/Dashboard/Dashboard.jsx'
 import BaliwagExtractor from './utils/ExcelParsers/BaliwagExtractor.jsx'
 import ManageUsers from './pages/ManageUsers/ManageUsers.jsx'
+import UploadFilesPage from './pages/UploadFiles/UploadFilesPage.jsx'
 
 function App() {
   const [session, setSession] = useState(null);
@@ -41,6 +42,7 @@ function App() {
       <Route path="/test" element={<BaliwagExtractor />} />
       <Route path="/dashboard" element={ session ? <AppLayout><Dashboard /></AppLayout> : <LoginPage /> } />
       <Route path="/manage-user" element={ session ? <AppLayout><ManageUsers /></AppLayout> : <LoginPage /> } />
+      <Route path="/upload-files" element={ session ? <AppLayout><UploadFilesPage /></AppLayout> : <LoginPage /> } />
     </Routes>
   )
 }
