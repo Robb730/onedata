@@ -52,6 +52,7 @@ app.post("/api/create-user", async (req, res) => {
     division_id,
     section_id,
     is_active: true,
+    must_change_password: true,
   });
 
   if (dbError) return res.status(400).json({ error: dbError.message });

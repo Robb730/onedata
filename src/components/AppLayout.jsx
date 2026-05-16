@@ -1,8 +1,10 @@
-import React, { use, useState } from "react";
+import React, { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
 import {supabase} from '../lib/supabaseClient';
 import {useNavigate} from "react-router-dom";
+import { useUser } from "../contexts/UserContext";
+import { ChangePasswordModal } from "./Modals/ChangePasswordModal";
 
 /**
  * AppLayout — Shared layout wrapper providing the sidebar + top header
@@ -19,19 +21,32 @@ import {useNavigate} from "react-router-dom";
  */
 export function AppLayout({
   children,
-  userName = "Juan Dela Cruz",
-  userRole = "Administrator",
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const navigate = useNavigate();
+  const { userProfile, setUserProfile } = useUser();
+
+  const mustChange = userProfile?.must_change_password === true;
+
+  function handlePasswordChange() {
+    const updated = {...userProfile, must_change_password: false };
+    setUserProfile(updated);
+    localStorage.setItem("userProfile", JSON.stringify(updated));
+  }
 
   function handleLogout() {
     supabase.auth.signOut();
+    localStorage.removeItem("userProfile");
     navigate("/login");
   }
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#eef2f7" }}>
+
+      <ChangePasswordModal
+        isOpen={mustChange}
+        onSuccess={handlePasswordChange}
+      />
       {/* Sidebar */}
       <Sidebar
         collapsed={sidebarCollapsed}
@@ -42,8 +57,8 @@ export function AppLayout({
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
         {/* Top header */}
         <TopHeader
-          userName={userName}
-          userRole={userRole}
+          userName={userProfile?.full_name || "User"}
+          userRole={userProfile?.role || "Role"}
           onMenuToggle={() => setSidebarCollapsed((v) => !v)}
           onLogout={handleLogout}
         />
