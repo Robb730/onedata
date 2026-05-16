@@ -12,6 +12,7 @@ import LoginPage from './pages/Login/LoginPage.jsx'
 import Dashboard from './pages/Dashboard/Dashboard.jsx'
 import BaliwagExtractor from './utils/ExcelParsers/BaliwagExtractor.jsx'
 import ManageUsers from './pages/ManageUsers/ManageUsers.jsx'
+import UploadFilesPage from './pages/UploadFiles/UploadFilesPage.jsx'
 
 
 function App() {
@@ -40,6 +41,7 @@ function App() {
       {/* Authenticated routes — wrapped with AppLayout */}
       <Route path="/dashboard" element={ session ? <AppLayout><Dashboard /></AppLayout> : <LoginPage /> } />
       <Route path="/manage-user" element={ session ? <AppLayout><ManageUsers /></AppLayout> : <LoginPage /> } />
+      <Route path="/upload-files" element={ session ? <AppLayout><UploadFilesPage /></AppLayout> : <LoginPage /> } />
     </Routes>
   )
 }
