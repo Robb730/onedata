@@ -20,3 +20,5 @@ export { CohortChart } from "./CohortChart";
 export { DashboardGrid } from "./DashboardGrid";
 export { TrendCard } from "./TrendCard";
 export { PerformanceCard } from "./PerformanceCard";
+export { GenderCard } from "./GenderCard";
+export { EnrollmentByLevel } from "./EnrollmentByLevel";
