@@ -1,6 +1,9 @@
 import React from "react";
+import {useState, useEffect} from "react";
 import { Users, TrendingDown, Award, AlertTriangle } from "lucide-react";
 import { StatCard } from "./StatCard";
+import { supabase } from "../../lib/supabaseClient";
+import { set } from "date-fns";
 
 /**
  * DashboardOverview — The top KPI stats row showing
@@ -9,10 +12,40 @@ import { StatCard } from "./StatCard";
  * @param {object} data — { totalEnrollment, overallDropout, elemPromotion, jhsDropout }
  */
 export function DashboardOverview({ data }) {
+  
+  const [totalEnrollment, setTotalEnrollment] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchTotalEnrollment() {
+      setLoading(true);
+      setError(null);
+
+      const { data, error } = await supabase
+        .from("enrollment_data")
+        .select("grand_total");
+
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+
+      const total = data.reduce((acc, row) => acc + (row.grand_total ?? 0), 0);
+      setTotalEnrollment(total);
+      setLoading(false);
+    }
+
+    fetchTotalEnrollment();
+  }, []);
+
+
+
   const stats = [
     {
       label: "Total Enrollment",
-      value: data.totalEnrollment?.toLocaleString() ?? "—",
+      value: loading ?  "Loading... " : error ? "Error" : totalEnrollment?.toLocaleString() ?? "—",
       icon: <Users size={18} />,
       iconColor: "text-blue-600",
       iconBg: "bg-blue-50",

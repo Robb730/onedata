@@ -1,5 +1,14 @@
-import React, { useState } from "react";
-import { TrendingUp, Info, BarChart3, Target, FileText, BookOpen, School, Users } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import {
+  TrendingUp,
+  Info,
+  BarChart3,
+  Target,
+  FileText,
+  BookOpen,
+  School,
+  Users,
+} from "lucide-react";
 import {
   DashboardHeader,
   DashboardOverview,
@@ -17,7 +26,10 @@ import {
   CohortChart,
   PerformanceCard,
   TrendCard,
+  GenderCard,
+  EnrollmentByLevel,
 } from "../../components/DashboardComponents";
+import { supabase } from "../../lib/supabaseClient";
 
 // ─── Sample data ────────────────────────────────────────────
 // In production this would come from Supabase or context/store.
@@ -40,11 +52,41 @@ const enrollmentSummary = {
 };
 
 const dropoutByLevel = [
-  { label: "Overall", display: "1.22%", value: 12.2, count: "320", color: "bg-rose-500" },
-  { label: "Kinder", display: "—", value: 0, note: "Grouped with Elem K-G6 · See Elementary", color: "bg-gray-300" },
-  { label: "Elementary", display: "0.82%", value: 8.2, count: "150", color: "bg-amber-500" },
-  { label: "JHS", display: "2.26%", value: 22.6, count: "167", color: "bg-violet-500" },
-  { label: "SHS", display: "0.47%", value: 4.7, count: "3", color: "bg-emerald-500" },
+  {
+    label: "Overall",
+    display: "1.22%",
+    value: 12.2,
+    count: "320",
+    color: "bg-rose-500",
+  },
+  {
+    label: "Kinder",
+    display: "—",
+    value: 0,
+    note: "Grouped with Elem K-G6 · See Elementary",
+    color: "bg-gray-300",
+  },
+  {
+    label: "Elementary",
+    display: "0.82%",
+    value: 8.2,
+    count: "150",
+    color: "bg-amber-500",
+  },
+  {
+    label: "JHS",
+    display: "2.26%",
+    value: 22.6,
+    count: "167",
+    color: "bg-violet-500",
+  },
+  {
+    label: "SHS",
+    display: "0.47%",
+    value: 4.7,
+    count: "3",
+    color: "bg-emerald-500",
+  },
 ];
 
 const promotionByLevel = [
@@ -82,17 +124,76 @@ const cespesPrograms = [
     outputs: 3,
     reported: "2/5",
     rows: [
-      { type: "OUTCOME", label: "Percentage of completed education researches used for policy development", sem1Target: "—", sem1Accomp: "Pending", sem2Target: "—", sem2Accomp: "Pending" },
-      { type: "OUTCOME", label: "Percentage of satisfactory feedback from clients on issued policies", sem1Target: "5", sem1Accomp: "4.99", sem2Target: "4.99", sem2Accomp: "Awaiting", carried: true },
-      { type: "OUTPUT", label: "Number of policies formulated, reviewed, and issued", sem1Target: "—", sem1Accomp: "Pending", sem2Target: "—", sem2Accomp: "Pending" },
-      { type: "OUTPUT", label: "Number of education researches completed", sem1Target: "52", sem1Accomp: "60", sem2Target: "60", sem2Accomp: "Awaiting", carried: true },
-      { type: "OUTPUT", label: "Number of proposed policies reviewed", sem1Target: "—", sem1Accomp: "Pending", sem2Target: "—", sem2Accomp: "Pending" },
+      {
+        type: "OUTCOME",
+        label:
+          "Percentage of completed education researches used for policy development",
+        sem1Target: "—",
+        sem1Accomp: "Pending",
+        sem2Target: "—",
+        sem2Accomp: "Pending",
+      },
+      {
+        type: "OUTCOME",
+        label:
+          "Percentage of satisfactory feedback from clients on issued policies",
+        sem1Target: "5",
+        sem1Accomp: "4.99",
+        sem2Target: "4.99",
+        sem2Accomp: "Awaiting",
+        carried: true,
+      },
+      {
+        type: "OUTPUT",
+        label: "Number of policies formulated, reviewed, and issued",
+        sem1Target: "—",
+        sem1Accomp: "Pending",
+        sem2Target: "—",
+        sem2Accomp: "Pending",
+      },
+      {
+        type: "OUTPUT",
+        label: "Number of education researches completed",
+        sem1Target: "52",
+        sem1Accomp: "60",
+        sem2Target: "60",
+        sem2Accomp: "Awaiting",
+        carried: true,
+      },
+      {
+        type: "OUTPUT",
+        label: "Number of proposed policies reviewed",
+        sem1Target: "—",
+        sem1Accomp: "Pending",
+        sem2Target: "—",
+        sem2Accomp: "Pending",
+      },
     ],
   },
-  { name: "Basic Education Inputs Program", outcomes: 8, outputs: 7, reported: "15/15" },
-  { name: "Inclusive Education Program", outcomes: 5, outputs: 5, reported: "10/10" },
-  { name: "Support to Schools and Learners Program", outcomes: 7, outputs: 4, reported: "11/11" },
-  { name: "Education Human Resource Development Program", outcomes: 1, outputs: 1, reported: "2/2" },
+  {
+    name: "Basic Education Inputs Program",
+    outcomes: 8,
+    outputs: 7,
+    reported: "15/15",
+  },
+  {
+    name: "Inclusive Education Program",
+    outcomes: 5,
+    outputs: 5,
+    reported: "10/10",
+  },
+  {
+    name: "Support to Schools and Learners Program",
+    outcomes: 7,
+    outputs: 4,
+    reported: "11/11",
+  },
+  {
+    name: "Education Human Resource Development Program",
+    outcomes: 1,
+    outputs: 1,
+    reported: "2/2",
+  },
 ];
 
 // ─── Component ──────────────────────────────────────────────
@@ -101,6 +202,106 @@ export default function Dashboard() {
   const [selectedYear, setSelectedYear] = useState("2024-2025");
   const [rateView, setRateView] = useState("Dropout");
   const [enrollmentView, setEnrollmentView] = useState("Summary");
+
+  const [enrollmentSummary, setEnrollmentSummary] = useState({
+    public: 0,
+    private: 0,
+    total: 0,
+  });
+
+  const [genderSummary, setGenderSummary] = useState({
+    male: { total: 0, public: 0, private: 0 },
+    female: { total: 0, public: 0, private: 0 },
+  });
+
+  const [enrollmentRows, setEnrollmentRows] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchEnrollmentSummary() {
+      setLoading(true);
+      setError(null);
+
+      const { data, error } = await supabase
+        .from("enrollment_data")
+        .select(
+          "category, grand_total, school_name, elementary_data, junior_high_data, senior_high_s1_data, senior_high_s2_data",
+        )
+        .eq("school_year", "2025-2026");
+
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+
+      setEnrollmentRows(data);
+
+      // ── Enrollment by category ──────────────────────────────
+      const publicTotal = data
+        .filter((row) => row.category === "PUBLIC")
+        .reduce((acc, row) => acc + (row.grand_total ?? 0), 0);
+
+      const privateTotal = data
+        .filter((row) => row.category === "PRIVATE")
+        .reduce((acc, row) => acc + (row.grand_total ?? 0), 0);
+
+      // ── Gender totals split by public / private ─────────────
+      let malePublic = 0,
+        malePrivate = 0;
+      let femalePublic = 0,
+        femalePrivate = 0;
+
+      data.forEach((row) => {
+        const isPublic = row.category === "PUBLIC";
+        const cols = [
+          row.elementary_data,
+          row.junior_high_data,
+          row.senior_high_s1_data,
+          row.senior_high_s2_data,
+        ];
+
+        cols.forEach((col) => {
+          if (col?.total) {
+            const m = col.total.m ?? 0;
+            const f = col.total.f ?? 0;
+            if (isPublic) {
+              malePublic += m;
+              femalePublic += f;
+            } else {
+              malePrivate += m;
+              femalePrivate += f;
+            }
+          }
+        });
+      });
+
+      setEnrollmentSummary({
+        public: publicTotal,
+        private: privateTotal,
+        total: publicTotal + privateTotal,
+      });
+
+      setGenderSummary({
+        male: {
+          total: malePublic + malePrivate,
+          public: malePublic,
+          private: malePrivate,
+        },
+        female: {
+          total: femalePublic + femalePrivate,
+          public: femalePublic,
+          private: femalePrivate,
+        },
+      });
+
+      setLoading(false);
+    }
+
+    fetchEnrollmentSummary();
+  }, [selectedYear]);
 
   return (
     <div className="min-h-screen">
@@ -113,10 +314,7 @@ export default function Dashboard() {
         />
 
         {/* ── Title ───────────────────────────────────── */}
-        <DashboardSection
-          title="Dashboard"
-          subtitle={`SY ${selectedYear}`}
-        >
+        <DashboardSection title="Dashboard" subtitle={`SY ${selectedYear}`}>
           {/* ── Overview KPIs ────────────────────────── */}
           <DashboardOverview data={overviewData} />
         </DashboardSection>
@@ -146,11 +344,59 @@ export default function Dashboard() {
                 onChange={setEnrollmentView}
               />
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <DataSummaryCard label="Public" value={enrollmentSummary.public.toLocaleString()} accent="#4f7df5" />
-              <DataSummaryCard label="Private" value={enrollmentSummary.private.toLocaleString()} accent="#10b981" />
-              <DataSummaryCard label="Total" value={enrollmentSummary.total.toLocaleString()} accent="#334155" />
-            </div>
+
+            {enrollmentView === "Summary" && (
+              <>
+                <div className="grid grid-cols-3 gap-3">
+                  <DataSummaryCard
+                    label="Public"
+                    value={enrollmentSummary.public.toLocaleString()}
+                    accent="#4f7df5"
+                  />
+                  <DataSummaryCard
+                    label="Private"
+                    value={enrollmentSummary.private.toLocaleString()}
+                    accent="#10b981"
+                  />
+                  <DataSummaryCard
+                    label="Total"
+                    value={enrollmentSummary.total.toLocaleString()}
+                    accent="#334155"
+                  />
+                </div>
+
+                <div className="mt-3">
+                  <p className="text-[0.62rem] font-medium text-slate-300 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                    Gender
+                    <span className="normal-case tracking-normal font-normal text-slate-300">
+                      · hover to see public / private split
+                    </span>
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <GenderCard
+                      label="Male"
+                      total={loading ? 0 : genderSummary.male.total}
+                      publicCount={loading ? 0 : genderSummary.male.public}
+                      privateCount={loading ? 0 : genderSummary.male.private}
+                      accent="#3b82f6"
+                      hoverAccent="#60a5fa"
+                    />
+                    <GenderCard
+                      label="Female"
+                      total={loading ? 0 : genderSummary.female.total}
+                      publicCount={loading ? 0 : genderSummary.female.public}
+                      privateCount={loading ? 0 : genderSummary.female.private}
+                      accent="#ec4899"
+                      hoverAccent="#f472b6"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {enrollmentView === "By Level" && (
+              <EnrollmentByLevel rows={enrollmentRows} />
+            )}
           </div>
 
           <SectionDivider />
@@ -182,9 +428,7 @@ export default function Dashboard() {
               <PromotionChart data={promotionByLevel} />
             )}
 
-            {rateView === "Cohort" && (
-              <CohortChart data={cohortTrend} />
-            )}
+            {rateView === "Cohort" && <CohortChart data={cohortTrend} />}
           </div>
 
           <SectionDivider />
@@ -277,9 +521,27 @@ export default function Dashboard() {
           subtitle="No. of Teachers · Classrooms · Seats"
         >
           <DashboardGrid cols={3}>
-            <TrendCard label="Total Teachers" value="1,842" change="+48" direction="up" period="vs. SY 2023-2024" />
-            <TrendCard label="Total Classrooms" value="1,156" change="+22" direction="up" period="vs. SY 2023-2024" />
-            <TrendCard label="Total Seats" value="45,280" change="+1,200" direction="up" period="vs. SY 2023-2024" />
+            <TrendCard
+              label="Total Teachers"
+              value="1,842"
+              change="+48"
+              direction="up"
+              period="vs. SY 2023-2024"
+            />
+            <TrendCard
+              label="Total Classrooms"
+              value="1,156"
+              change="+22"
+              direction="up"
+              period="vs. SY 2023-2024"
+            />
+            <TrendCard
+              label="Total Seats"
+              value="45,280"
+              change="+1,200"
+              direction="up"
+              period="vs. SY 2023-2024"
+            />
           </DashboardGrid>
         </DashboardAccordion>
 
@@ -390,24 +652,41 @@ function CespesProgramRow({ program }) {
                 <th className="px-4 py-2.5 text-left font-semibold text-slate-500 w-[35%]">
                   Outcome / Output Indicator
                 </th>
-                <th className="px-3 py-2.5 text-center font-semibold text-blue-500" colSpan={2}>
+                <th
+                  className="px-3 py-2.5 text-center font-semibold text-blue-500"
+                  colSpan={2}
+                >
                   1st Semester
                 </th>
-                <th className="px-3 py-2.5 text-center font-semibold text-emerald-500" colSpan={2}>
+                <th
+                  className="px-3 py-2.5 text-center font-semibold text-emerald-500"
+                  colSpan={2}
+                >
                   2nd Semester
                 </th>
               </tr>
               <tr className="bg-slate-50/30">
                 <th />
-                <th className="px-3 py-1.5 text-center text-slate-400 font-medium">Target</th>
-                <th className="px-3 py-1.5 text-center text-slate-400 font-medium">Accomplishment</th>
-                <th className="px-3 py-1.5 text-center text-slate-400 font-medium">Target</th>
-                <th className="px-3 py-1.5 text-center text-slate-400 font-medium">Accomplishment</th>
+                <th className="px-3 py-1.5 text-center text-slate-400 font-medium">
+                  Target
+                </th>
+                <th className="px-3 py-1.5 text-center text-slate-400 font-medium">
+                  Accomplishment
+                </th>
+                <th className="px-3 py-1.5 text-center text-slate-400 font-medium">
+                  Target
+                </th>
+                <th className="px-3 py-1.5 text-center text-slate-400 font-medium">
+                  Accomplishment
+                </th>
               </tr>
             </thead>
             <tbody>
               {program.rows.map((row, i) => (
-                <tr key={i} className="border-t border-slate-100/60 hover:bg-blue-50/20 transition-colors">
+                <tr
+                  key={i}
+                  className="border-t border-slate-100/60 hover:bg-blue-50/20 transition-colors"
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-start gap-2">
                       <span
@@ -424,10 +703,14 @@ function CespesProgramRow({ program }) {
                       </span>
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-center text-slate-600">{row.sem1Target}</td>
+                  <td className="px-3 py-3 text-center text-slate-600">
+                    {row.sem1Target}
+                  </td>
                   <td className="px-3 py-3 text-center text-slate-600">
                     {row.sem1Accomp === "Pending" ? (
-                      <span className="text-slate-400 italic text-[0.65rem]">Accomplishment to be reported by DepEd CO</span>
+                      <span className="text-slate-400 italic text-[0.65rem]">
+                        Accomplishment to be reported by DepEd CO
+                      </span>
                     ) : (
                       row.sem1Accomp
                     )}
@@ -435,8 +718,12 @@ function CespesProgramRow({ program }) {
                   <td className="px-3 py-3 text-center">
                     {row.carried ? (
                       <div>
-                        <span className="text-emerald-600 font-semibold">{row.sem2Target}</span>
-                        <p className="text-[0.58rem] text-slate-400 mt-0.5">* carried from 1st sem</p>
+                        <span className="text-emerald-600 font-semibold">
+                          {row.sem2Target}
+                        </span>
+                        <p className="text-[0.58rem] text-slate-400 mt-0.5">
+                          * carried from 1st sem
+                        </p>
                       </div>
                     ) : (
                       <span className="text-slate-600">{row.sem2Target}</span>
@@ -448,7 +735,9 @@ function CespesProgramRow({ program }) {
                         ⏳ Awaiting
                       </span>
                     ) : row.sem2Accomp === "Pending" ? (
-                      <span className="text-slate-400 italic text-[0.65rem]">Accomplishment to be reported by DepEd CO</span>
+                      <span className="text-slate-400 italic text-[0.65rem]">
+                        Accomplishment to be reported by DepEd CO
+                      </span>
                     ) : (
                       row.sem2Accomp
                     )}
