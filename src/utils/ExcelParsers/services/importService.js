@@ -29,6 +29,7 @@
 import * as XLSX from "xlsx";
 
 import { parseEnrollmentFile } from "../parsers/enrollmentParser";
+import { parseClassroomsFile } from "../parsers/classroomsParser";
 import { parseSchools }         from "../parsers/schoolsParser";
 import { parseTeachers }        from "../parsers/teachersParser";
 import { parseStudents }        from "../parsers/studentsParser";
@@ -49,6 +50,11 @@ export const IMPORT_TYPES = {
     label:     "Enrollment Data",
     strategy:  "file",
     parseFile: parseEnrollmentFile,
+  },
+  classrooms: {
+    label:     "Classrooms Inventory",
+    strategy:  "file",
+    parseFile: parseClassroomsFile,
   },
   schools: {
     label:    "Number of Schools",

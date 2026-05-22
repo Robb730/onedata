@@ -155,6 +155,7 @@ export default function FileUploadModal({
                 >
                   <option value="general">General (Store file only)</option>
                   <option value="enrollment">Enrollment Data (Parse & Store Data)</option>
+                  <option value="classrooms">Classrooms Inventory (Parse & Store Data)</option>
                 </select>
               </div>
             </div>

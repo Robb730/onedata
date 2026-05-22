@@ -221,6 +221,7 @@ export default function UploadFilesPage({ role = "personnel", userSection = "" }
     try {
       if (uploadType === "general") {
         // 1. Upload to Supabase Storage (repository-files bucket)
+        // eslint-disable-next-line no-unused-vars
         const { data, error } = await supabase.storage
           .from("repository-files")
           .upload(`${folder}/${fileName}`, file, {
@@ -270,6 +271,149 @@ export default function UploadFilesPage({ role = "personnel", userSection = "" }
           });
 
         if (storageError) throw storageError;
+
+      } else if (uploadType === "classrooms") {
+        // 1. Parse the Excel file (5 sheets: DB, KES, JHS, SHS, Status)
+        const { db, kes, jhs, shs, status } = await runImport(file, "classrooms");
+
+        // 2. Insert DB sheet records (Baliwag-filtered)
+        if (db && db.records.length > 0) {
+          const dbRecs = db.records.map((r) => ({
+            school_id: r.schoolId,
+            school_name: r.schoolName,
+            division: r.division,
+            district: r.district,
+            street_address: r.streetAddress,
+            mother_school_id: r.motherSchoolId,
+            province: r.province,
+            municipality: r.municipality,
+            legislative_district: r.legislativeDistrict,
+            barangay: r.barangay,
+            sector: r.sector,
+            school_subclassification: r.schoolSubclassification,
+            school_type: r.schoolType,
+            implementing_unit: r.implementingUnit,
+            modified_coc: r.modifiedCoc,
+            enrollment_elem: r.enrollmentElem,
+            enrollment_jhs: r.enrollmentJhs,
+            enrollment_shs: r.enrollmentShs,
+            enrollment_total: r.enrollmentTotal,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          }));
+          for (let i = 0; i < dbRecs.length; i += 500) {
+            const { error } = await supabase.from("classrooms_school_db").insert(dbRecs.slice(i, i + 500));
+            if (error) throw error;
+          }
+        }
+
+        // 3. Insert KES sheet records
+        if (kes && kes.records.length > 0) {
+          const kesRecs = kes.records.map((r) => ({
+            school_id: r.schoolId,
+            school_name: r.schoolName,
+            division: r.division,
+            kinder_needs: r.kinderNeeds,
+            kinder_excess: r.kinderExcess,
+            g1g6_needs: r.g1g6Needs,
+            g1g6_excess: r.g1g6Excess,
+            sned_needs: r.snedNeeds,
+            sned_excess: r.snedExcess,
+            pprd_checker: r.pprdChecker,
+            remarks: r.remarks,
+            prev_total_classroom_inventory: r.prevTotalClassroomInventory,
+            prev_kinder_needs: r.prevKinderNeeds,
+            prev_kinder_excess: r.prevKinderExcess,
+            prev_g1g6_needs: r.prevG1g6Needs,
+            prev_g1g6_excess: r.prevG1g6Excess,
+            prev_sned_needs: r.prevSnedNeeds,
+            prev_sned_excess: r.prevSnedExcess,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          }));
+          for (let i = 0; i < kesRecs.length; i += 500) {
+            const { error } = await supabase.from("classrooms_kes").insert(kesRecs.slice(i, i + 500));
+            if (error) throw error;
+          }
+        }
+
+        // 4. Insert JHS sheet records
+        if (jhs && jhs.records.length > 0) {
+          const jhsRecs = jhs.records.map((r) => ({
+            school_id: r.schoolId, school_name: r.schoolName,
+            division: r.division, province: r.province, municipality: r.municipality,
+            leg_district: r.legDistrict, curricular_offering: r.curricularOffering,
+            enrollment_gr7: r.enrollmentGr7, enrollment_gr8: r.enrollmentGr8,
+            enrollment_gr9: r.enrollmentGr9, enrollment_gr10: r.enrollmentGr10,
+            enrollment_sped: r.enrollmentSped,
+            total_enrollment: r.totalEnrollment, total_enrollment_with_sped: r.totalEnrollmentWithSped,
+            sy_enrollment_lis: r.syEnrollmentLis,
+            total_requirement: r.totalRequirement,
+            already_available: r.alreadyAvailable, ongoing_construction: r.ongoingConstruction,
+            not_yet_started: r.notYetStarted, allocation: r.allocation,
+            total_classroom: r.totalClassroom,
+            classroom_needs: r.classroomNeeds, classroom_excess: r.classroomExcess,
+            pprd_checker: r.pprdChecker,
+            school_year: schoolYear, uploaded_by: "Juan Dela Cruz",
+          }));
+          for (let i = 0; i < jhsRecs.length; i += 500) {
+            const { error } = await supabase.from("classrooms_jhs").insert(jhsRecs.slice(i, i + 500));
+            if (error) throw error;
+          }
+        }
+
+        // 5. Insert SHS sheet records
+        if (shs && shs.records.length > 0) {
+          const shsRecs = shs.records.map((r) => ({
+            school_id: r.schoolId, school_name: r.schoolName,
+            division: r.division, province: r.province, municipality: r.municipality,
+            leg_district: r.legDistrict, curricular_offering: r.curricularOffering,
+            enrollment_data: r.enrollment, // JSONB (strand-level G11/G12)
+            total_enrollment_g11: r.totalEnrollmentG11, total_enrollment_g12: r.totalEnrollmentG12,
+            total_enrollment: r.totalEnrollment, sy_enrollment_lis: r.syEnrollmentLis,
+            total_requirement: r.totalRequirement,
+            already_available: r.alreadyAvailable, ongoing_construction: r.ongoingConstruction,
+            not_yet_started: r.notYetStarted, allocation: r.allocation,
+            total_classroom: r.totalClassroom,
+            classroom_needs: r.classroomNeeds, classroom_excess: r.classroomExcess,
+            pprd_checker: r.pprdChecker,
+            school_year: schoolYear, uploaded_by: "Juan Dela Cruz",
+          }));
+          for (let i = 0; i < shsRecs.length; i += 500) {
+            const { error } = await supabase.from("classrooms_shs").insert(shsRecs.slice(i, i + 500));
+            if (error) throw error;
+          }
+        }
+
+        // 6. Insert Status record
+        if (status) {
+          const { error } = await supabase.from("classrooms_status").insert({
+            sdo: status.sdo,
+            expected_schools: status.expectedSchools,
+            kes_blank_cells: status.kes.blankCells,
+            kes_complete: status.kes.complete,
+            kes_percentage: status.kes.percentage,
+            jhs_blank_cells: status.jhs.blankCells,
+            jhs_complete: status.jhs.complete,
+            jhs_percentage: status.jhs.percentage,
+            shs_blank_cells: status.shs.blankCells,
+            shs_complete: status.shs.complete,
+            shs_percentage: status.shs.percentage,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          });
+          if (error) throw error;
+        }
+
+        // 7. Store the actual file in excel-files bucket
+        const { error: storageError2 } = await supabase.storage
+          .from("excel-files")
+          .upload(`${folder}/${fileName}`, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (storageError2) throw storageError2;
       }
 
       // Mark as completed
@@ -320,7 +464,7 @@ export default function UploadFilesPage({ role = "personnel", userSection = "" }
   };
 
   // ── Upload Area ───────────────────────────────────────────────────────────
-  const UploadArea = () => (
+  const renderUploadArea = () => (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3 flex-wrap">
@@ -371,7 +515,7 @@ export default function UploadFilesPage({ role = "personnel", userSection = "" }
   );
 
   // ── File Requests Panel ───────────────────────────────────────────────────
-  const FileRequestsPanel = () => (
+  const renderFileRequestsPanel = () => (
     <div className="bg-white rounded-xl border border-gray-200 p-6 h-full">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-bold text-gray-900">File Requests</h3>
@@ -433,7 +577,7 @@ export default function UploadFilesPage({ role = "personnel", userSection = "" }
   );
 
   // ── Recent Uploads ────────────────────────────────────────────────────────
-  const RecentUploads = () => (
+  const renderRecentUploads = () => (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <h3 className="font-bold text-gray-900 mb-4">Recent Uploads</h3>
       <div className="space-y-3">
@@ -484,8 +628,8 @@ export default function UploadFilesPage({ role = "personnel", userSection = "" }
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          <UploadArea />
-          <RecentUploads />
+          {renderUploadArea()}
+          {renderRecentUploads()}
         </div>
 
         {/* Right Column - Contextual Panel */}
@@ -543,7 +687,7 @@ export default function UploadFilesPage({ role = "personnel", userSection = "" }
 
           {showFileRequestPanel && (
             <div className="sticky top-8 h-[calc(100vh-8rem)]">
-              <FileRequestsPanel />
+              {renderFileRequestsPanel()}
             </div>
           )}
         </div>
