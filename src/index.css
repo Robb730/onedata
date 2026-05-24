@@ -20,6 +20,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   color: #1e293b;
+  background-color: var(--bg-base);
   line-height: 1.6;
 }
 
