@@ -12,6 +12,9 @@ import ManageUsers from './pages/ManageUsers/ManageUsers.jsx'
 import UploadFilesPage from './pages/UploadFiles/UploadFilesPage.jsx'
 import AuditLogs from './pages/AuditLogs/AuditLogs.jsx'
 import Repository from './pages/Repository/Repository.jsx'
+import RepositoryFolderDetailPage from './pages/Repository/RepositoryFolderDetailPage.jsx'
+import RepositoryDivisionPage from './pages/Repository/RepositoryDivisionPage.jsx'
+import AccessRestrictedPage from './pages/Repository/AccessRestrictedPage.jsx'
 
 function App() {
   const [session, setSession] = useState(null);
@@ -47,6 +50,10 @@ function App() {
       <Route path="/upload-files" element={ session ? <AppLayout><UploadFilesPage /></AppLayout> : <LoginPage /> } />
       <Route path="/audit-logs" element={ session ? <AppLayout><AuditLogs /></AppLayout> : <LoginPage /> } />
       <Route path="/repository" element={ session ? <AppLayout><Repository /></AppLayout> : <LoginPage /> } />
+      <Route path="/repository/folder/:folderName" element={ session ? <AppLayout><RepositoryFolderDetailPage /></AppLayout> : <LoginPage /> } />
+      <Route path="/repository/divisions/:divisionSlug" element={ session ? <AppLayout><RepositoryDivisionPage /></AppLayout> : <LoginPage /> } />
+      <Route path="/repository/sections/sgod" element={ session ? <AppLayout><RepositoryDivisionPage /></AppLayout> : <LoginPage /> } />
+      <Route path="/repository/restricted/:folderName" element={ session ? <AppLayout><AccessRestrictedPage /></AppLayout> : <LoginPage /> } />
     </Routes>
   )
 }
