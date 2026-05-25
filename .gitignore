@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+*.sql
+src/assets/resources/*.xlsx
 
 # Editor directories and files
 .vscode/*
