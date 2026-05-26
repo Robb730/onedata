@@ -15,6 +15,7 @@ import Repository from './pages/Repository/Repository.jsx'
 import RepositoryFolderDetailPage from './pages/Repository/RepositoryFolderDetailPage.jsx'
 import RepositoryDivisionPage from './pages/Repository/RepositoryDivisionPage.jsx'
 import AccessRestrictedPage from './pages/Repository/AccessRestrictedPage.jsx'
+import ProtectedRoute from './components/ProtectedRoute.jsx';
 
 function App() {
   const [session, setSession] = useState(null);
@@ -45,15 +46,51 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/test" element={<BaliwagExtractor />} />
-      <Route path="/dashboard" element={ session ? <AppLayout><Dashboard /></AppLayout> : <LoginPage /> } />
-      <Route path="/manage-user" element={ session ? <AppLayout><ManageUsers /></AppLayout> : <LoginPage /> } />
-      <Route path="/upload-files" element={ session ? <AppLayout><UploadFilesPage /></AppLayout> : <LoginPage /> } />
-      <Route path="/audit-logs" element={ session ? <AppLayout><AuditLogs /></AppLayout> : <LoginPage /> } />
-      <Route path="/repository" element={ session ? <AppLayout><Repository /></AppLayout> : <LoginPage /> } />
-      <Route path="/repository/folder/:folderName" element={ session ? <AppLayout><RepositoryFolderDetailPage /></AppLayout> : <LoginPage /> } />
-      <Route path="/repository/divisions/:divisionSlug" element={ session ? <AppLayout><RepositoryDivisionPage /></AppLayout> : <LoginPage /> } />
-      <Route path="/repository/sections/sgod" element={ session ? <AppLayout><RepositoryDivisionPage /></AppLayout> : <LoginPage /> } />
-      <Route path="/repository/restricted/:folderName" element={ session ? <AppLayout><AccessRestrictedPage /></AppLayout> : <LoginPage /> } />
+      <Route path="/dashboard" element={
+        <ProtectedRoute session={session}>
+          <AppLayout><Dashboard /></AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/manage-user" element={
+        <ProtectedRoute session={session}>
+          <AppLayout><ManageUsers /></AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/upload-files" element={
+        <ProtectedRoute session={session}>
+          <AppLayout><UploadFilesPage /></AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/audit-logs" element={
+        <ProtectedRoute session={session}>
+          <AppLayout><AuditLogs /></AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/repository" element={
+        <ProtectedRoute session={session}>
+          <AppLayout><Repository /></AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/repository/folder/:folderName" element={
+        <ProtectedRoute session={session}>
+          <AppLayout><RepositoryFolderDetailPage /></AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/repository/divisions/:divisionSlug" element={
+        <ProtectedRoute session={session}>
+          <AppLayout><RepositoryDivisionPage /></AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/repository/sections/sgod" element={
+        <ProtectedRoute session={session}>
+          <AppLayout><RepositoryDivisionPage /></AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/repository/restricted/:folderName" element={
+        <ProtectedRoute session={session}>
+          <AppLayout><AccessRestrictedPage /></AppLayout>
+        </ProtectedRoute>
+      } />
     </Routes>
   )
 }
