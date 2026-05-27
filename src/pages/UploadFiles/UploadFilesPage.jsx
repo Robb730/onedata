@@ -414,6 +414,418 @@ export default function UploadFilesPage({ role = "personnel", userSection = "" }
           });
 
         if (storageError2) throw storageError2;
+
+      } else if (uploadType === "seats") {
+        // 1. Parse the Excel file (5 sheets: DB, KES, JHS, SHS, Status)
+        const { db, kes, jhs, shs, status } = await runImport(file, "seats");
+
+        // 2. Insert DB sheet records
+        if (db && db.records.length > 0) {
+          const dbRecs = db.records.map((r) => ({
+            school_id: r.schoolId,
+            school_name: r.schoolName,
+            division: r.division,
+            district: r.district,
+            street_address: r.streetAddress,
+            mother_school_id: r.motherSchoolId,
+            province: r.province,
+            municipality: r.municipality,
+            legislative_district: r.legislativeDistrict,
+            barangay: r.barangay,
+            sector: r.sector,
+            school_subclassification: r.schoolSubclassification,
+            school_type: r.schoolType,
+            implementing_unit: r.implementingUnit,
+            modified_coc: r.modifiedCoc,
+            enrollment_elem: r.enrollmentElem,
+            enrollment_jhs: r.enrollmentJhs,
+            enrollment_shs: r.enrollmentShs,
+            enrollment_total: r.enrollmentTotal,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          }));
+          for (let i = 0; i < dbRecs.length; i += 500) {
+            const { error } = await supabase.from("seats_school_db").insert(dbRecs.slice(i, i + 500));
+            if (error) throw error;
+          }
+        }
+
+        // 3. Insert KES sheet records
+        if (kes && kes.records.length > 0) {
+          const kesRecs = kes.records.map((r) => ({
+            school_id: r.schoolId,
+            school_name: r.schoolName,
+            division: r.division,
+            kinder_needs: r.kinderNeeds,
+            kinder_excess: r.kinderExcess,
+            g1g6_needs: r.g1g6Needs,
+            g1g6_excess: r.g1g6Excess,
+            sned_needs: r.snedNeeds,
+            sned_excess: r.snedExcess,
+            pprd_checker: r.pprdChecker,
+            remarks: r.remarks,
+            prev_total_seats_inventory: r.prevTotalSeatsInventory,
+            prev_needs: r.prevNeeds,
+            prev_excess: r.prevExcess,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          }));
+          for (let i = 0; i < kesRecs.length; i += 500) {
+            const { error } = await supabase.from("seats_kes").insert(kesRecs.slice(i, i + 500));
+            if (error) throw error;
+          }
+        }
+
+        // 4. Insert JHS sheet records
+        if (jhs && jhs.records.length > 0) {
+          const jhsRecs = jhs.records.map((r) => ({
+            school_id: r.schoolId,
+            school_name: r.schoolName,
+            division: r.division,
+            province: r.province,
+            municipality: r.municipality,
+            leg_district: r.legDistrict,
+            curricular_offering: r.curricularOffering,
+            enrollment_gr7: r.enrollmentGr7,
+            enrollment_gr8: r.enrollmentGr8,
+            enrollment_gr9: r.enrollmentGr9,
+            enrollment_gr10: r.enrollmentGr10,
+            enrollment_sped: r.enrollmentSped,
+            total_enrollment_g7_g10: r.totalEnrollmentG7G10,
+            total_enrollment_with_sped: r.totalEnrollmentWithSped,
+            seats_available: r.seatsAvailable,
+            ongoing_delivery: r.ongoingDelivery,
+            not_yet_started: r.notYetStarted,
+            allocation: r.allocation,
+            total_jhs_seats: r.totalJhsSeats,
+            seat_needs: r.seatNeeds,
+            seat_excess: r.seatExcess,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          }));
+          for (let i = 0; i < jhsRecs.length; i += 500) {
+            const { error } = await supabase.from("seats_jhs").insert(jhsRecs.slice(i, i + 500));
+            if (error) throw error;
+          }
+        }
+
+        // 5. Insert SHS sheet records
+        if (shs && shs.records.length > 0) {
+          const shsRecs = shs.records.map((r) => ({
+            school_id: r.schoolId,
+            school_name: r.schoolName,
+            division: r.division,
+            province: r.province,
+            municipality: r.municipality,
+            leg_district: r.legDistrict,
+            curricular_offering: r.curricularOffering,
+            enrollment_data: r.enrollment,
+            total_enrollment_g11: r.totalEnrollmentG11,
+            total_enrollment_g12: r.totalEnrollmentG12,
+            total_enrollment_g11_g12: r.totalEnrollmentG11G12,
+            seats_available: r.seatsAvailable,
+            ongoing_delivery: r.ongoingDelivery,
+            not_yet_started: r.notYetStarted,
+            allocation: r.allocation,
+            total_shs_seats: r.totalShsSeats,
+            seat_needs: r.seatNeeds,
+            seat_excess: r.seatExcess,
+            pprd_checker: r.pprdChecker,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          }));
+          for (let i = 0; i < shsRecs.length; i += 500) {
+            const { error } = await supabase.from("seats_shs").insert(shsRecs.slice(i, i + 500));
+            if (error) throw error;
+          }
+        }
+
+        // 6. Insert Status record
+        if (status) {
+          const { error } = await supabase.from("seats_status").insert({
+            sdo: status.sdo,
+            expected_schools: status.expectedSchools,
+            kes_blank_cells: status.kes.blankCells,
+            kes_complete: status.kes.complete,
+            kes_percentage: status.kes.percentage,
+            jhs_blank_cells: status.jhs.blankCells,
+            jhs_complete: status.jhs.complete,
+            jhs_percentage: status.jhs.percentage,
+            shs_blank_cells: status.shs.blankCells,
+            shs_complete: status.shs.complete,
+            shs_percentage: status.shs.percentage,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          });
+          if (error) throw error;
+        }
+
+        // 7. Store the actual file in excel-files bucket
+        const { error: storageError3 } = await supabase.storage
+          .from("excel-files")
+          .upload(`${folder}/${fileName}`, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (storageError3) throw storageError3;
+
+      } else if (uploadType === "teachers_inventory") {
+        // 1. Parse the Excel file (5 sheets: DB, KES, JHS, SHS, Status)
+        const { db, kes, jhs, shs, status } = await runImport(file, "teachers_inventory");
+
+        // 2. Insert DB sheet records
+        if (db && db.records.length > 0) {
+          const dbRecs = db.records.map((r) => ({
+            school_id: r.schoolId,
+            school_name: r.schoolName,
+            division: r.division,
+            district: r.district,
+            street_address: r.streetAddress,
+            mother_school_id: r.motherSchoolId,
+            province: r.province,
+            municipality: r.municipality,
+            legislative_district: r.legislativeDistrict,
+            barangay: r.barangay,
+            sector: r.sector,
+            school_subclassification: r.schoolSubclassification,
+            school_type: r.schoolType,
+            implementing_unit: r.implementingUnit,
+            modified_coc: r.modifiedCoc,
+            enrollment_elem: r.enrollmentElem,
+            enrollment_jhs: r.enrollmentJhs,
+            enrollment_shs: r.enrollmentShs,
+            enrollment_total: r.enrollmentTotal,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          }));
+          for (let i = 0; i < dbRecs.length; i += 500) {
+            const { error } = await supabase.from("teachers_school_db").insert(dbRecs.slice(i, i + 500));
+            if (error) throw error;
+          }
+        }
+
+        // 3. Insert KES sheet records
+        if (kes && kes.records.length > 0) {
+          const kesRecs = kes.records.map((r) => ({
+            school_id: r.schoolId,
+            school_name: r.schoolName,
+            division: r.division,
+            kinder_needs: r.kinderNeeds,
+            kinder_excess: r.kinderExcess,
+            g1g6_needs: r.g1g6Needs,
+            g1g6_excess: r.g1g6Excess,
+            sned_needs: r.snedNeeds,
+            sned_excess: r.snedExcess,
+            pprd_checker: r.pprdChecker,
+            remarks: r.remarks,
+            prev_total_teachers_inventory: r.prevTotalTeachersInventory,
+            prev_needs: r.prevNeeds,
+            prev_excess: r.prevExcess,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          }));
+          for (let i = 0; i < kesRecs.length; i += 500) {
+            const { error } = await supabase.from("teachers_kes").insert(kesRecs.slice(i, i + 500));
+            if (error) throw error;
+          }
+        }
+
+        // 4. Insert JHS sheet records
+        if (jhs && jhs.records.length > 0) {
+          const jhsRecs = jhs.records.map((r) => ({
+            school_id: r.schoolId,
+            school_name: r.schoolName,
+            division: r.division,
+            teacher_needs: r.teacherNeeds,
+            teacher_excess: r.teacherExcess,
+            pprd_checker: r.pprdChecker,
+            remarks: r.remarks,
+            prev_total_teachers_inventory: r.prevTotalTeachersInventory,
+            prev_needs: r.prevNeeds,
+            prev_excess: r.prevExcess,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          }));
+          for (let i = 0; i < jhsRecs.length; i += 500) {
+            const { error } = await supabase.from("teachers_jhs").insert(jhsRecs.slice(i, i + 500));
+            if (error) throw error;
+          }
+        }
+
+        // 5. Insert SHS sheet records
+        if (shs && shs.records.length > 0) {
+          const shsRecs = shs.records.map((r) => ({
+            school_id: r.schoolId,
+            school_name: r.schoolName,
+            division: r.division,
+            teacher_needs: r.teacherNeeds,
+            teacher_excess: r.teacherExcess,
+            pprd_checker: r.pprdChecker,
+            remarks: r.remarks,
+            prev_total_teachers_inventory: r.prevTotalTeachersInventory,
+            prev_needs: r.prevNeeds,
+            prev_excess: r.prevExcess,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          }));
+          for (let i = 0; i < shsRecs.length; i += 500) {
+            const { error } = await supabase.from("teachers_shs").insert(shsRecs.slice(i, i + 500));
+            if (error) throw error;
+          }
+        }
+
+        // 6. Insert Status record
+        if (status) {
+          const { error } = await supabase.from("teachers_status").insert({
+            sdo: status.sdo,
+            expected_schools: status.expectedSchools,
+            kes_blank_cells: status.kes.blankCells,
+            kes_complete: status.kes.complete,
+            kes_percentage: status.kes.percentage,
+            jhs_blank_cells: status.jhs.blankCells,
+            jhs_complete: status.jhs.complete,
+            jhs_percentage: status.jhs.percentage,
+            shs_blank_cells: status.shs.blankCells,
+            shs_complete: status.shs.complete,
+            shs_percentage: status.shs.percentage,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          });
+          if (error) throw error;
+        }
+
+        // 7. Store the actual file in excel-files bucket
+        const { error: storageError4 } = await supabase.storage
+          .from("excel-files")
+          .upload(`${folder}/${fileName}`, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (storageError4) throw storageError4;
+
+      } else if (uploadType === "textbook_inventory") {
+        // 1. Parse the Excel file (5 sheets: DB, KES, JHS, SHS, Status)
+        const { db, kes, jhs, shs, status } = await runImport(file, "textbook_inventory");
+
+        // 2. Insert DB sheet records
+        if (db && db.records.length > 0) {
+          const dbRecs = db.records.map((r) => ({
+            school_id: r.schoolId,
+            school_name: r.schoolName,
+            division: r.division,
+            district: r.district,
+            street_address: r.streetAddress,
+            mother_school_id: r.motherSchoolId,
+            province: r.province,
+            municipality: r.municipality,
+            legislative_district: r.legislativeDistrict,
+            barangay: r.barangay,
+            sector: r.sector,
+            school_subclassification: r.schoolSubclassification,
+            school_type: r.schoolType,
+            implementing_unit: r.implementingUnit,
+            modified_coc: r.modifiedCoc,
+            enrollment_elem: r.enrollmentElem,
+            enrollment_jhs: r.enrollmentJhs,
+            enrollment_shs: r.enrollmentShs,
+            enrollment_total: r.enrollmentTotal,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          }));
+          for (let u = 0; u < dbRecs.length; u += 500) {
+            const { error } = await supabase.from("textbooks_school_db").insert(dbRecs.slice(u, u + 500));
+            if (error) throw error;
+          }
+        }
+
+        // 3. Insert KES sheet records
+        if (kes && kes.records.length > 0) {
+          const kesRecs = kes.records.map((r) => ({
+            school_id: r.schoolId,
+            school_name: r.schoolName,
+            division: r.division,
+            textbook_needs: r.textbookNeeds,
+            textbook_excess: r.textbookExcess,
+            pprd_checker: r.pprdChecker,
+            remarks: r.remarks,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          }));
+          for (let u = 0; u < kesRecs.length; u += 500) {
+            const { error } = await supabase.from("textbooks_kes").insert(kesRecs.slice(u, u + 500));
+            if (error) throw error;
+          }
+        }
+
+        // 4. Insert JHS sheet records
+        if (jhs && jhs.records.length > 0) {
+          const jhsRecs = jhs.records.map((r) => ({
+            school_id: r.schoolId,
+            school_name: r.schoolName,
+            division: r.division,
+            textbook_needs: r.textbookNeeds,
+            textbook_excess: r.textbookExcess,
+            pprd_checker: r.pprdChecker,
+            remarks: r.remarks,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          }));
+          for (let u = 0; u < jhsRecs.length; u += 500) {
+            const { error } = await supabase.from("textbooks_jhs").insert(jhsRecs.slice(u, u + 500));
+            if (error) throw error;
+          }
+        }
+
+        // 5. Insert SHS sheet records
+        if (shs && shs.records.length > 0) {
+          const shsRecs = shs.records.map((r) => ({
+            school_id: r.schoolId,
+            school_name: r.schoolName,
+            division: r.division,
+            textbook_needs: r.textbookNeeds,
+            textbook_excess: r.textbookExcess,
+            pprd_checker: r.pprdChecker,
+            remarks: r.remarks,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          }));
+          for (let u = 0; u < shsRecs.length; u += 500) {
+            const { error } = await supabase.from("textbooks_shs").insert(shsRecs.slice(u, u + 500));
+            if (error) throw error;
+          }
+        }
+
+        // 6. Insert Status record
+        if (status) {
+          const { error } = await supabase.from("textbooks_status").insert({
+            sdo: status.sdo,
+            expected_schools: status.expectedSchools,
+            kes_blank_cells: status.kes.blankCells,
+            kes_complete: status.kes.complete,
+            kes_percentage: status.kes.percentage,
+            jhs_blank_cells: status.jhs.blankCells,
+            jhs_complete: status.jhs.complete,
+            jhs_percentage: status.jhs.percentage,
+            shs_blank_cells: status.shs.blankCells,
+            shs_complete: status.shs.complete,
+            shs_percentage: status.shs.percentage,
+            school_year: schoolYear,
+            uploaded_by: "Juan Dela Cruz",
+          });
+          if (error) throw error;
+        }
+
+        // 7. Store the actual file in excel-files bucket
+        const { error: storageError5 } = await supabase.storage
+          .from("excel-files")
+          .upload(`${folder}/${fileName}`, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (storageError5) throw storageError5;
       }
 
       // Mark as completed

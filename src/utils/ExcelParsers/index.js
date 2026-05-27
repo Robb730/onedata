@@ -19,6 +19,9 @@ export { parseClassroomsFile, CLASSROOMS_SHEETS } from "./parsers/classroomsPars
 export { parseSchools,    validateSchoolsHeaders,    SCHOOLS_REQUIRED_HEADERS     } from "./parsers/schoolsParser";
 export { parseTeachers,   validateTeachersHeaders,   TEACHERS_REQUIRED_HEADERS    } from "./parsers/teachersParser";
 export { parseStudents,   validateStudentsHeaders,   STUDENTS_REQUIRED_HEADERS    } from "./parsers/studentsParser";
+export { parseSeatsFile, SEATS_SHEETS } from "./parsers/seatsParser";
+export { parseTeachersInventoryFile, TEACHERS_SHEETS } from "./parsers/teachersInventoryParser";
+export { parseTextbooksInventoryFile, TEXTBOOKS_SHEETS } from "./parsers/textbooksInventoryParser";
 
 // ── Shared validation utilities ────────────────────────────────
 export { checkRequiredHeaders, buildHeaderErrorMessage } from "./validations/validateHeaders";

@@ -33,6 +33,9 @@ import { parseClassroomsFile } from "../parsers/classroomsParser";
 import { parseSchools }         from "../parsers/schoolsParser";
 import { parseTeachers }        from "../parsers/teachersParser";
 import { parseStudents }        from "../parsers/studentsParser";
+import { parseSeatsFile }       from "../parsers/seatsParser";
+import { parseTeachersInventoryFile } from "../parsers/teachersInventoryParser";
+import { parseTextbooksInventoryFile } from "../parsers/textbooksInventoryParser";
 
 // ── Supported import types ────────────────────────────────────────────────────
 //
@@ -55,6 +58,21 @@ export const IMPORT_TYPES = {
     label:     "Classrooms Inventory",
     strategy:  "file",
     parseFile: parseClassroomsFile,
+  },
+  seats: {
+    label:     "Seats Inventory",
+    strategy:  "file",
+    parseFile: parseSeatsFile,
+  },
+  teachers_inventory: {
+    label:     "Teachers Inventory",
+    strategy:  "file",
+    parseFile: parseTeachersInventoryFile,
+  },
+  textbook_inventory: {
+    label:     "Textbooks Inventory",
+    strategy:  "file",
+    parseFile: parseTextbooksInventoryFile,
   },
   schools: {
     label:    "Number of Schools",
