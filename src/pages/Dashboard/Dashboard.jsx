@@ -2,6 +2,16 @@ import React, { useState, useEffect } from "react";
 import { TrendingUp, Info, BarChart3, Target, FileText, BookOpen, School, Users, GraduationCap } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import {
+  TrendingUp,
+  Info,
+  BarChart3,
+  Target,
+  FileText,
+  BookOpen,
+  School,
+  Users,
+} from "lucide-react";
+import {
   DashboardHeader,
   DashboardOverview,
   DashboardSection,
@@ -20,7 +30,10 @@ import {
   TrendCard,
   ResourcesInventoryChart,
   TextbooksChart,
+  GenderCard,
+  EnrollmentByLevel,
 } from "../../components/DashboardComponents";
+import { supabase } from "../../lib/supabaseClient";
 
 // ─── Sample data ────────────────────────────────────────────
 // In production this would come from Supabase or context/store.
@@ -43,11 +56,41 @@ const enrollmentSummary = {
 };
 
 const dropoutByLevel = [
-  { label: "Overall", display: "1.22%", value: 12.2, count: "320", color: "bg-rose-500" },
-  { label: "Kinder", display: "—", value: 0, note: "Grouped with Elem K-G6 · See Elementary", color: "bg-gray-300" },
-  { label: "Elementary", display: "0.82%", value: 8.2, count: "150", color: "bg-amber-500" },
-  { label: "JHS", display: "2.26%", value: 22.6, count: "167", color: "bg-violet-500" },
-  { label: "SHS", display: "0.47%", value: 4.7, count: "3", color: "bg-emerald-500" },
+  {
+    label: "Overall",
+    display: "1.22%",
+    value: 12.2,
+    count: "320",
+    color: "bg-rose-500",
+  },
+  {
+    label: "Kinder",
+    display: "—",
+    value: 0,
+    note: "Grouped with Elem K-G6 · See Elementary",
+    color: "bg-gray-300",
+  },
+  {
+    label: "Elementary",
+    display: "0.82%",
+    value: 8.2,
+    count: "150",
+    color: "bg-amber-500",
+  },
+  {
+    label: "JHS",
+    display: "2.26%",
+    value: 22.6,
+    count: "167",
+    color: "bg-violet-500",
+  },
+  {
+    label: "SHS",
+    display: "0.47%",
+    value: 4.7,
+    count: "3",
+    color: "bg-emerald-500",
+  },
 ];
 
 const promotionByLevel = [
@@ -85,17 +128,76 @@ const cespesPrograms = [
     outputs: 3,
     reported: "2/5",
     rows: [
-      { type: "OUTCOME", label: "Percentage of completed education researches used for policy development", sem1Target: "—", sem1Accomp: "Pending", sem2Target: "—", sem2Accomp: "Pending" },
-      { type: "OUTCOME", label: "Percentage of satisfactory feedback from clients on issued policies", sem1Target: "5", sem1Accomp: "4.99", sem2Target: "4.99", sem2Accomp: "Awaiting", carried: true },
-      { type: "OUTPUT", label: "Number of policies formulated, reviewed, and issued", sem1Target: "—", sem1Accomp: "Pending", sem2Target: "—", sem2Accomp: "Pending" },
-      { type: "OUTPUT", label: "Number of education researches completed", sem1Target: "52", sem1Accomp: "60", sem2Target: "60", sem2Accomp: "Awaiting", carried: true },
-      { type: "OUTPUT", label: "Number of proposed policies reviewed", sem1Target: "—", sem1Accomp: "Pending", sem2Target: "—", sem2Accomp: "Pending" },
+      {
+        type: "OUTCOME",
+        label:
+          "Percentage of completed education researches used for policy development",
+        sem1Target: "—",
+        sem1Accomp: "Pending",
+        sem2Target: "—",
+        sem2Accomp: "Pending",
+      },
+      {
+        type: "OUTCOME",
+        label:
+          "Percentage of satisfactory feedback from clients on issued policies",
+        sem1Target: "5",
+        sem1Accomp: "4.99",
+        sem2Target: "4.99",
+        sem2Accomp: "Awaiting",
+        carried: true,
+      },
+      {
+        type: "OUTPUT",
+        label: "Number of policies formulated, reviewed, and issued",
+        sem1Target: "—",
+        sem1Accomp: "Pending",
+        sem2Target: "—",
+        sem2Accomp: "Pending",
+      },
+      {
+        type: "OUTPUT",
+        label: "Number of education researches completed",
+        sem1Target: "52",
+        sem1Accomp: "60",
+        sem2Target: "60",
+        sem2Accomp: "Awaiting",
+        carried: true,
+      },
+      {
+        type: "OUTPUT",
+        label: "Number of proposed policies reviewed",
+        sem1Target: "—",
+        sem1Accomp: "Pending",
+        sem2Target: "—",
+        sem2Accomp: "Pending",
+      },
     ],
   },
-  { name: "Basic Education Inputs Program", outcomes: 8, outputs: 7, reported: "15/15" },
-  { name: "Inclusive Education Program", outcomes: 5, outputs: 5, reported: "10/10" },
-  { name: "Support to Schools and Learners Program", outcomes: 7, outputs: 4, reported: "11/11" },
-  { name: "Education Human Resource Development Program", outcomes: 1, outputs: 1, reported: "2/2" },
+  {
+    name: "Basic Education Inputs Program",
+    outcomes: 8,
+    outputs: 7,
+    reported: "15/15",
+  },
+  {
+    name: "Inclusive Education Program",
+    outcomes: 5,
+    outputs: 5,
+    reported: "10/10",
+  },
+  {
+    name: "Support to Schools and Learners Program",
+    outcomes: 7,
+    outputs: 4,
+    reported: "11/11",
+  },
+  {
+    name: "Education Human Resource Development Program",
+    outcomes: 1,
+    outputs: 1,
+    reported: "2/2",
+  },
 ];
 
 // ─── Component ──────────────────────────────────────────────
@@ -105,104 +207,105 @@ export default function Dashboard() {
   const [rateView, setRateView] = useState("Dropout");
   const [enrollmentView, setEnrollmentView] = useState("Summary");
 
-  // ── Crucial Resources State ────────────────────────────────
-  const [resourceView, setResourceView] = useState("Summary");
-  const [resources, setResources] = useState({
-    teachers: { total: 0, needs: 0, breakdown: {}, loading: true },
-    classrooms: { total: 0, needs: 0, breakdown: {}, loading: true },
-    seats: { total: 0, needs: 0, breakdown: {}, loading: true },
-    textbooks: { needs: 0, excess: 0, breakdown: {}, loading: true },
+  const [enrollmentSummary, setEnrollmentSummary] = useState({
+    public: 0,
+    private: 0,
+    total: 0,
   });
 
+  const [genderSummary, setGenderSummary] = useState({
+    male: { total: 0, public: 0, private: 0 },
+    female: { total: 0, public: 0, private: 0 },
+  });
+
+  const [enrollmentRows, setEnrollmentRows] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   useEffect(() => {
-    async function fetchCrucialResources() {
-      try {
-        // 1. Fetch Teachers
-        const { data: tKes } = await supabase.from("teachers_kes").select("prev_total_teachers_inventory, kinder_needs, g1g6_needs, sned_needs");
-        const { data: tJhs } = await supabase.from("teachers_jhs").select("prev_total_teachers_inventory, teacher_needs");
-        const { data: tShs } = await supabase.from("teachers_shs").select("prev_total_teachers_inventory, teacher_needs");
+    async function fetchEnrollmentSummary() {
+      setLoading(true);
+      setError(null);
 
-        const tKesTotal = tKes?.reduce((acc, r) => acc + (r.prev_total_teachers_inventory || 0), 0) || 0;
-        const tJhsTotal = tJhs?.reduce((acc, r) => acc + (r.prev_total_teachers_inventory || 0), 0) || 0;
-        const tShsTotal = tShs?.reduce((acc, r) => acc + (r.prev_total_teachers_inventory || 0), 0) || 0;
+      const { data, error } = await supabase
+        .from("enrollment_data")
+        .select(
+          "category, grand_total, school_name, elementary_data, junior_high_data, senior_high_s1_data, senior_high_s2_data",
+        )
+        .eq("school_year", "2025-2026");
 
-        const tKesNeeds = tKes?.reduce((acc, r) => acc + (r.kinder_needs || 0) + (r.g1g6_needs || 0) + (r.sned_needs || 0), 0) || 0;
-        const tJhsNeeds = tJhs?.reduce((acc, r) => acc + (r.teacher_needs || 0), 0) || 0;
-        const tShsNeeds = tShs?.reduce((acc, r) => acc + (r.teacher_needs || 0), 0) || 0;
-
-        // 2. Fetch Classrooms
-        // classrooms_kes: uses prev_total_classroom_inventory for total, and kinder_needs/g1g6_needs/sned_needs for needs
-        // classrooms_jhs/shs: uses total_classroom for total, and classroom_needs for needs
-        const { data: cKes } = await supabase.from("classrooms_kes").select("prev_total_classroom_inventory, kinder_needs, g1g6_needs, sned_needs");
-        const { data: cJhs } = await supabase.from("classrooms_jhs").select("total_classroom, classroom_needs");
-        const { data: cShs } = await supabase.from("classrooms_shs").select("total_classroom, classroom_needs");
-
-        const cKesTotal = cKes?.reduce((acc, r) => acc + (r.prev_total_classroom_inventory || 0), 0) || 0;
-        const cJhsTotal = cJhs?.reduce((acc, r) => acc + (r.total_classroom || 0), 0) || 0;
-        const cShsTotal = cShs?.reduce((acc, r) => acc + (r.total_classroom || 0), 0) || 0;
-
-        const cKesNeeds = cKes?.reduce((acc, r) => acc + (r.kinder_needs || 0) + (r.g1g6_needs || 0) + (r.sned_needs || 0), 0) || 0;
-        const cJhsNeeds = cJhs?.reduce((acc, r) => acc + (r.classroom_needs || 0), 0) || 0;
-        const cShsNeeds = cShs?.reduce((acc, r) => acc + (r.classroom_needs || 0), 0) || 0;
-
-        // 3. Fetch Seats
-        const { data: sKes } = await supabase.from("seats_kes").select("prev_total_seats_inventory, kinder_needs, g1g6_needs, sned_needs");
-        const { data: sJhs } = await supabase.from("seats_jhs").select("prev_total_seats_inventory, seat_needs");
-        const { data: sShs } = await supabase.from("seats_shs").select("prev_total_seats_inventory, seat_needs");
-
-        const sKesTotal = sKes?.reduce((acc, r) => acc + (r.prev_total_seats_inventory || 0), 0) || 0;
-        const sJhsTotal = sJhs?.reduce((acc, r) => acc + (r.prev_total_seats_inventory || 0), 0) || 0;
-        const sShsTotal = sShs?.reduce((acc, r) => acc + (r.prev_total_seats_inventory || 0), 0) || 0;
-
-        const sKesNeeds = sKes?.reduce((acc, r) => acc + (r.kinder_needs || 0) + (r.g1g6_needs || 0) + (r.sned_needs || 0), 0) || 0;
-        const sJhsNeeds = sJhs?.reduce((acc, r) => acc + (r.seat_needs || 0), 0) || 0;
-        const sShsNeeds = sShs?.reduce((acc, r) => acc + (r.seat_needs || 0), 0) || 0;
-
-        // 4. Fetch Textbooks
-        const { data: txKes } = await supabase.from("textbooks_kes").select("textbook_needs, textbook_excess");
-        const { data: txJhs } = await supabase.from("textbooks_jhs").select("textbook_needs, textbook_excess");
-        const { data: txShs } = await supabase.from("textbooks_shs").select("textbook_needs, textbook_excess");
-
-        const txKesNeeds = txKes?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
-        const txJhsNeeds = txJhs?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
-        const txShsNeeds = txShs?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
-
-        setResources({
-          teachers: { 
-            total: tKesTotal + tJhsTotal + tShsTotal, 
-            needs: tKesNeeds + tJhsNeeds + tShsNeeds, 
-            breakdown: { Elementary: tKesTotal, JHS: tJhsTotal, SHS: tShsTotal },
-            needsBreakdown: { Elementary: tKesNeeds, JHS: tJhsNeeds, SHS: tShsNeeds },
-            loading: false 
-          },
-          classrooms: { 
-            total: cKesTotal + cJhsTotal + cShsTotal, 
-            needs: cKesNeeds + cJhsNeeds + cShsNeeds, 
-            breakdown: { Elementary: cKesTotal, JHS: cJhsTotal, SHS: cShsTotal },
-            needsBreakdown: { Elementary: cKesNeeds, JHS: cJhsNeeds, SHS: cShsNeeds },
-            loading: false 
-          },
-          seats: { 
-            total: sKesTotal + sJhsTotal + sShsTotal, 
-            needs: sKesNeeds + sJhsNeeds + sShsNeeds, 
-            breakdown: { Elementary: sKesTotal, JHS: sJhsTotal, SHS: sShsTotal },
-            needsBreakdown: { Elementary: sKesNeeds, JHS: sJhsNeeds, SHS: sShsNeeds },
-            loading: false 
-          },
-          textbooks: { 
-            needs: txKesNeeds + txJhsNeeds + txShsNeeds, 
-            breakdown: { Elementary: txKesNeeds, JHS: txJhsNeeds, SHS: txShsNeeds },
-            loading: false 
-          },
-        });
-
-      } catch (error) {
-        console.error("Error fetching crucial resources:", error);
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
       }
+
+      setEnrollmentRows(data);
+
+      // ── Enrollment by category ──────────────────────────────
+      const publicTotal = data
+        .filter((row) => row.category === "PUBLIC")
+        .reduce((acc, row) => acc + (row.grand_total ?? 0), 0);
+
+      const privateTotal = data
+        .filter((row) => row.category === "PRIVATE")
+        .reduce((acc, row) => acc + (row.grand_total ?? 0), 0);
+
+      // ── Gender totals split by public / private ─────────────
+      let malePublic = 0,
+        malePrivate = 0;
+      let femalePublic = 0,
+        femalePrivate = 0;
+
+      data.forEach((row) => {
+        const isPublic = row.category === "PUBLIC";
+        const cols = [
+          row.elementary_data,
+          row.junior_high_data,
+          row.senior_high_s1_data,
+          row.senior_high_s2_data,
+        ];
+
+        cols.forEach((col) => {
+          if (col?.total) {
+            const m = col.total.m ?? 0;
+            const f = col.total.f ?? 0;
+            if (isPublic) {
+              malePublic += m;
+              femalePublic += f;
+            } else {
+              malePrivate += m;
+              femalePrivate += f;
+            }
+          }
+        });
+      });
+
+      setEnrollmentSummary({
+        public: publicTotal,
+        private: privateTotal,
+        total: publicTotal + privateTotal,
+      });
+
+      setGenderSummary({
+        male: {
+          total: malePublic + malePrivate,
+          public: malePublic,
+          private: malePrivate,
+        },
+        female: {
+          total: femalePublic + femalePrivate,
+          public: femalePublic,
+          private: femalePrivate,
+        },
+      });
+
+      setLoading(false);
     }
 
-    fetchCrucialResources();
-  }, []);
+    fetchEnrollmentSummary();
+  }, [selectedYear]);
 
   return (
     <div className="min-h-screen">
@@ -215,10 +318,7 @@ export default function Dashboard() {
         />
 
         {/* ── Title ───────────────────────────────────── */}
-        <DashboardSection
-          title="Dashboard"
-          subtitle={`SY ${selectedYear}`}
-        >
+        <DashboardSection title="Dashboard" subtitle={`SY ${selectedYear}`}>
           {/* ── Overview KPIs ────────────────────────── */}
           <DashboardOverview data={overviewData} />
         </DashboardSection>
@@ -248,11 +348,59 @@ export default function Dashboard() {
                 onChange={setEnrollmentView}
               />
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <DataSummaryCard label="Public" value={enrollmentSummary.public.toLocaleString()} accent="#4f7df5" />
-              <DataSummaryCard label="Private" value={enrollmentSummary.private.toLocaleString()} accent="#10b981" />
-              <DataSummaryCard label="Total" value={enrollmentSummary.total.toLocaleString()} accent="#334155" />
-            </div>
+
+            {enrollmentView === "Summary" && (
+              <>
+                <div className="grid grid-cols-3 gap-3">
+                  <DataSummaryCard
+                    label="Public"
+                    value={enrollmentSummary.public.toLocaleString()}
+                    accent="#4f7df5"
+                  />
+                  <DataSummaryCard
+                    label="Private"
+                    value={enrollmentSummary.private.toLocaleString()}
+                    accent="#10b981"
+                  />
+                  <DataSummaryCard
+                    label="Total"
+                    value={enrollmentSummary.total.toLocaleString()}
+                    accent="#334155"
+                  />
+                </div>
+
+                <div className="mt-3">
+                  <p className="text-[0.62rem] font-medium text-slate-300 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                    Gender
+                    <span className="normal-case tracking-normal font-normal text-slate-300">
+                      · hover to see public / private split
+                    </span>
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <GenderCard
+                      label="Male"
+                      total={loading ? 0 : genderSummary.male.total}
+                      publicCount={loading ? 0 : genderSummary.male.public}
+                      privateCount={loading ? 0 : genderSummary.male.private}
+                      accent="#3b82f6"
+                      hoverAccent="#60a5fa"
+                    />
+                    <GenderCard
+                      label="Female"
+                      total={loading ? 0 : genderSummary.female.total}
+                      publicCount={loading ? 0 : genderSummary.female.public}
+                      privateCount={loading ? 0 : genderSummary.female.private}
+                      accent="#ec4899"
+                      hoverAccent="#f472b6"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {enrollmentView === "By Level" && (
+              <EnrollmentByLevel rows={enrollmentRows} />
+            )}
           </div>
 
           <SectionDivider />
@@ -284,9 +432,7 @@ export default function Dashboard() {
               <PromotionChart data={promotionByLevel} />
             )}
 
-            {rateView === "Cohort" && (
-              <CohortChart data={cohortTrend} />
-            )}
+            {rateView === "Cohort" && <CohortChart data={cohortTrend} />}
           </div>
 
           <SectionDivider />
@@ -378,159 +524,29 @@ export default function Dashboard() {
           title="Crucial Resources"
           subtitle="No. of Teachers · Classrooms · Seats · Textbooks"
         >
-          <div className="flex items-center justify-end mb-4">
-            <DashboardFilters
-              options={["Summary", "Charts", "By Level"]}
-              active={resourceView}
-              onChange={setResourceView}
+          <DashboardGrid cols={3}>
+            <TrendCard
+              label="Total Teachers"
+              value="1,842"
+              change="+48"
+              direction="up"
+              period="vs. SY 2023-2024"
             />
-          </div>
-
-          {/* ── Summary view ───────────────────────────── */}
-          {resourceView === "Summary" && (
-            <DashboardGrid cols={2}>
-              <TrendCard
-                label="Total Teachers"
-                value={resources.teachers.loading ? "..." : (resources.teachers.total || 0).toLocaleString()}
-                change={resources.teachers.needs > 0 ? `-${resources.teachers.needs.toLocaleString()} needs` : "No needs"}
-                direction={resources.teachers.needs > 0 ? "down" : "up"}
-                period="Total Inventory"
-              />
-              <TrendCard
-                label="Total Classrooms"
-                value={resources.classrooms.loading ? "..." : (resources.classrooms.total || 0).toLocaleString()}
-                change={resources.classrooms.needs > 0 ? `-${resources.classrooms.needs.toLocaleString()} needs` : "No needs"}
-                direction={resources.classrooms.needs > 0 ? "down" : "up"}
-                period="Total Inventory"
-              />
-              <TrendCard
-                label="Total Seats"
-                value={resources.seats.loading ? "..." : (resources.seats.total || 0).toLocaleString()}
-                change={resources.seats.needs > 0 ? `-${resources.seats.needs.toLocaleString()} needs` : "No needs"}
-                direction={resources.seats.needs > 0 ? "down" : "up"}
-                period="Total Inventory"
-              />
-              <TrendCard
-                label="Textbooks Shortage"
-                value={resources.textbooks.loading ? "..." : (resources.textbooks.needs || 0).toLocaleString()}
-                change="Current total gap"
-                direction={resources.textbooks.needs > 0 ? "down" : "up"}
-                period="System-wide"
-              />
-            </DashboardGrid>
-          )}
-
-          {/* ── Charts view ────────────────────────────── */}
-          {resourceView === "Charts" && (() => {
-            const teachersData = Object.entries(resources.teachers.breakdown || {}).map(([level, val]) => ({
-              level,
-              inventory: val,
-              needs: resources.teachers.needsBreakdown?.[level] || 0,
-            }));
-            const classroomsData = Object.entries(resources.classrooms.breakdown || {}).map(([level, val]) => ({
-              level,
-              inventory: val,
-              needs: resources.classrooms.needsBreakdown?.[level] || 0,
-            }));
-            const seatsData = Object.entries(resources.seats.breakdown || {}).map(([level, val]) => ({
-              level,
-              inventory: val,
-              needs: resources.seats.needsBreakdown?.[level] || 0,
-            }));
-            const textbooksData = Object.entries(resources.textbooks.breakdown || {}).map(([level, val]) => ({
-              level,
-              shortage: val,
-            }));
-            return (
-              <div className="space-y-4">
-                <DashboardGrid cols={2}>
-                  <ResourcesInventoryChart title="Teachers · Inventory vs Needs" data={teachersData} />
-                  <ResourcesInventoryChart title="Classrooms · Inventory vs Needs" data={classroomsData} />
-                </DashboardGrid>
-                <DashboardGrid cols={2}>
-                  <ResourcesInventoryChart title="Seats · Inventory vs Needs" data={seatsData} />
-                  <TextbooksChart data={textbooksData} />
-                </DashboardGrid>
-              </div>
-            );
-          })()}
-
-          {/* ── By Level view ──────────────────────────── */}
-          {resourceView === "By Level" && (
-            <div className="space-y-6">
-              {/* Teachers */}
-              <div>
-                <h4 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-                  <Users size={12} /> Teachers
-                </h4>
-                <div className="grid grid-cols-3 gap-3">
-                  {Object.entries(resources.teachers.breakdown || {}).map(([level, val]) => (
-                    <DataSummaryCard
-                      key={level}
-                      label={level}
-                      value={val.toLocaleString()}
-                      accent="#4f7df5"
-                      subValue={`${(resources.teachers.needsBreakdown?.[level] || 0).toLocaleString()} needs`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Classrooms */}
-              <div>
-                <h4 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-                  <School size={12} /> Classrooms
-                </h4>
-                <div className="grid grid-cols-3 gap-3">
-                  {Object.entries(resources.classrooms.breakdown || {}).map(([level, val]) => (
-                    <DataSummaryCard
-                      key={level}
-                      label={level}
-                      value={val.toLocaleString()}
-                      accent="#10b981"
-                      subValue={`${(resources.classrooms.needsBreakdown?.[level] || 0).toLocaleString()} needs`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Seats */}
-              <div>
-                <h4 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-                  <GraduationCap size={12} /> Seats
-                </h4>
-                <div className="grid grid-cols-3 gap-3">
-                  {Object.entries(resources.seats.breakdown || {}).map(([level, val]) => (
-                    <DataSummaryCard
-                      key={level}
-                      label={level}
-                      value={val.toLocaleString()}
-                      accent="#f59e0b"
-                      subValue={`${(resources.seats.needsBreakdown?.[level] || 0).toLocaleString()} needs`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Textbooks */}
-              <div>
-                <h4 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-                  <BookOpen size={12} /> Textbooks Shortage
-                </h4>
-                <div className="grid grid-cols-3 gap-3">
-                  {Object.entries(resources.textbooks.breakdown || {}).map(([level, val]) => (
-                    <DataSummaryCard
-                      key={level}
-                      label={level}
-                      value={val.toLocaleString()}
-                      accent="#ef4444"
-                      subValue="units short"
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+            <TrendCard
+              label="Total Classrooms"
+              value="1,156"
+              change="+22"
+              direction="up"
+              period="vs. SY 2023-2024"
+            />
+            <TrendCard
+              label="Total Seats"
+              value="45,280"
+              change="+1,200"
+              direction="up"
+              period="vs. SY 2023-2024"
+            />
+          </DashboardGrid>
         </DashboardAccordion>
 
         <div className="mt-4" />
@@ -640,24 +656,41 @@ function CespesProgramRow({ program }) {
                 <th className="px-4 py-2.5 text-left font-semibold text-slate-500 w-[35%]">
                   Outcome / Output Indicator
                 </th>
-                <th className="px-3 py-2.5 text-center font-semibold text-blue-500" colSpan={2}>
+                <th
+                  className="px-3 py-2.5 text-center font-semibold text-blue-500"
+                  colSpan={2}
+                >
                   1st Semester
                 </th>
-                <th className="px-3 py-2.5 text-center font-semibold text-emerald-500" colSpan={2}>
+                <th
+                  className="px-3 py-2.5 text-center font-semibold text-emerald-500"
+                  colSpan={2}
+                >
                   2nd Semester
                 </th>
               </tr>
               <tr className="bg-slate-50/30">
                 <th />
-                <th className="px-3 py-1.5 text-center text-slate-400 font-medium">Target</th>
-                <th className="px-3 py-1.5 text-center text-slate-400 font-medium">Accomplishment</th>
-                <th className="px-3 py-1.5 text-center text-slate-400 font-medium">Target</th>
-                <th className="px-3 py-1.5 text-center text-slate-400 font-medium">Accomplishment</th>
+                <th className="px-3 py-1.5 text-center text-slate-400 font-medium">
+                  Target
+                </th>
+                <th className="px-3 py-1.5 text-center text-slate-400 font-medium">
+                  Accomplishment
+                </th>
+                <th className="px-3 py-1.5 text-center text-slate-400 font-medium">
+                  Target
+                </th>
+                <th className="px-3 py-1.5 text-center text-slate-400 font-medium">
+                  Accomplishment
+                </th>
               </tr>
             </thead>
             <tbody>
               {program.rows.map((row, i) => (
-                <tr key={i} className="border-t border-slate-100/60 hover:bg-blue-50/20 transition-colors">
+                <tr
+                  key={i}
+                  className="border-t border-slate-100/60 hover:bg-blue-50/20 transition-colors"
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-start gap-2">
                       <span
@@ -674,10 +707,14 @@ function CespesProgramRow({ program }) {
                       </span>
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-center text-slate-600">{row.sem1Target}</td>
+                  <td className="px-3 py-3 text-center text-slate-600">
+                    {row.sem1Target}
+                  </td>
                   <td className="px-3 py-3 text-center text-slate-600">
                     {row.sem1Accomp === "Pending" ? (
-                      <span className="text-slate-400 italic text-[0.65rem]">Accomplishment to be reported by DepEd CO</span>
+                      <span className="text-slate-400 italic text-[0.65rem]">
+                        Accomplishment to be reported by DepEd CO
+                      </span>
                     ) : (
                       row.sem1Accomp
                     )}
@@ -685,8 +722,12 @@ function CespesProgramRow({ program }) {
                   <td className="px-3 py-3 text-center">
                     {row.carried ? (
                       <div>
-                        <span className="text-emerald-600 font-semibold">{row.sem2Target}</span>
-                        <p className="text-[0.58rem] text-slate-400 mt-0.5">* carried from 1st sem</p>
+                        <span className="text-emerald-600 font-semibold">
+                          {row.sem2Target}
+                        </span>
+                        <p className="text-[0.58rem] text-slate-400 mt-0.5">
+                          * carried from 1st sem
+                        </p>
                       </div>
                     ) : (
                       <span className="text-slate-600">{row.sem2Target}</span>
@@ -698,7 +739,9 @@ function CespesProgramRow({ program }) {
                         ⏳ Awaiting
                       </span>
                     ) : row.sem2Accomp === "Pending" ? (
-                      <span className="text-slate-400 italic text-[0.65rem]">Accomplishment to be reported by DepEd CO</span>
+                      <span className="text-slate-400 italic text-[0.65rem]">
+                        Accomplishment to be reported by DepEd CO
+                      </span>
                     ) : (
                       row.sem2Accomp
                     )}
