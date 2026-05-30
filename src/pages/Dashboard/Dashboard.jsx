@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { TrendingUp, Info, BarChart3, Target, FileText, BookOpen, School, Users } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { TrendingUp, Info, BarChart3, Target, FileText, BookOpen, School, Users, GraduationCap } from "lucide-react";
+import { supabase } from "../../lib/supabaseClient";
 import {
   DashboardHeader,
   DashboardOverview,
@@ -17,6 +18,8 @@ import {
   CohortChart,
   PerformanceCard,
   TrendCard,
+  ResourcesInventoryChart,
+  TextbooksChart,
 } from "../../components/DashboardComponents";
 
 // ─── Sample data ────────────────────────────────────────────
@@ -101,6 +104,105 @@ export default function Dashboard() {
   const [selectedYear, setSelectedYear] = useState("2024-2025");
   const [rateView, setRateView] = useState("Dropout");
   const [enrollmentView, setEnrollmentView] = useState("Summary");
+
+  // ── Crucial Resources State ────────────────────────────────
+  const [resourceView, setResourceView] = useState("Summary");
+  const [resources, setResources] = useState({
+    teachers: { total: 0, needs: 0, breakdown: {}, loading: true },
+    classrooms: { total: 0, needs: 0, breakdown: {}, loading: true },
+    seats: { total: 0, needs: 0, breakdown: {}, loading: true },
+    textbooks: { needs: 0, excess: 0, breakdown: {}, loading: true },
+  });
+
+  useEffect(() => {
+    async function fetchCrucialResources() {
+      try {
+        // 1. Fetch Teachers
+        const { data: tKes } = await supabase.from("teachers_kes").select("prev_total_teachers_inventory, kinder_needs, g1g6_needs, sned_needs");
+        const { data: tJhs } = await supabase.from("teachers_jhs").select("prev_total_teachers_inventory, teacher_needs");
+        const { data: tShs } = await supabase.from("teachers_shs").select("prev_total_teachers_inventory, teacher_needs");
+
+        const tKesTotal = tKes?.reduce((acc, r) => acc + (r.prev_total_teachers_inventory || 0), 0) || 0;
+        const tJhsTotal = tJhs?.reduce((acc, r) => acc + (r.prev_total_teachers_inventory || 0), 0) || 0;
+        const tShsTotal = tShs?.reduce((acc, r) => acc + (r.prev_total_teachers_inventory || 0), 0) || 0;
+
+        const tKesNeeds = tKes?.reduce((acc, r) => acc + (r.kinder_needs || 0) + (r.g1g6_needs || 0) + (r.sned_needs || 0), 0) || 0;
+        const tJhsNeeds = tJhs?.reduce((acc, r) => acc + (r.teacher_needs || 0), 0) || 0;
+        const tShsNeeds = tShs?.reduce((acc, r) => acc + (r.teacher_needs || 0), 0) || 0;
+
+        // 2. Fetch Classrooms
+        // classrooms_kes: uses prev_total_classroom_inventory for total, and kinder_needs/g1g6_needs/sned_needs for needs
+        // classrooms_jhs/shs: uses total_classroom for total, and classroom_needs for needs
+        const { data: cKes } = await supabase.from("classrooms_kes").select("prev_total_classroom_inventory, kinder_needs, g1g6_needs, sned_needs");
+        const { data: cJhs } = await supabase.from("classrooms_jhs").select("total_classroom, classroom_needs");
+        const { data: cShs } = await supabase.from("classrooms_shs").select("total_classroom, classroom_needs");
+
+        const cKesTotal = cKes?.reduce((acc, r) => acc + (r.prev_total_classroom_inventory || 0), 0) || 0;
+        const cJhsTotal = cJhs?.reduce((acc, r) => acc + (r.total_classroom || 0), 0) || 0;
+        const cShsTotal = cShs?.reduce((acc, r) => acc + (r.total_classroom || 0), 0) || 0;
+
+        const cKesNeeds = cKes?.reduce((acc, r) => acc + (r.kinder_needs || 0) + (r.g1g6_needs || 0) + (r.sned_needs || 0), 0) || 0;
+        const cJhsNeeds = cJhs?.reduce((acc, r) => acc + (r.classroom_needs || 0), 0) || 0;
+        const cShsNeeds = cShs?.reduce((acc, r) => acc + (r.classroom_needs || 0), 0) || 0;
+
+        // 3. Fetch Seats
+        const { data: sKes } = await supabase.from("seats_kes").select("prev_total_seats_inventory, kinder_needs, g1g6_needs, sned_needs");
+        const { data: sJhs } = await supabase.from("seats_jhs").select("prev_total_seats_inventory, seat_needs");
+        const { data: sShs } = await supabase.from("seats_shs").select("prev_total_seats_inventory, seat_needs");
+
+        const sKesTotal = sKes?.reduce((acc, r) => acc + (r.prev_total_seats_inventory || 0), 0) || 0;
+        const sJhsTotal = sJhs?.reduce((acc, r) => acc + (r.prev_total_seats_inventory || 0), 0) || 0;
+        const sShsTotal = sShs?.reduce((acc, r) => acc + (r.prev_total_seats_inventory || 0), 0) || 0;
+
+        const sKesNeeds = sKes?.reduce((acc, r) => acc + (r.kinder_needs || 0) + (r.g1g6_needs || 0) + (r.sned_needs || 0), 0) || 0;
+        const sJhsNeeds = sJhs?.reduce((acc, r) => acc + (r.seat_needs || 0), 0) || 0;
+        const sShsNeeds = sShs?.reduce((acc, r) => acc + (r.seat_needs || 0), 0) || 0;
+
+        // 4. Fetch Textbooks
+        const { data: txKes } = await supabase.from("textbooks_kes").select("textbook_needs, textbook_excess");
+        const { data: txJhs } = await supabase.from("textbooks_jhs").select("textbook_needs, textbook_excess");
+        const { data: txShs } = await supabase.from("textbooks_shs").select("textbook_needs, textbook_excess");
+
+        const txKesNeeds = txKes?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
+        const txJhsNeeds = txJhs?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
+        const txShsNeeds = txShs?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
+
+        setResources({
+          teachers: { 
+            total: tKesTotal + tJhsTotal + tShsTotal, 
+            needs: tKesNeeds + tJhsNeeds + tShsNeeds, 
+            breakdown: { Elementary: tKesTotal, JHS: tJhsTotal, SHS: tShsTotal },
+            needsBreakdown: { Elementary: tKesNeeds, JHS: tJhsNeeds, SHS: tShsNeeds },
+            loading: false 
+          },
+          classrooms: { 
+            total: cKesTotal + cJhsTotal + cShsTotal, 
+            needs: cKesNeeds + cJhsNeeds + cShsNeeds, 
+            breakdown: { Elementary: cKesTotal, JHS: cJhsTotal, SHS: cShsTotal },
+            needsBreakdown: { Elementary: cKesNeeds, JHS: cJhsNeeds, SHS: cShsNeeds },
+            loading: false 
+          },
+          seats: { 
+            total: sKesTotal + sJhsTotal + sShsTotal, 
+            needs: sKesNeeds + sJhsNeeds + sShsNeeds, 
+            breakdown: { Elementary: sKesTotal, JHS: sJhsTotal, SHS: sShsTotal },
+            needsBreakdown: { Elementary: sKesNeeds, JHS: sJhsNeeds, SHS: sShsNeeds },
+            loading: false 
+          },
+          textbooks: { 
+            needs: txKesNeeds + txJhsNeeds + txShsNeeds, 
+            breakdown: { Elementary: txKesNeeds, JHS: txJhsNeeds, SHS: txShsNeeds },
+            loading: false 
+          },
+        });
+
+      } catch (error) {
+        console.error("Error fetching crucial resources:", error);
+      }
+    }
+
+    fetchCrucialResources();
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -274,13 +376,161 @@ export default function Dashboard() {
             </div>
           }
           title="Crucial Resources"
-          subtitle="No. of Teachers · Classrooms · Seats"
+          subtitle="No. of Teachers · Classrooms · Seats · Textbooks"
         >
-          <DashboardGrid cols={3}>
-            <TrendCard label="Total Teachers" value="1,842" change="+48" direction="up" period="vs. SY 2023-2024" />
-            <TrendCard label="Total Classrooms" value="1,156" change="+22" direction="up" period="vs. SY 2023-2024" />
-            <TrendCard label="Total Seats" value="45,280" change="+1,200" direction="up" period="vs. SY 2023-2024" />
-          </DashboardGrid>
+          <div className="flex items-center justify-end mb-4">
+            <DashboardFilters
+              options={["Summary", "Charts", "By Level"]}
+              active={resourceView}
+              onChange={setResourceView}
+            />
+          </div>
+
+          {/* ── Summary view ───────────────────────────── */}
+          {resourceView === "Summary" && (
+            <DashboardGrid cols={2}>
+              <TrendCard
+                label="Total Teachers"
+                value={resources.teachers.loading ? "..." : (resources.teachers.total || 0).toLocaleString()}
+                change={resources.teachers.needs > 0 ? `-${resources.teachers.needs.toLocaleString()} needs` : "No needs"}
+                direction={resources.teachers.needs > 0 ? "down" : "up"}
+                period="Total Inventory"
+              />
+              <TrendCard
+                label="Total Classrooms"
+                value={resources.classrooms.loading ? "..." : (resources.classrooms.total || 0).toLocaleString()}
+                change={resources.classrooms.needs > 0 ? `-${resources.classrooms.needs.toLocaleString()} needs` : "No needs"}
+                direction={resources.classrooms.needs > 0 ? "down" : "up"}
+                period="Total Inventory"
+              />
+              <TrendCard
+                label="Total Seats"
+                value={resources.seats.loading ? "..." : (resources.seats.total || 0).toLocaleString()}
+                change={resources.seats.needs > 0 ? `-${resources.seats.needs.toLocaleString()} needs` : "No needs"}
+                direction={resources.seats.needs > 0 ? "down" : "up"}
+                period="Total Inventory"
+              />
+              <TrendCard
+                label="Textbooks Shortage"
+                value={resources.textbooks.loading ? "..." : (resources.textbooks.needs || 0).toLocaleString()}
+                change="Current total gap"
+                direction={resources.textbooks.needs > 0 ? "down" : "up"}
+                period="System-wide"
+              />
+            </DashboardGrid>
+          )}
+
+          {/* ── Charts view ────────────────────────────── */}
+          {resourceView === "Charts" && (() => {
+            const teachersData = Object.entries(resources.teachers.breakdown || {}).map(([level, val]) => ({
+              level,
+              inventory: val,
+              needs: resources.teachers.needsBreakdown?.[level] || 0,
+            }));
+            const classroomsData = Object.entries(resources.classrooms.breakdown || {}).map(([level, val]) => ({
+              level,
+              inventory: val,
+              needs: resources.classrooms.needsBreakdown?.[level] || 0,
+            }));
+            const seatsData = Object.entries(resources.seats.breakdown || {}).map(([level, val]) => ({
+              level,
+              inventory: val,
+              needs: resources.seats.needsBreakdown?.[level] || 0,
+            }));
+            const textbooksData = Object.entries(resources.textbooks.breakdown || {}).map(([level, val]) => ({
+              level,
+              shortage: val,
+            }));
+            return (
+              <div className="space-y-4">
+                <DashboardGrid cols={2}>
+                  <ResourcesInventoryChart title="Teachers · Inventory vs Needs" data={teachersData} />
+                  <ResourcesInventoryChart title="Classrooms · Inventory vs Needs" data={classroomsData} />
+                </DashboardGrid>
+                <DashboardGrid cols={2}>
+                  <ResourcesInventoryChart title="Seats · Inventory vs Needs" data={seatsData} />
+                  <TextbooksChart data={textbooksData} />
+                </DashboardGrid>
+              </div>
+            );
+          })()}
+
+          {/* ── By Level view ──────────────────────────── */}
+          {resourceView === "By Level" && (
+            <div className="space-y-6">
+              {/* Teachers */}
+              <div>
+                <h4 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                  <Users size={12} /> Teachers
+                </h4>
+                <div className="grid grid-cols-3 gap-3">
+                  {Object.entries(resources.teachers.breakdown || {}).map(([level, val]) => (
+                    <DataSummaryCard
+                      key={level}
+                      label={level}
+                      value={val.toLocaleString()}
+                      accent="#4f7df5"
+                      subValue={`${(resources.teachers.needsBreakdown?.[level] || 0).toLocaleString()} needs`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Classrooms */}
+              <div>
+                <h4 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                  <School size={12} /> Classrooms
+                </h4>
+                <div className="grid grid-cols-3 gap-3">
+                  {Object.entries(resources.classrooms.breakdown || {}).map(([level, val]) => (
+                    <DataSummaryCard
+                      key={level}
+                      label={level}
+                      value={val.toLocaleString()}
+                      accent="#10b981"
+                      subValue={`${(resources.classrooms.needsBreakdown?.[level] || 0).toLocaleString()} needs`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Seats */}
+              <div>
+                <h4 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                  <GraduationCap size={12} /> Seats
+                </h4>
+                <div className="grid grid-cols-3 gap-3">
+                  {Object.entries(resources.seats.breakdown || {}).map(([level, val]) => (
+                    <DataSummaryCard
+                      key={level}
+                      label={level}
+                      value={val.toLocaleString()}
+                      accent="#f59e0b"
+                      subValue={`${(resources.seats.needsBreakdown?.[level] || 0).toLocaleString()} needs`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Textbooks */}
+              <div>
+                <h4 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                  <BookOpen size={12} /> Textbooks Shortage
+                </h4>
+                <div className="grid grid-cols-3 gap-3">
+                  {Object.entries(resources.textbooks.breakdown || {}).map(([level, val]) => (
+                    <DataSummaryCard
+                      key={level}
+                      label={level}
+                      value={val.toLocaleString()}
+                      accent="#ef4444"
+                      subValue="units short"
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </DashboardAccordion>
 
         <div className="mt-4" />
@@ -462,3 +712,4 @@ function CespesProgramRow({ program }) {
     </div>
   );
 }
+{/* ── Crucial Resources (accordion) ──────────── */}
