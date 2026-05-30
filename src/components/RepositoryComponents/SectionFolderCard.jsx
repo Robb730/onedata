@@ -1,9 +1,15 @@
-import { Calendar, FileText, FolderOpen, Plus, User } from "lucide-react";
+import { FolderOpen, Plus, User } from "lucide-react";
 
+/**
+ * SectionFolderCard — Section-level folder card matching FolderCard aesthetics.
+ *
+ * @param {string}   name
+ * @param {string}   owner
+ * @param {function} [onClick]
+ * @param {"folder"|"create"} [variant="folder"]
+ */
 export function SectionFolderCard({
   name,
-  fileCount,
-  date,
   owner,
   onClick,
   variant = "folder",
@@ -13,51 +19,158 @@ export function SectionFolderCard({
       <button
         type="button"
         onClick={onClick}
-        className="min-h-[218px] w-full rounded-xl border-2 border-dashed border-gray-200 bg-white px-6 py-8 text-center transition-all hover:border-teal-300 hover:bg-teal-50/40"
+        style={{
+          minHeight: 180,
+          width: "100%",
+          borderRadius: 12,
+          border: "1.5px dashed var(--color-border-secondary, #ccc)",
+          background: "transparent",
+          padding: "2rem 1.5rem",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          cursor: "pointer",
+          transition: "border-color 0.15s, background 0.15s",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = "#1D9E75";
+          e.currentTarget.style.background = "#E1F5EE55";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = "var(--color-border-secondary, #ccc)";
+          e.currentTarget.style.background = "transparent";
+        }}
       >
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-gray-400">
-          <Plus size={24} />
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 10,
+            background: "var(--color-background-secondary, #f5f5f3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Plus size={20} style={{ color: "var(--color-text-tertiary, #aaa)" }} />
         </div>
-        <h3 className="text-sm font-semibold text-gray-500">Create Section</h3>
-        <p className="mt-1 text-xs text-gray-400">Add to this division</p>
+        <p style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-secondary, #666)", margin: 0 }}>
+          Create section
+        </p>
+        <p style={{ fontSize: 12, color: "var(--color-text-tertiary, #aaa)", margin: 0 }}>
+          Add to this division
+        </p>
       </button>
     );
   }
 
   return (
-    <button
-      type="button"
+    <div
       onClick={onClick}
-      className="min-h-[218px] w-full rounded-xl border border-gray-200 bg-white p-6 text-left transition-all hover:border-teal-200 hover:shadow-sm"
+      onKeyDown={(e) => e.key === "Enter" && onClick?.()}
+      role="button"
+      tabIndex={0}
+      style={{
+        minHeight: 180,
+        width: "100%",
+        borderRadius: 12,
+        border: "0.5px solid var(--color-border-tertiary, #e2e2e2)",
+        background: "var(--color-background-primary, #fff)",
+        padding: "1rem",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        cursor: "pointer",
+        transition: "border-color 0.15s, transform 0.15s",
+        outline: "none",
+        textAlign: "left",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.borderColor = "var(--color-border-primary, #bbb)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.borderColor = "var(--color-border-tertiary, #e2e2e2)";
+      }}
+      onFocus={(e) => {
+        e.currentTarget.style.boxShadow = "0 0 0 2px #1D9E75";
+      }}
+      onBlur={(e) => {
+        e.currentTarget.style.boxShadow = "none";
+      }}
     >
-      <div className="mb-5 flex items-center justify-between">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50">
-          <FolderOpen size={24} className="text-teal-500" />
+      {/* Top: icon + active badge */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 10,
+            background: "#E1F5EE",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "transform 0.2s",
+          }}
+        >
+          <FolderOpen size={22} style={{ color: "#085041" }} />
         </div>
-        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            fontSize: 11,
+            fontWeight: 500,
+            padding: "3px 9px",
+            borderRadius: 999,
+            background: "#EAF3DE",
+            color: "#3B6D11",
+            border: "0.5px solid #C0DD97",
+          }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor", display: "inline-block" }} />
           Active
         </span>
       </div>
 
-      <h3 className="text-base font-bold uppercase tracking-tight text-gray-900">
+      {/* Name — full wrap, no truncation */}
+      <p
+        style={{
+          fontSize: 14,
+          fontWeight: 500,
+          color: "var(--color-text-primary, #111)",
+          lineHeight: 1.4,
+          wordBreak: "break-word",
+          margin: 0,
+          flex: 1,
+        }}
+      >
         {name}
-      </h3>
+      </p>
 
-      <div className="mt-4 space-y-2 text-sm text-gray-400">
-        <div className="flex items-center gap-2">
-          <FileText size={12} className="text-gray-400" />
-          <span>{fileCount} files</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Calendar size={12} className="text-gray-400" />
-          <span>{date}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <User size={12} className="text-gray-400" />
-          <span>{owner}</span>
-        </div>
+      {/* Owner row */}
+      <div
+        style={{
+          background: "var(--color-background-secondary, #f5f5f3)",
+          borderRadius: 8,
+          padding: "8px 10px",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          fontSize: 12,
+        }}
+      >
+        <User size={13} style={{ color: "var(--color-text-tertiary, #aaa)", flexShrink: 0 }} />
+        <span style={{ color: "var(--color-text-secondary, #666)", flexShrink: 0 }}>Managed by</span>
+        <span style={{ marginLeft: "auto", fontWeight: 500, color: "var(--color-text-primary, #111)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "50%" }}>
+          {owner}
+        </span>
       </div>
-    </button>
+    </div>
   );
 }

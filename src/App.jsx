@@ -20,7 +20,7 @@ import ProtectedRoute from './components/ProtectedRoute.jsx';
 function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { setUserProfile } = useUser();
+  const { setUserProfile, userProfile } = useUser();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -58,7 +58,7 @@ function App() {
       } />
       <Route path="/upload-files" element={
         <ProtectedRoute session={session}>
-          <AppLayout><UploadFilesPage /></AppLayout>
+          <AppLayout><UploadFilesPage role={userProfile?.role} userSection={userProfile?.section_name} /></AppLayout>
         </ProtectedRoute>
       } />
       <Route path="/audit-logs" element={
