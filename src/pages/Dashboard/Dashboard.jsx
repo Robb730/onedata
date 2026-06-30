@@ -1,16 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { TrendingUp, Info, BarChart3, Target, FileText, BookOpen, School, Users, GraduationCap } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
-import {
-  TrendingUp,
-  Info,
-  BarChart3,
-  Target,
-  FileText,
-  BookOpen,
-  School,
-  Users,
-} from "lucide-react";
+
 import {
   DashboardHeader,
   DashboardOverview,
@@ -33,7 +24,7 @@ import {
   GenderCard,
   EnrollmentByLevel,
 } from "../../components/DashboardComponents";
-import { supabase } from "../../lib/supabaseClient";
+
 
 // ─── Sample data ────────────────────────────────────────────
 // In production this would come from Supabase or context/store.
@@ -320,7 +311,7 @@ export default function Dashboard() {
         {/* ── Title ───────────────────────────────────── */}
         <DashboardSection title="Dashboard" subtitle={`SY ${selectedYear}`}>
           {/* ── Overview KPIs ────────────────────────── */}
-          <DashboardOverview data={overviewData} />
+          <DashboardOverview data={overviewData} selectedYear={selectedYear} />
         </DashboardSection>
 
         <SectionDivider />
