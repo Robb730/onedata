@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState, useCallback, useEffect } from "react";
 import {
   Upload,
@@ -229,8 +230,183 @@ const handleFolderSelect = (folder) => {
     return newEntry;
   };
 
-  // ── Structured data parsers (unchanged logic, extracted) ──────────────────
+  // ── Structured data parsers (extracted) ───────────────────────────────────
   const handleStructuredUpload = async (uploadType, file, schoolYear, folder, uploaderName) => {
+    // ── Generic handles for multi-sheet inventory files ────────────────────
+    const processMultiSheet = async (prefix, data) => {
+      const { db, kes, jhs, shs, status } = data;
+
+      if (db?.records.length) {
+        const recs = db.records.map((r) => ({
+          school_id: r.schoolId, school_name: r.schoolName, division: r.division, district: r.district,
+          street_address: r.streetAddress, mother_school_id: r.motherSchoolId, province: r.province,
+          municipality: r.municipality, legislative_district: r.legislativeDistrict, barangay: r.barangay,
+          sector: r.sector, school_subclassification: r.schoolSubclassification, school_type: r.schoolType,
+          implementing_unit: r.implementingUnit, modified_coc: r.modifiedCoc, enrollment_elem: r.enrollmentElem,
+          enrollment_jhs: r.enrollmentJhs, enrollment_shs: r.enrollmentShs, enrollment_total: r.enrollmentTotal,
+          school_year: schoolYear, uploaded_by: uploaderName
+        }));
+        for (let i = 0; i < recs.length; i += 500) {
+          const { error } = await supabase.from(`${prefix}_school_db`).insert(recs.slice(i, i + 500));
+          if (error) throw error;
+        }
+      }
+
+      if (kes?.records.length) {
+        const recs = kes.records.map((r) => {
+          const base = {
+            school_id: r.schoolId, school_name: r.schoolName, division: r.division,
+            kinder_needs: r.kinderNeeds, kinder_excess: r.kinderExcess,
+            g1g6_needs: r.g1g6Needs, g1g6_excess: r.g1g6Excess,
+            sned_needs: r.snedNeeds, sned_excess: r.snedExcess,
+            pprd_checker: r.pprdChecker, remarks: r.remarks,
+            school_year: schoolYear, uploaded_by: uploaderName
+          };
+          if (prefix === "teachers") {
+            base.prev_total_teachers_inventory = r.prevTotalTeachersInventory;
+            base.prev_needs = r.prevNeeds;
+            base.prev_excess = r.prevExcess;
+          } else if (prefix === "seats") {
+            base.prev_total_seats_inventory = r.prevTotalSeatsInventory;
+            base.prev_needs = r.prevNeeds;
+            base.prev_excess = r.prevExcess;
+          } else if (prefix === "classrooms") {
+            base.prev_total_classroom_inventory = r.prevTotalClassroomInventory;
+            base.prev_kinder_needs = r.prevKinderNeeds;
+            base.prev_kinder_excess = r.prevKinderExcess;
+            base.prev_g1g6_needs = r.prevG1g6Needs;
+            base.prev_g1g6_excess = r.prevG1g6Excess;
+            base.prev_sned_needs = r.prevSnedNeeds;
+            base.prev_sned_excess = r.prevSnedExcess;
+          } else if (prefix === "textbooks") {
+            base.textbook_needs = r.textbookNeeds;
+            base.textbook_excess = r.textbookExcess;
+          }
+          return base;
+        });
+        for (let i = 0; i < recs.length; i += 500) {
+          const { error } = await supabase.from(`${prefix}_kes`).insert(recs.slice(i, i + 500));
+          if (error) throw error;
+        }
+      }
+
+      if (jhs?.records.length) {
+        const recs = jhs.records.map((r) => {
+          if (prefix === "teachers") {
+            return {
+              school_id: r.schoolId, school_name: r.schoolName, division: r.division,
+              teacher_needs: r.teacherNeeds, teacher_excess: r.teacherExcess,
+              pprd_checker: r.pprdChecker, remarks: r.remarks,
+              prev_total_teachers_inventory: r.prevTotalTeachersInventory,
+              prev_needs: r.prevNeeds, prev_excess: r.prevExcess,
+              school_year: schoolYear, uploaded_by: uploaderName
+            };
+          }
+          if (prefix === "seats") {
+            return {
+              school_id: r.schoolId, school_name: r.schoolName, division: r.division,
+              province: r.province, municipality: r.municipality, leg_district: r.legDistrict,
+              curricular_offering: r.curricularOffering, enrollment_gr7: r.enrollmentGr7,
+              enrollment_gr8: r.enrollmentGr8, enrollment_gr9: r.enrollmentGr9,
+              enrollment_gr10: r.enrollmentGr10, enrollment_sped: r.enrollmentSped,
+              total_enrollment_g7_g10: r.totalEnrollmentG7G10,
+              total_enrollment_with_sped: r.totalEnrollmentWithSped,
+              seats_available: r.seatsAvailable, ongoing_delivery: r.ongoingDelivery,
+              not_yet_started: r.notYetStarted, allocation: r.allocation,
+              total_jhs_seats: r.totalJhsSeats, seat_needs: r.seatNeeds, seat_excess: r.seatExcess,
+              school_year: schoolYear, uploaded_by: uploaderName
+            };
+          }
+          if (prefix === "textbooks") {
+            return {
+              school_id: r.schoolId, school_name: r.schoolName, division: r.division,
+              textbook_needs: r.textbookNeeds, textbook_excess: r.textbookExcess,
+              pprd_checker: r.pprdChecker, remarks: r.remarks,
+              school_year: schoolYear, uploaded_by: uploaderName
+            };
+          }
+          // Default classrooms pattern (can be refactored further if needed)
+          return {
+            school_id: r.schoolId, school_name: r.schoolName, division: r.division, province: r.province,
+            municipality: r.municipality, leg_district: r.legDistrict, curricular_offering: r.curricularOffering,
+            enrollment_gr7: r.enrollmentGr7, enrollment_gr8: r.enrollmentGr8, enrollment_gr9: r.enrollmentGr9,
+            enrollment_gr10: r.enrollmentGr10, enrollment_sped: r.enrollmentSped, total_enrollment: r.totalEnrollment,
+            total_enrollment_with_sped: r.totalEnrollmentWithSped, sy_enrollment_lis: r.syEnrollmentLis,
+            total_requirement: r.totalRequirement, already_available: r.alreadyAvailable,
+            ongoing_construction: r.ongoingConstruction, not_yet_started: r.notYetStarted, allocation: r.allocation,
+            total_classroom: r.totalClassroom, classroom_needs: r.classroomNeeds, classroom_excess: r.classroomExcess,
+            pprd_checker: r.pprdChecker, school_year: schoolYear, uploaded_by: uploaderName
+          };
+        });
+        for (let i = 0; i < recs.length; i += 500) {
+          const { error } = await supabase.from(`${prefix}_jhs`).insert(recs.slice(i, i + 500));
+          if (error) throw error;
+        }
+      }
+
+      if (shs?.records.length) {
+        const recs = shs.records.map((r) => {
+          if (prefix === "teachers") {
+            return {
+              school_id: r.schoolId, school_name: r.schoolName, division: r.division,
+              teacher_needs: r.teacherNeeds, teacher_excess: r.teacherExcess,
+              pprd_checker: r.pprdChecker, remarks: r.remarks,
+              prev_total_teachers_inventory: r.prevTotalTeachersInventory,
+              prev_needs: r.prevNeeds, prev_excess: r.prevExcess,
+              school_year: schoolYear, uploaded_by: uploaderName
+            };
+          }
+          if (prefix === "seats") {
+            return {
+              school_id: r.schoolId, school_name: r.schoolName, division: r.division,
+              province: r.province, municipality: r.municipality, leg_district: r.legDistrict,
+              curricular_offering: r.curricularOffering, enrollment_data: r.enrollment,
+              total_enrollment_g11: r.totalEnrollmentG11, total_enrollment_g12: r.totalEnrollmentG12,
+              total_enrollment_g11_g12: r.totalEnrollmentG11G12,
+              seats_available: r.seatsAvailable, ongoing_delivery: r.ongoingDelivery,
+              not_yet_started: r.notYetStarted, allocation: r.allocation,
+              total_shs_seats: r.totalShsSeats, seat_needs: r.seatNeeds, seat_excess: r.seatExcess,
+              pprd_checker: r.pprdChecker, school_year: schoolYear, uploaded_by: uploaderName
+            };
+          }
+          if (prefix === "textbooks") {
+            return {
+              school_id: r.schoolId, school_name: r.schoolName, division: r.division,
+              textbook_needs: r.textbookNeeds, textbook_excess: r.textbookExcess,
+              pprd_checker: r.pprdChecker, remarks: r.remarks,
+              school_year: schoolYear, uploaded_by: uploaderName
+            };
+          }
+          return {
+            school_id: r.schoolId, school_name: r.schoolName, division: r.division, province: r.province,
+            municipality: r.municipality, leg_district: r.legDistrict, curricular_offering: r.curricularOffering,
+            enrollment_data: r.enrollment, total_enrollment_g11: r.totalEnrollmentG11,
+            total_enrollment_g12: r.totalEnrollmentG12, total_enrollment: r.totalEnrollment,
+            sy_enrollment_lis: r.syEnrollmentLis, total_requirement: r.totalRequirement,
+            already_available: r.alreadyAvailable, ongoing_construction: r.ongoingConstruction,
+            not_yet_started: r.notYetStarted, allocation: r.allocation, total_classroom: r.totalClassroom,
+            classroom_needs: r.classroomNeeds, classroom_excess: r.classroomExcess, pprd_checker: r.pprdChecker,
+            school_year: schoolYear, uploaded_by: uploaderName
+          };
+        });
+        for (let i = 0; i < recs.length; i += 500) {
+          const { error } = await supabase.from(`${prefix}_shs`).insert(recs.slice(i, i + 500));
+          if (error) throw error;
+        }
+      }
+
+      if (status) {
+        const { error } = await supabase.from(`${prefix}_status`).insert({
+          sdo: status.sdo, expected_schools: status.expectedSchools,
+          kes_blank_cells: status.kes.blankCells, kes_complete: status.kes.complete, kes_percentage: status.kes.percentage,
+          jhs_blank_cells: status.jhs.blankCells, jhs_complete: status.jhs.complete, jhs_percentage: status.jhs.percentage,
+          shs_blank_cells: status.shs.blankCells, shs_complete: status.shs.complete, shs_percentage: status.shs.percentage,
+          school_year: schoolYear, uploaded_by: uploaderName
+        });
+        if (error) throw error;
+      }
+    };
+
     if (uploadType === "enrollment") {
       const { records, errors } = await runImport(file, "enrollment");
       if (errors?.length) console.warn("Row errors:", errors);
@@ -246,33 +422,26 @@ const handleFolderSelect = (folder) => {
     }
 
     if (uploadType === "classrooms") {
-      const { db, kes, jhs, shs, status } = await runImport(file, "classrooms");
-      if (db?.records.length) {
-        const recs = db.records.map((r) => ({ school_id: r.schoolId, school_name: r.schoolName, division: r.division, district: r.district, street_address: r.streetAddress, mother_school_id: r.motherSchoolId, province: r.province, municipality: r.municipality, legislative_district: r.legislativeDistrict, barangay: r.barangay, sector: r.sector, school_subclassification: r.schoolSubclassification, school_type: r.schoolType, implementing_unit: r.implementingUnit, modified_coc: r.modifiedCoc, enrollment_elem: r.enrollmentElem, enrollment_jhs: r.enrollmentJhs, enrollment_shs: r.enrollmentShs, enrollment_total: r.enrollmentTotal, school_year: schoolYear, uploaded_by: uploaderName }));
-        for (let i = 0; i < recs.length; i += 500) { const { error } = await supabase.from("classrooms_school_db").insert(recs.slice(i, i + 500)); if (error) throw error; }
-      }
-      if (kes?.records.length) {
-        const recs = kes.records.map((r) => ({ school_id: r.schoolId, school_name: r.schoolName, division: r.division, kinder_needs: r.kinderNeeds, kinder_excess: r.kinderExcess, g1g6_needs: r.g1g6Needs, g1g6_excess: r.g1g6Excess, sned_needs: r.snedNeeds, sned_excess: r.snedExcess, pprd_checker: r.pprdChecker, remarks: r.remarks, prev_total_classroom_inventory: r.prevTotalClassroomInventory, prev_kinder_needs: r.prevKinderNeeds, prev_kinder_excess: r.prevKinderExcess, prev_g1g6_needs: r.prevG1g6Needs, prev_g1g6_excess: r.prevG1g6Excess, prev_sned_needs: r.prevSnedNeeds, prev_sned_excess: r.prevSnedExcess, school_year: schoolYear, uploaded_by: uploaderName }));
-        for (let i = 0; i < recs.length; i += 500) { const { error } = await supabase.from("classrooms_kes").insert(recs.slice(i, i + 500)); if (error) throw error; }
-      }
-      if (jhs?.records.length) {
-        const recs = jhs.records.map((r) => ({ school_id: r.schoolId, school_name: r.schoolName, division: r.division, province: r.province, municipality: r.municipality, leg_district: r.legDistrict, curricular_offering: r.curricularOffering, enrollment_gr7: r.enrollmentGr7, enrollment_gr8: r.enrollmentGr8, enrollment_gr9: r.enrollmentGr9, enrollment_gr10: r.enrollmentGr10, enrollment_sped: r.enrollmentSped, total_enrollment: r.totalEnrollment, total_enrollment_with_sped: r.totalEnrollmentWithSped, sy_enrollment_lis: r.syEnrollmentLis, total_requirement: r.totalRequirement, already_available: r.alreadyAvailable, ongoing_construction: r.ongoingConstruction, not_yet_started: r.notYetStarted, allocation: r.allocation, total_classroom: r.totalClassroom, classroom_needs: r.classroomNeeds, classroom_excess: r.classroomExcess, pprd_checker: r.pprdChecker, school_year: schoolYear, uploaded_by: uploaderName }));
-        for (let i = 0; i < recs.length; i += 500) { const { error } = await supabase.from("classrooms_jhs").insert(recs.slice(i, i + 500)); if (error) throw error; }
-      }
-      if (shs?.records.length) {
-        const recs = shs.records.map((r) => ({ school_id: r.schoolId, school_name: r.schoolName, division: r.division, province: r.province, municipality: r.municipality, leg_district: r.legDistrict, curricular_offering: r.curricularOffering, enrollment_data: r.enrollment, total_enrollment_g11: r.totalEnrollmentG11, total_enrollment_g12: r.totalEnrollmentG12, total_enrollment: r.totalEnrollment, sy_enrollment_lis: r.syEnrollmentLis, total_requirement: r.totalRequirement, already_available: r.alreadyAvailable, ongoing_construction: r.ongoingConstruction, not_yet_started: r.notYetStarted, allocation: r.allocation, total_classroom: r.totalClassroom, classroom_needs: r.classroomNeeds, classroom_excess: r.classroomExcess, pprd_checker: r.pprdChecker, school_year: schoolYear, uploaded_by: uploaderName }));
-        for (let i = 0; i < recs.length; i += 500) { const { error } = await supabase.from("classrooms_shs").insert(recs.slice(i, i + 500)); if (error) throw error; }
-      }
-      if (status) {
-        const { error } = await supabase.from("classrooms_status").insert({ sdo: status.sdo, expected_schools: status.expectedSchools, kes_blank_cells: status.kes.blankCells, kes_complete: status.kes.complete, kes_percentage: status.kes.percentage, jhs_blank_cells: status.jhs.blankCells, jhs_complete: status.jhs.complete, jhs_percentage: status.jhs.percentage, shs_blank_cells: status.shs.blankCells, shs_complete: status.shs.complete, shs_percentage: status.shs.percentage, school_year: schoolYear, uploaded_by: uploaderName });
-        if (error) throw error;
-      }
+      const data = await runImport(file, "classrooms");
+      await processMultiSheet("classrooms", data);
     }
 
-    // seats, teachers_inventory, textbook_inventory follow identical pattern —
-    // preserved from original, just replace "classrooms" table prefix with the right one.
-    // (kept brief here to avoid duplication — original logic is unchanged)
+    if (uploadType === "seats") {
+      const data = await runImport(file, "seats");
+      await processMultiSheet("seats", data);
+    }
+
+    if (uploadType === "teachers_inventory") {
+      const data = await runImport(file, "teachers_inventory");
+      await processMultiSheet("teachers", data); // Database prefix is "teachers"
+    }
+
+    if (uploadType === "textbook_inventory") {
+      const data = await runImport(file, "textbook_inventory");
+      await processMultiSheet("textbooks", data); // Database prefix is "textbooks"
+    }
   };
+
 
   const handleFileUpload = (fileName, schoolYear, uploadType, file) => {
     addToUploads(fileName, schoolYear, uploadType, file);
@@ -526,7 +695,7 @@ const handleFolderSelect = (folder) => {
           isOpen={showUploadModal}
           onClose={() => { setShowUploadModal(false); setPendingFile(null); setPendingRequestUpload(null); }}
           selectedFolder={selectedFolderName || preAssignedFolder || ""}
-          fileName={pendingFile.name === "browse" ? "" : pendingFile.name}
+          fileName={pendingFile?.name === "browse" ? "" : pendingFile?.name || ""}
           onUpload={pendingRequestUpload ? handleRequestFileUpload : handleFileUpload}
           subfolders={activeSubfolders}
         />
