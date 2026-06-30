@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { TrendingUp, Info, BarChart3, Target, FileText, BookOpen, School, Users, GraduationCap } from "lucide-react";
+import { supabase } from "../../lib/supabaseClient";
 import {
   TrendingUp,
   Info,
@@ -26,6 +28,8 @@ import {
   CohortChart,
   PerformanceCard,
   TrendCard,
+  ResourcesInventoryChart,
+  TextbooksChart,
   GenderCard,
   EnrollmentByLevel,
 } from "../../components/DashboardComponents";
@@ -518,7 +522,7 @@ export default function Dashboard() {
             </div>
           }
           title="Crucial Resources"
-          subtitle="No. of Teachers · Classrooms · Seats"
+          subtitle="No. of Teachers · Classrooms · Seats · Textbooks"
         >
           <DashboardGrid cols={3}>
             <TrendCard
@@ -751,3 +755,4 @@ function CespesProgramRow({ program }) {
     </div>
   );
 }
+{/* ── Crucial Resources (accordion) ──────────── */}
