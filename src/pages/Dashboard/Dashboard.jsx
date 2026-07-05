@@ -316,9 +316,9 @@ export default function Dashboard() {
     async function fetchCrucialResources() {
       try {
         // 1. Fetch Teachers
-        const { data: tKes } = await supabase.from("teachers_kes").select("prev_total_teachers_inventory, kinder_needs, g1g6_needs, sned_needs");
-        const { data: tJhs } = await supabase.from("teachers_jhs").select("prev_total_teachers_inventory, teacher_needs");
-        const { data: tShs } = await supabase.from("teachers_shs").select("prev_total_teachers_inventory, teacher_needs");
+        const { data: tKes } = await supabase.from("teachers_kes").select("*");
+        const { data: tJhs } = await supabase.from("teachers_jhs").select("*");
+        const { data: tShs } = await supabase.from("teachers_shs").select("*");
 
         const tKesTotal = tKes?.reduce((acc, r) => acc + (r.prev_total_teachers_inventory || 0), 0) || 0;
         const tJhsTotal = tJhs?.reduce((acc, r) => acc + (r.prev_total_teachers_inventory || 0), 0) || 0;
@@ -342,13 +342,16 @@ export default function Dashboard() {
         const cShsNeeds = cShs?.reduce((acc, r) => acc + (r.classroom_needs || 0), 0) || 0;
 
         // 3. Fetch Seats
+        // seats_kes: prev_total_seats_inventory for total, kinder_needs/g1g6_needs/sned_needs for needs
+        // seats_jhs: total_jhs_seats for total, seat_needs for needs
+        // seats_shs: total_shs_seats for total, seat_needs for needs
         const { data: sKes } = await supabase.from("seats_kes").select("prev_total_seats_inventory, kinder_needs, g1g6_needs, sned_needs");
-        const { data: sJhs } = await supabase.from("seats_jhs").select("prev_total_seats_inventory, seat_needs");
-        const { data: sShs } = await supabase.from("seats_shs").select("prev_total_seats_inventory, seat_needs");
+        const { data: sJhs } = await supabase.from("seats_jhs").select("total_jhs_seats, seat_needs");
+        const { data: sShs } = await supabase.from("seats_shs").select("total_shs_seats, seat_needs");
 
         const sKesTotal = sKes?.reduce((acc, r) => acc + (r.prev_total_seats_inventory || 0), 0) || 0;
-        const sJhsTotal = sJhs?.reduce((acc, r) => acc + (r.prev_total_seats_inventory || 0), 0) || 0;
-        const sShsTotal = sShs?.reduce((acc, r) => acc + (r.prev_total_seats_inventory || 0), 0) || 0;
+        const sJhsTotal = sJhs?.reduce((acc, r) => acc + (r.total_jhs_seats || 0), 0) || 0;
+        const sShsTotal = sShs?.reduce((acc, r) => acc + (r.total_shs_seats || 0), 0) || 0;
 
         const sKesNeeds = sKes?.reduce((acc, r) => acc + (r.kinder_needs || 0) + (r.g1g6_needs || 0) + (r.sned_needs || 0), 0) || 0;
         const sJhsNeeds = sJhs?.reduce((acc, r) => acc + (r.seat_needs || 0), 0) || 0;

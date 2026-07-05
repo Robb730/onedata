@@ -105,20 +105,21 @@ function parseKESSheet(rows) {
       division,
 
       // No. of Teacher Needs / Excess (Current Year)
-      kinderNeeds:         num(row[35]),
-      kinderExcess:        num(row[36]),
-      g1g6Needs:           num(row[37]),
-      g1g6Excess:          num(row[38]),
-      snedNeeds:           num(row[39]),
-      snedExcess:          num(row[40]),
-
-      pprdChecker:         str(row[41]),
-      remarks:             str(row[46]),
+      // Image shows: AN (39) is Needs for Kinder/G6, AQ (42) is Needs for SNEd
+      kinderNeeds:         0, // Combined in g1g6 for this specific sheet format
+      kinderExcess:        0,
+      g1g6Needs:           num(row[39]), // Column AN: Kinder Grade 6 Needs
+      g1g6Excess:          num(row[40]), // Column AO
+      snedNeeds:           num(row[42]), // Column AQ: SNEd Needs
+      snedExcess:          0,            // Header for Excess SNEd not clearly visible but usually adjacent
+      pprdChecker:         str(row[43]), // Column AR
+      remarks:             str(row[50]), // Column AY
 
       // SY 2024-2025 Previous Year Inventory
-      prevTotalTeachersInventory: num(row[43]),
-      prevNeeds:           num(row[44]),
-      prevExcess:          num(row[45]),
+      // Image shows: AT (45) is Teacher Inventory, AU (46) is Needs
+      prevTotalTeachersInventory: num(row[45]),
+      prevNeeds:           num(row[46]) + num(row[48]), // AU + AW (Kinder + SNEd)
+      prevExcess:          num(row[47]) + num(row[49]), // AV + AX
     });
   });
 
