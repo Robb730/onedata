@@ -242,7 +242,7 @@ export default function Dashboard() {
         .select(
           "category, grand_total, school_name, elementary_data, junior_high_data, senior_high_s1_data, senior_high_s2_data",
         )
-        .eq("school_year", "2025-2026");
+        .eq("school_year", selectedYear);
 
       if (error) {
         setError(error.message);
@@ -417,7 +417,7 @@ export default function Dashboard() {
         {/* ── Title ───────────────────────────────────── */}
         <DashboardSection title="Dashboard" subtitle={`SY ${selectedYear}`}>
           {/* ── Overview KPIs ────────────────────────── */}
-          <DashboardOverview data={overviewData} />
+          <DashboardOverview data={overviewData} selectedYear={selectedYear} />
         </DashboardSection>
 
         <SectionDivider />

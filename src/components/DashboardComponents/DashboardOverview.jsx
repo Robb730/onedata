@@ -10,8 +10,9 @@ import { set } from "date-fns";
  * Total Enrollment, Overall Dropout, Elem Promotion, JHS Dropout.
  *
  * @param {object} data — { totalEnrollment, overallDropout, elemPromotion, jhsDropout }
+ * @param {string} selectedYear — The selected school year for filtering data
  */
-export function DashboardOverview({ data }) {
+export function DashboardOverview({ data, selectedYear }) {
   
   const [totalEnrollment, setTotalEnrollment] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -22,9 +23,15 @@ export function DashboardOverview({ data }) {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("enrollment_data")
         .select("grand_total");
+
+      if (selectedYear) {
+        query = query.eq("school_year", selectedYear);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         setError(error.message);
@@ -38,7 +45,7 @@ export function DashboardOverview({ data }) {
     }
 
     fetchTotalEnrollment();
-  }, []);
+  }, [selectedYear]); 
 
 
 
