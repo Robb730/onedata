@@ -33,6 +33,7 @@ import {
   TextbooksChart,
   GenderCard,
   EnrollmentByLevel,
+  ResourcesByLevel,
 } from "../../components/DashboardComponents";
 
 // ─── Sample data ────────────────────────────────────────────
@@ -209,6 +210,7 @@ export default function Dashboard() {
 
   // ── Crucial Resources State ────────────────────────────────
   const [resourceView, setResourceView] = useState("Summary");
+  const [resourceType, setResourceType] = useState("Teachers");
   const [resources, setResources] = useState({
     teachers: { total: 0, needs: 0, breakdown: {}, loading: true },
     classrooms: { total: 0, needs: 0, breakdown: {}, loading: true },
@@ -372,6 +374,7 @@ export default function Dashboard() {
             needs: tKesNeeds + tJhsNeeds + tShsNeeds, 
             breakdown: { Elementary: tKesTotal, JHS: tJhsTotal, SHS: tShsTotal },
             needsBreakdown: { Elementary: tKesNeeds, JHS: tJhsNeeds, SHS: tShsNeeds },
+            data: { Elementary: tKes, JHS: tJhs, SHS: tShs },
             loading: false 
           },
           classrooms: { 
@@ -379,6 +382,7 @@ export default function Dashboard() {
             needs: cKesNeeds + cJhsNeeds + cShsNeeds, 
             breakdown: { Elementary: cKesTotal, JHS: cJhsTotal, SHS: cShsTotal },
             needsBreakdown: { Elementary: cKesNeeds, JHS: cJhsNeeds, SHS: cShsNeeds },
+            data: { Elementary: cKes, JHS: cJhs, SHS: cShs },
             loading: false 
           },
           seats: { 
@@ -386,11 +390,13 @@ export default function Dashboard() {
             needs: sKesNeeds + sJhsNeeds + sShsNeeds, 
             breakdown: { Elementary: sKesTotal, JHS: sJhsTotal, SHS: sShsTotal },
             needsBreakdown: { Elementary: sKesNeeds, JHS: sJhsNeeds, SHS: sShsNeeds },
+            data: { Elementary: sKes, JHS: sJhs, SHS: sShs },
             loading: false 
           },
           textbooks: { 
             needs: txKesNeeds + txJhsNeeds + txShsNeeds, 
             breakdown: { Elementary: txKesNeeds, JHS: txJhsNeeds, SHS: txShsNeeds },
+            data: { Elementary: txKes, JHS: txJhs, SHS: txShs },
             loading: false 
           },
         });
@@ -623,7 +629,7 @@ export default function Dashboard() {
         >
           <div className="flex items-center justify-end mb-4">
             <DashboardFilters
-              options={["Summary", "Charts", "By Level"]}
+              options={["Summary", "Charts", "By Level", "Breakdown"]}
               active={resourceView}
               onChange={setResourceView}
             />
@@ -698,80 +704,91 @@ export default function Dashboard() {
             );
           })()}
 
-          {/* ── By Level view ──────────────────────────── */}
+          {/* ── By Level view (Drill-down) ──────────────── */}
           {resourceView === "By Level" && (
-            <div className="space-y-6">
-              {/* Teachers */}
-              <div>
-                <h4 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-                  <Users size={12} /> Teachers
+            <ResourcesByLevel resources={resources} />
+          )}
+
+          {/* ── Breakdown view ──────────────────────────── */}
+          {resourceView === "Breakdown" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                  Detailed Resource Breakdown
                 </h4>
-                <div className="grid grid-cols-3 gap-3">
-                  {Object.entries(resources.teachers.breakdown || {}).map(([level, val]) => (
-                    <DataSummaryCard
-                      key={level}
-                      label={level}
-                      value={val.toLocaleString()}
-                      accent="#4f7df5"
-                      subValue={`${(resources.teachers.needsBreakdown?.[level] || 0).toLocaleString()} needs`}
-                    />
-                  ))}
-                </div>
+                <DashboardFilters
+                  options={["Teachers", "Classrooms", "Seats", "Textbooks"]}
+                  active={resourceType}
+                  onChange={setResourceType}
+                />
               </div>
 
-              {/* Classrooms */}
-              <div>
-                <h4 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-                  <School size={12} /> Classrooms
-                </h4>
-                <div className="grid grid-cols-3 gap-3">
-                  {Object.entries(resources.classrooms.breakdown || {}).map(([level, val]) => (
-                    <DataSummaryCard
-                      key={level}
-                      label={level}
-                      value={val.toLocaleString()}
-                      accent="#10b981"
-                      subValue={`${(resources.classrooms.needsBreakdown?.[level] || 0).toLocaleString()} needs`}
-                    />
-                  ))}
-                </div>
-              </div>
+              <PerformanceCard>
+                <div className="space-y-0.5">
+                  {(() => {
+                    const resKey = resourceType.toLowerCase();
+                    const resource = resources[resKey];
+                    const breakdown = resource.breakdown || {};
+                    const needsBreakdown = resource.needsBreakdown || {};
+                    const total = resource.total || 1;
 
-              {/* Seats */}
-              <div>
-                <h4 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-                  <GraduationCap size={12} /> Seats
-                </h4>
-                <div className="grid grid-cols-3 gap-3">
-                  {Object.entries(resources.seats.breakdown || {}).map(([level, val]) => (
-                    <DataSummaryCard
-                      key={level}
-                      label={level}
-                      value={val.toLocaleString()}
-                      accent="#f59e0b"
-                      subValue={`${(resources.seats.needsBreakdown?.[level] || 0).toLocaleString()} needs`}
-                    />
-                  ))}
-                </div>
-              </div>
+                    return Object.entries(breakdown).map(([level, val]) => {
+                      // Calculate percentage for progress bar
+                      const percentage = (val / total) * 100;
+                      
+                      let color = "bg-blue-500";
+                      let icon = <Users size={12} />;
+                      
+                      if (resKey === "classrooms") {
+                        color = "bg-emerald-500";
+                        icon = <School size={12} />;
+                      } else if (resKey === "seats") {
+                        color = "bg-amber-500";
+                        icon = <GraduationCap size={12} />;
+                      } else if (resKey === "textbooks") {
+                        color = "bg-rose-500";
+                        icon = <BookOpen size={12} />;
+                      }
 
-              {/* Textbooks */}
-              <div>
-                <h4 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-                  <BookOpen size={12} /> Textbooks Shortage
-                </h4>
-                <div className="grid grid-cols-3 gap-3">
-                  {Object.entries(resources.textbooks.breakdown || {}).map(([level, val]) => (
-                    <DataSummaryCard
-                      key={level}
-                      label={level}
-                      value={val.toLocaleString()}
-                      accent="#ef4444"
-                      subValue="units short"
-                    />
-                  ))}
+                      const needs = needsBreakdown[level] || 0;
+                      const displayValue = val.toLocaleString();
+                      const countText = needs > 0 ? `${needs.toLocaleString()} needs` : "No needs";
+
+                      // For textbooks, display is the shortage itself
+                      if (resKey === "textbooks") {
+                        const totalNeeds = resource.needs || 1;
+                        return (
+                          <MetricProgress
+                            key={level}
+                            label={level}
+                            display={`${val.toLocaleString()} shortage`}
+                            value={(val / totalNeeds) * 100}
+                            color="bg-rose-500"
+                          />
+                        );
+                      }
+
+                      return (
+                        <MetricProgress
+                          key={level}
+                          label={level}
+                          display={displayValue}
+                          count={countText}
+                          value={percentage}
+                          color={color}
+                        />
+                      );
+                    });
+                  })()}
                 </div>
-              </div>
+              </PerformanceCard>
+              
+              <InsightCard
+                icon={<Info size={14} />}
+                variant="info"
+                title={`${resourceType} Distribution`}
+                message={`Showing the distribution of ${resourceType.toLowerCase()} across Elementary, JHS, and SHS levels based on current inventory data.`}
+              />
             </div>
           )}
         </DashboardAccordion>

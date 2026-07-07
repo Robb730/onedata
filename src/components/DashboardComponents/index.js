@@ -24,3 +24,4 @@ export { ResourcesInventoryChart } from "./ResourcesInventoryChart";
 export { TextbooksChart } from "./TextbooksChart";
 export { GenderCard } from "./GenderCard";
 export { EnrollmentByLevel } from "./EnrollmentByLevel";
+export { ResourcesByLevel } from "./ResourcesByLevel";
