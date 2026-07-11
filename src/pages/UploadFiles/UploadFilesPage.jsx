@@ -15,6 +15,7 @@ import FileUploadModal from "../../components/UploadFilesComponents/FileUploadMo
 import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
 import { runImport } from "../../utils/ExcelParsers";
+import { parseAndSyncStructuredData } from "../../utils/structuredDataSync"
 
 // ── Subfolder registry ────────────────────────────────────────────────────────
 const SUBFOLDER_CODE_REGISTRY = {
@@ -197,23 +198,27 @@ const handleFolderSelect = (folder) => {
       if (storageError) throw storageError;
 
       // 2. Insert metadata into files table
-      const { error: dbError } = await supabase.from("files").insert({
+      const { data: fileRow, error: dbError } = await supabase.from("files").insert({
         file_name:   fileName,
         file_path:   storagePath,
         file_size:   file.size,
-        file_type:   file.type || uploadType,
+        file_type:   file.type || null,
+        data_category: uploadType,
         school_year: schoolYear,
         section_id:  sectionId,
         division_id: divisionId,
         uploaded_by: userProfile?.id ?? null,
         is_dashboard_source: uploadType !== "general",
-      });
+      })
+      .select()
+      .single();
+      
 
       if (dbError) throw dbError;
 
       // 3. If structured upload type, also parse + insert data
       if (uploadType !== "general") {
-        await handleStructuredUpload(uploadType, file, schoolYear, sectionName, userProfile?.full_name);
+        await parseAndSyncStructuredData(uploadType, file, schoolYear, userProfile?.full_name, fileRow.id);
       }
 
       setUploadedFiles((files) =>
@@ -231,9 +236,9 @@ const handleFolderSelect = (folder) => {
   };
 
   // ── Structured data parsers (extracted) ───────────────────────────────────
-  const handleStructuredUpload = async (uploadType, file, schoolYear, folder, uploaderName) => {
+  const handleStructuredUpload = async (uploadType, file, schoolYear, folder, uploaderName, fileId) => {
     // ── Generic handles for multi-sheet inventory files ────────────────────
-    const processMultiSheet = async (prefix, data) => {
+    const processMultiSheet = async (prefix, data, fileId) => {
       const { db, kes, jhs, shs, status } = data;
 
       if (db?.records.length) {
@@ -244,7 +249,8 @@ const handleFolderSelect = (folder) => {
           sector: r.sector, school_subclassification: r.schoolSubclassification, school_type: r.schoolType,
           implementing_unit: r.implementingUnit, modified_coc: r.modifiedCoc, enrollment_elem: r.enrollmentElem,
           enrollment_jhs: r.enrollmentJhs, enrollment_shs: r.enrollmentShs, enrollment_total: r.enrollmentTotal,
-          school_year: schoolYear, uploaded_by: uploaderName
+          school_year: schoolYear, uploaded_by: uploaderName,
+          file_id: fileId,
         }));
         for (let i = 0; i < recs.length; i += 500) {
           const { error } = await supabase.from(`${prefix}_school_db`).insert(recs.slice(i, i + 500));
@@ -416,6 +422,7 @@ const handleFolderSelect = (folder) => {
         elementary_data: r.elementary, junior_high_data: r.juniorHigh,
         senior_high_s1_data: r.seniorHighS1, senior_high_s2_data: r.seniorHighS2,
         grand_total: r.grandTotal, uploaded_by: uploaderName,
+        file_id: fileId,
       }));
       const { error } = await supabase.from("enrollment_data").insert(dbRecords);
       if (error) throw error;
