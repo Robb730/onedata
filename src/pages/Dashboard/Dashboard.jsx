@@ -2,16 +2,6 @@ import React, { useState, useEffect } from "react";
 import { TrendingUp, Info, BarChart3, Target, FileText, BookOpen, School, Users, GraduationCap } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import {
-  TrendingUp,
-  Info,
-  BarChart3,
-  Target,
-  FileText,
-  BookOpen,
-  School,
-  Users,
-} from "lucide-react";
-import {
   DashboardHeader,
   DashboardOverview,
   DashboardSection,
@@ -33,7 +23,6 @@ import {
   GenderCard,
   EnrollmentByLevel,
 } from "../../components/DashboardComponents";
-import { supabase } from "../../lib/supabaseClient";
 
 // ─── Sample data ────────────────────────────────────────────
 // In production this would come from Supabase or context/store.
@@ -314,7 +303,7 @@ export default function Dashboard() {
         <DashboardHeader
           selectedYear={selectedYear}
           onYearChange={setSelectedYear}
-          onCompare={() => {}}
+          onCompare={() => { }}
         />
 
         {/* ── Title ───────────────────────────────────── */}
@@ -604,14 +593,12 @@ function CespesProgramRow({ program }) {
     <div className="rounded-[10px] border border-slate-100/80 overflow-hidden">
       <button
         onClick={() => hasRows && setOpen((v) => !v)}
-        className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
-          hasRows ? "hover:bg-slate-50/50 cursor-pointer" : "cursor-default"
-        }`}
+        className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${hasRows ? "hover:bg-slate-50/50 cursor-pointer" : "cursor-default"
+          }`}
       >
         <span
-          className={`h-2 w-2 rounded-full shrink-0 ${
-            isComplete ? "bg-emerald-400" : "bg-blue-400"
-          }`}
+          className={`h-2 w-2 rounded-full shrink-0 ${isComplete ? "bg-emerald-400" : "bg-blue-400"
+            }`}
         />
         <div className="flex-1 min-w-0">
           <p className="text-[0.78rem] font-semibold text-slate-700 truncate">
@@ -622,19 +609,17 @@ function CespesProgramRow({ program }) {
           </p>
         </div>
         <span
-          className={`text-[0.7rem] font-semibold px-2.5 py-1 rounded-full ${
-            isComplete
+          className={`text-[0.7rem] font-semibold px-2.5 py-1 rounded-full ${isComplete
               ? "bg-emerald-50 text-emerald-600"
               : "bg-blue-50 text-blue-600"
-          }`}
+            }`}
         >
           {program.reported} reported
         </span>
         {hasRows && (
           <svg
-            className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
-              open ? "rotate-180" : ""
-            }`}
+            className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""
+              }`}
             viewBox="0 0 20 20"
             fill="currentColor"
           >
@@ -694,11 +679,10 @@ function CespesProgramRow({ program }) {
                   <td className="px-4 py-3">
                     <div className="flex items-start gap-2">
                       <span
-                        className={`mt-0.5 shrink-0 text-[0.6rem] font-bold px-1.5 py-0.5 rounded ${
-                          row.type === "OUTCOME"
+                        className={`mt-0.5 shrink-0 text-[0.6rem] font-bold px-1.5 py-0.5 rounded ${row.type === "OUTCOME"
                             ? "bg-amber-100 text-amber-700"
                             : "bg-blue-100 text-blue-700"
-                        }`}
+                          }`}
                       >
                         {row.type}
                       </span>
@@ -755,4 +739,4 @@ function CespesProgramRow({ program }) {
     </div>
   );
 }
-{/* ── Crucial Resources (accordion) ──────────── */}
+{/* ── Crucial Resources (accordion) ──────────── */ }
