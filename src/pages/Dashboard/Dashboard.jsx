@@ -3,18 +3,6 @@ import React, { useState, useEffect } from "react";
 import { TrendingUp, Info, BarChart3, Target, FileText, BookOpen, School, Users, GraduationCap } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import {
-  TrendingUp,
-  Info,
-  BarChart3,
-  Target,
-  FileText,
-  BookOpen,
-  School,
-  Users,
-  GraduationCap
-} from "lucide-react";
-import { supabase } from "../../lib/supabaseClient";
-import {
   DashboardHeader,
   DashboardOverview,
   DashboardSection,
