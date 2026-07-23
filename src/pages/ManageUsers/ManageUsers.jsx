@@ -9,7 +9,7 @@ import {
   // eslint-disable-next-line no-unused-vars
   RefreshCw,
   UserCheck,
-} from "lucide-react";  
+} from "lucide-react";
 import EditUserModal from "../../components/ManageUsersComponents/EditUserModal";
 import DeleteConfirmationModal from "../../components/ManageUsersComponents/DeleteConfirmationModal";
 import UserLogsModal from "../../components/ManageUsersComponents/UserLogsModal";
@@ -169,6 +169,24 @@ export default function ManageUsers() {
     if (!res.ok) {
       alert("Error: " + data.error);
       return;
+    }
+
+    // ─── Log this action to Audit Logs ─────────────────────────
+    const {
+      data: { user: performingUser },
+    } = await supabase.auth.getUser();
+
+    const { error: logError } = await supabase.from("audit_logs").insert({
+      action: "Other",
+      file_name: newUserData.name,
+      details: `Created new user account (${newUserData.email})`,
+      performed_by: performingUser?.email ?? "System",
+      role: newUserData.role,
+      status: "Success",
+    });
+
+    if (logError) {
+      console.error("Error logging audit action:", logError.message);
     }
 
     setAddingNewUser(false);
