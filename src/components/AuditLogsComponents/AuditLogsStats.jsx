@@ -126,10 +126,10 @@ export default function AuditLogsStats({
   ];
 
   return (
-    <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {cards.map((card) => (
-        <MetricCard key={card.key} {...card} />
-      ))}
-    </div>
-  );
+  <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    {cards.map(({ key, ...card }) => (
+      <MetricCard key={key} {...card} />
+    ))}
+  </div>
+);
 }
