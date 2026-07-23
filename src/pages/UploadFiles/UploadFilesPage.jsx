@@ -188,7 +188,7 @@ export default function UploadFilesPage({
           file_name: fileName,
           details,
           performed_by: userProfile?.full_name ?? "Unknown",
-          role,
+          role: getRoleDisplay(userProfile?.role) ?? "Unknown",
           status,
         });
         if (error) console.error("Audit log insert failed:", error);
@@ -679,6 +679,16 @@ export default function UploadFilesPage({
     setPendingFile({ name: req.fileName });
     setShowUploadModal(true);
   };
+
+  // Add near your other helper functions, above the component or inside it
+const roleDisplayMap = {
+  division_focal: "Division Focal Person",
+  sectionFocal: "Section Officer",
+  personnel: "Section Personnel",
+  admin: "Administrator",
+};
+
+const getRoleDisplay = (role) => roleDisplayMap[role] ?? role;
 
   // ── Upload Area ───────────────────────────────────────────────────────────
   const renderUploadArea = () => (

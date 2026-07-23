@@ -93,5 +93,41 @@ app.post("/api/create-user", async (req, res) => {
   res.json({ success: true, email });
 });
 
+app.post("/api/delete-user", async (req, res) => {
+  const { userId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ error: "userId is required" });
+  }
+
+  try {
+    // 1. Delete the row from your public.users table first
+    //    (skip this if you have `on delete cascade` set up from auth.users)
+    const { error: dbError } = await supabaseAdmin
+      .from("users")
+      .delete()
+      .eq("id", userId);
+
+    if (dbError) {
+      console.error("Error deleting from users table:", dbError.message);
+      return res.status(500).json({ error: dbError.message });
+    }
+
+    // 2. Delete the actual Auth account
+    const { error: authError } =
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+
+    if (authError) {
+      console.error("Error deleting auth user:", authError.message);
+      return res.status(500).json({ error: authError.message });
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Unexpected error deleting user:", err);
+    return res.status(500).json({ error: "Unexpected server error" });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
