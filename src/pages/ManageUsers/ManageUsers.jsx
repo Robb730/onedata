@@ -18,6 +18,7 @@ import SuccessModal from "../../components/ManageUsersComponents/SuccessModal";
 import DeactivateConfirmationModal from "../../components/ManageUsersComponents/DeactivateConfirmationModal";
 import ActivateConfirmationModal from "../../components/ManageUsersComponents/ActivateConfirmationModal";
 import { supabase } from "../../lib/supabaseClient";
+import { useUser } from "../../contexts/UserContext";
 
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);
@@ -31,6 +32,8 @@ export default function ManageUsers() {
   const [successEmail, setSuccessEmail] = useState("");
   const [deactivatingUser, setDeactivatingUser] = useState(null);
   const [activatingUser, setActivatingUser] = useState(null);
+
+  const { userProfile } = useUser();
 
   // ─── Fetch users from Supabase ───────────────────────────────
   const fetchUsers = async () => {
@@ -138,15 +141,31 @@ export default function ManageUsers() {
   const handleDeleteUser = async () => {
     if (!deletingUser) return;
 
-    const { error } = await supabase
-      .from("users")
-      .delete()
-      .eq("id", deletingUser.id);
+    const res = await fetch("http://localhost:3001/api/delete-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: deletingUser.id }),
+    });
 
-    if (error) {
-      alert("Error deleting user: " + error.message);
+    const data = await res.json();
+    if (!res.ok) {
+      alert("Error deleting user: " + data.error);
       return;
     }
+
+    const { error: logError } = await supabase.from("audit_logs").insert({
+      action: "Other",
+      file_name: deletingUser.name,
+      details: `Deleted user account  (${deletingUser.email})`,
+      performed_by: userProfile?.full_name ?? "System",
+      role: deletingUser.role,
+      status: "Success",
+    });
+
+    if (logError) {
+      console.error("Error logging audit action:", logError.message);
+    }
+
     setDeletingUser(null);
     fetchUsers();
   };
@@ -160,7 +179,7 @@ export default function ManageUsers() {
         full_name: newUserData.name,
         division_id: newUserData.divisionId,
         section_id: newUserData.sectionId,
-        role: newUserData.role,
+        role: getRoleDisplay(newUserData.role),
         idNumber: newUserData.idNumber,
       }),
     });
@@ -172,16 +191,13 @@ export default function ManageUsers() {
     }
 
     // ─── Log this action to Audit Logs ─────────────────────────
-    const {
-      data: { user: performingUser },
-    } = await supabase.auth.getUser();
 
     const { error: logError } = await supabase.from("audit_logs").insert({
       action: "Other",
       file_name: newUserData.name,
       details: `Created new user account (${newUserData.email})`,
-      performed_by: performingUser?.email ?? "System",
-      role: newUserData.role,
+      performed_by: userProfile?.full_name ?? "System",
+      role: getRoleDisplay(newUserData.role),
       status: "Success",
     });
 
