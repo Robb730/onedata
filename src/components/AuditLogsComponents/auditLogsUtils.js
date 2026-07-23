@@ -43,12 +43,25 @@ export function getInitials(name = "") {
 }
 
 /** Split existing `performedOn` strings like "Feb 24, 2026 10:30 AM". */
-export function parsePerformedOn(performedOn = "") {
-  const match = performedOn.match(/^(.+?\d{4})\s+(.+)$/);
-  if (match) {
-    return { date: match[1], time: match[2] };
-  }
-  return { date: performedOn, time: null };
+// auditLogsUtils.js
+export function parsePerformedOn(performedOn) {
+  if (!performedOn) return { date: "—", time: "" };
+
+  const d = new Date(performedOn);
+  if (isNaN(d.getTime())) return { date: "—", time: "" };
+
+  return {
+    date: d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }),
+    time: d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }),
+  };
 }
 
 export function getActionMeta(action) {
