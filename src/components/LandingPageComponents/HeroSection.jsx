@@ -1,127 +1,134 @@
 import React from "react";
-import { ArrowRight, ChevronDown } from "lucide-react";
-import { Link } from "react-router-dom";
-import heroImg from "../../assets/hero-image-1.png";
+import { ChevronDown } from "lucide-react";
+import photoBackground from "../../assets/photo-background.png";
+import gradientOverlay from "../../assets/gradient-overlay.png";
+import wavesOverlay from "../../assets/waves-overlay.png";
 import sdoLogo from "../../assets/sdo-logo.png";
 
 export function HeroSection() {
+  const handleExploreClick = () => {
+    const el = document.querySelector("#analytics") || document.querySelector("#about");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   return (
     <section
       id="home"
-      className="relative min-h-[100vh] flex items-center overflow-hidden"
+      className="relative w-full min-h-[90vh] lg:h-screen lg:max-h-[1080px] max-w-[1920px] mx-auto flex items-center overflow-x-clip bg-[#0c192e] select-none"
     >
-      {/* ── Background image layer ─────────────────── */}
-      <div className="absolute inset-0">
+      {/* ── 1. Photo Background Layer with Smooth Entrance Animation ── */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
         <img
-          src={heroImg}
-          alt="Baliwag Flagship Program"
-          className="w-full h-full object-cover"
-          style={{
-            objectPosition: "center 35%",
-            filter: "brightness(0.82) saturate(1.3)",
-          }}
+          src={photoBackground}
+          alt="Baliwag Division Clock Tower Background"
+          className="w-full h-full object-cover object-[center_35%] animate-bg-entrance"
         />
       </div>
 
-      {/* ── Overlay stack for depth & brand integration ── */}
-      {/* Primary dark navy overlay — brand color foundation */}
-      {/* Primary overlay — lighter, lets artwork breathe */}
+      {/* ── 2. Gradient Overlay Image & Soft Brand Tint ────── */}
+      <div className="absolute inset-0 z-[1] pointer-events-none">
+        <img
+          src={gradientOverlay}
+          alt="Gradient Overlay"
+          className="w-full h-full object-cover opacity-85 mix-blend-normal"
+        />
+      </div>
+
+      {/* Enhanced color blending matching reference image tone */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 z-[2] pointer-events-none"
         style={{
           background:
-            "linear-gradient(160deg, rgba(10,15,30,0.55) 0%, rgba(15,23,42,0.35) 35%, rgba(15,23,42,0.25) 60%, rgba(10,15,30,0.4) 100%)",
-        }}
-      />
-      {/* Left-side text readability zone — keeps text area darker */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(to right, rgba(10,15,30,0.65) 0%, rgba(10,15,30,0.4) 35%, transparent 55%)",
-        }}
-      />
-      {/* Bottom fade — seamless transition into stats section */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(to bottom, transparent 55%, rgba(10,15,30,0.7) 80%, rgba(10,15,30,0.95) 95%, #0a0f1e 100%)",
-        }}
-      />
-      {/* Blue brand tint — blends image into OneData palette */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(135deg, rgba(59,130,246,0.12) 0%, transparent 40%, rgba(99,102,241,0.08) 100%)",
-          mixBlendMode: "normal",
-        }}
-      />
-      {/* Vignette — soft cinematic edge */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 70% at 50% 45%, transparent 0%, rgba(10,15,30,0.25) 100%)",
+            "linear-gradient(108deg, rgba(14,30,64,0.74) 0%, rgba(18,74,132,0.50) 42%, rgba(13,148,136,0.38) 72%, rgba(16,185,129,0.35) 100%)",
         }}
       />
 
-      {/* ── Ambient glow accents ───────────────────── */}
+      {/* Soft left vignette for crisp text contrast */}
       <div
-        className="absolute top-[10%] right-[8%] w-[450px] h-[450px] rounded-full opacity-[0.15] blur-[100px]"
+        className="absolute inset-0 z-[3] pointer-events-none"
         style={{
-          background: "radial-gradient(circle, #3b82f6 0%, transparent 70%)",
-          animation: "heroGlow 10s ease-in-out infinite",
-        }}
-      />
-      <div
-        className="absolute bottom-[25%] left-[3%] w-[350px] h-[350px] rounded-full opacity-[0.1] blur-[90px]"
-        style={{
-          background: "radial-gradient(circle, #10b981 0%, transparent 70%)",
-          animation: "heroGlow 13s ease-in-out infinite reverse",
+          background:
+            "radial-gradient(circle at 20% 50%, rgba(10,20,40,0.35) 0%, transparent 65%)",
         }}
       />
 
-      {/* ── Grid pattern — subtle texture ─────────── */}
-      <div
-        className="absolute inset-0 opacity-[0.025]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)",
-          backgroundSize: "50px 50px",
-        }}
-      />
+      {/* ── 3. Translucent Floating Circles Overlay ─────────── */}
+      <div className="absolute inset-0 z-[10] pointer-events-none overflow-hidden">
+        {/* Circle 1: Top Left Center (subtle purple-indigo blur) */}
+        <div
+          className="absolute top-[14%] left-[38%] w-10 h-10 md:w-12 md:h-12 rounded-full bg-indigo-300/30 backdrop-blur-[2px] shadow-[0_0_20px_rgba(165,180,252,0.3)] animate-float-slow"
+          style={{ animationDelay: "0s" }}
+        />
 
-      {/* ── Content ────────────────────────────────── */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 w-full pt-[130px] pb-[120px]">
-        <div className="max-w-[640px]">
-          {/* Department badge */}
+        {/* Circle 2: Far Left Middle (solid royal blue) */}
+        <div
+          className="absolute top-[42%] left-[6%] w-9 h-9 md:w-11 md:h-11 rounded-full bg-[#1d4ed8] opacity-90 shadow-[0_4px_16px_rgba(29,78,216,0.6)] animate-float-reverse"
+          style={{ animationDelay: "0.5s" }}
+        />
+
+        {/* Circle 3: Lower Left (medium blue - placed to left of button) */}
+        <div
+          className="absolute top-[67%] left-[23%] w-6 h-6 md:w-7 md:h-7 rounded-full bg-[#1e40af]/85 shadow-md animate-float-slow"
+          style={{ animationDelay: "1.2s" }}
+        />
+
+        {/* Circle 4: Top Right (bright mint green) */}
+        <div
+          className="absolute top-[10%] left-[78.5%] w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#34d399]/75 shadow-[0_0_15px_rgba(52,211,153,0.5)] animate-float-reverse"
+          style={{ animationDelay: "0.8s" }}
+        />
+
+        {/* Circle 5: Mid Right (small mint green) */}
+        <div
+          className="absolute top-[43%] left-[91.5%] w-5 h-5 md:w-6 md:h-6 rounded-full bg-[#34d399]/75 shadow-[0_0_12px_rgba(52,211,153,0.5)] animate-float-slow"
+          style={{ animationDelay: "1.5s" }}
+        />
+
+        {/* Circle 6: Bottom Right (soft emerald circle near wave) */}
+        <div
+          className="absolute top-[66%] left-[64.5%] w-9 h-9 md:w-10 md:h-10 rounded-full bg-[#6ee7b7]/45 backdrop-blur-[1px] shadow-[0_0_18px_rgba(110,231,183,0.4)] animate-float-reverse"
+          style={{ animationDelay: "0.2s" }}
+        />
+      </div>
+
+      {/* ── 4. Main Hero Content (Optimized for 1920x1080p fit) ── */}
+      <div className="relative z-[20] max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 w-full pt-16 pb-28 sm:pb-36 md:pt-20 md:pb-44 lg:pt-20 lg:pb-36">
+        <div className="max-w-xl text-left">
+          {/* Department Glass Badge */}
           <div
-            className="inline-flex items-center gap-2.5 rounded-full px-4 py-[6px] mb-8"
-            style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              backdropFilter: "blur(12px)",
-            }}
+            className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 mb-5 bg-white/10 border border-white/20 backdrop-blur-md shadow-lg transition-all duration-300 hover:bg-white/15 animate-hero-fade-up"
+            style={{ animationDelay: "0.1s" }}
           >
-            <img src={sdoLogo} alt="DepEd" className="w-[18px] h-[18px] rounded-full" />
-            <span className="text-[0.65rem] font-semibold text-white/55 tracking-[0.03em]">
+            <div className="w-4 h-4 rounded-full overflow-hidden flex items-center justify-center bg-white/20 shrink-0">
+              <img
+                src={sdoLogo}
+                alt="DepEd SDO Logo"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <span className="text-[0.72rem] sm:text-xs font-medium text-white/90 tracking-wide">
               Department of Education
             </span>
-            <span className="text-white/15">·</span>
-            <span className="text-[0.65rem] font-semibold text-emerald-400/80 tracking-[0.03em]">
+            <span className="text-white/40 text-[0.68rem] font-light">-</span>
+            <span className="text-[0.72rem] sm:text-xs font-bold text-[#34d399] tracking-wide">
               Baliwag Division
             </span>
           </div>
 
-          {/* Headline */}
-          <h1 className="text-[3rem] md:text-[3.6rem] font-black text-white leading-[1.06] tracking-tight mb-6">
+          {/* Main Headline */}
+          <h1
+            className="text-3xl sm:text-4xl lg:text-[3.2rem] font-extrabold text-white tracking-tight leading-[1.1] mb-4 animate-hero-fade-up"
+            style={{ animationDelay: "0.25s" }}
+          >
             Education Data
             <br />
             <span
+              className="inline-block mt-0.5 font-extrabold"
               style={{
-                background: "linear-gradient(135deg, #60a5fa 0%, #818cf8 40%, #a78bfa 100%)",
+                background:
+                  "linear-gradient(90deg, #38bdf8 0%, #2dd4bf 45%, #34d399 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
               }}
@@ -130,58 +137,124 @@ export function HeroSection() {
             </span>
           </h1>
 
-          {/* Subtext */}
-          <p className="text-[0.95rem] text-white/40 leading-[1.7] max-w-[480px] mb-9">
-            Comprehensive education statistics and analytics dashboard for
-            DepED Baliwag Division. Visualize enrollment, performance, and
-            resource data across 64 schools.
+          {/* Subtitle Paragraph */}
+          <p
+            className="text-xs sm:text-sm md:text-[0.92rem] text-slate-100/90 font-normal leading-relaxed max-w-lg mb-6 animate-hero-fade-up"
+            style={{ animationDelay: "0.4s" }}
+          >
+            Comprehensive education statistics and analytics dashboard for DepED
+            Baliwag Division. Visualize enrollment, performance, and resource
+            data across 64 schools.
           </p>
 
-          {/* CTA buttons */}
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2.5 rounded-[12px] px-7 py-3.5 text-[0.85rem] font-semibold text-white no-underline transition-all duration-300 hover:-translate-y-[2px]"
-              style={{
-                background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)",
-                boxShadow:
-                  "0 4px 20px rgba(99,102,241,0.3), 0 1px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)",
-              }}
-            >
-              Explore Dashboard <ArrowRight size={15} />
-            </Link>
+          {/* CTA Button */}
+          <div
+            className="animate-hero-fade-up"
+            style={{ animationDelay: "0.55s" }}
+          >
             <button
-              onClick={() => {
-                const el = document.querySelector("#analytics");
-                if (el) el.scrollIntoView({ behavior: "smooth" });
-              }}
-              className="inline-flex items-center gap-2 rounded-[12px] px-7 py-3.5 text-[0.85rem] font-semibold text-white/65 bg-transparent cursor-pointer transition-all duration-300 hover:-translate-y-[1px] hover:text-white/90"
-              style={{
-                border: "1px solid rgba(255,255,255,0.1)",
-                backdropFilter: "blur(8px)",
-              }}
+              onClick={handleExploreClick}
+              className="group inline-flex items-center gap-2 rounded-full px-5 py-2 sm:px-6 sm:py-2.5 text-xs sm:text-sm font-medium text-white bg-white/10 border border-white/30 backdrop-blur-md shadow-lg transition-all duration-300 hover:bg-white/20 hover:border-white/50 hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
             >
-              View Analytics
+              <span>Explore Dashboard</span>
+              <ChevronDown
+                size={15}
+                className="text-white transition-transform duration-300 group-hover:translate-y-0.5"
+              />
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── Scroll indicator ──────────────────────── */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5">
-        <span className="text-[0.55rem] text-white/30 uppercase tracking-[0.2em] font-semibold">
-          Scroll to explore
-        </span>
-        <ChevronDown size={16} className="text-white/25 animate-bounce" />
+      {/* ── 5. Bottom Waves Overlay Transition ──────────────── */}
+      <div className="absolute bottom-0 left-0 right-0 w-full z-[30] pointer-events-none select-none">
+        <img
+          src={wavesOverlay}
+          alt="Bottom Wave Graphic Overlay"
+          className="w-full h-auto object-contain object-bottom leading-none block animate-waves-entrance"
+        />
       </div>
 
-      {/* Keyframes */}
+      {/* ── Embedded CSS Animations ───────────────────────── */}
       <style>{`
-        @keyframes heroGlow {
-          0%, 100% { transform: translateY(0) scale(1); opacity: 0.15; }
-          50% { transform: translateY(-20px) scale(1.03); opacity: 0.2; }
+        @keyframes bgEntrance {
+          0% {
+            opacity: 0.1;
+            transform: scale(1.12);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        @keyframes wavesEntrance {
+          0% {
+            opacity: 0;
+            transform: translateY(40px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes heroFadeUp {
+          from {
+            opacity: 0;
+            transform: translateY(22px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes floatSlow {
+          0%, 100% {
+            transform: translateY(0px) scale(1);
+          }
+          50% {
+            transform: translateY(-8px) scale(1.04);
+          }
+        }
+
+        @keyframes floatReverse {
+          0%, 100% {
+            transform: translateY(0px) scale(1);
+          }
+          50% {
+            transform: translateY(8px) scale(0.96);
+          }
+        }
+
+        .animate-bg-entrance {
+          animation: bgEntrance 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .animate-waves-entrance {
+          animation: wavesEntrance 1.3s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+        }
+
+        .animate-hero-fade-up {
+          animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        .animate-float-slow {
+          animation: floatSlow 6s ease-in-out infinite;
+        }
+
+        .animate-float-reverse {
+          animation: floatReverse 7s ease-in-out infinite;
         }
       `}</style>
     </section>
   );
 }
+
+
+
+
+
+
+
