@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import * as XLSX from "xlsx";
+import { useState, useEffect, useRef } from "react";
+import ExcelJS from "exceljs";
 import { X, Save, Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { parseAndSyncStructuredData } from "../../utils/structuredDataSync";
@@ -8,12 +8,29 @@ function getBucket(category) {
   return category === "general" || !category ? "repository-files" : "excel-files";
 }
 
+// Extract a plain, editable string from any ExcelJS cell value —
+// handles rich text, hyperlinks, formulas, and dates safely so we
+// never render "[object Object]" in the grid.
+function cellText(value) {
+  if (value == null) return "";
+  if (typeof value === "object") {
+    if (Array.isArray(value.richText)) return value.richText.map((rt) => rt.text).join("");
+    if (value.text != null) return value.text;                   // hyperlink
+    if (value.result !== undefined) return String(value.result); // formula
+    if (value instanceof Date) return value.toLocaleDateString();
+    return "";
+  }
+  return String(value);
+}
+
 export default function FileEditModal({ isOpen, onClose, file, uploaderName, onSaved }) {
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState(null);
-  const [workbookMeta, setWorkbookMeta] = useState(null); // { SheetNames, Sheets (raw, for styles) }
-  const [sheets, setSheets]     = useState({});           // { sheetName: aoa[][] }
+
+  const workbookRef = useRef(null); // live ExcelJS workbook — holds all original styling for save
+  const [sheetNames, setSheetNames] = useState([]);
+  const [sheets, setSheets]     = useState({}); // { sheetName: aoa[][] }
   const [activeSheet, setActiveSheet] = useState(null);
 
   useEffect(() => {
@@ -29,18 +46,27 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
         if (dlError) throw dlError;
 
         const arrayBuffer = await blob.arrayBuffer();
-        const wb = XLSX.read(arrayBuffer, { type: "array" });
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(arrayBuffer);
 
         const sheetData = {};
-        wb.SheetNames.forEach((name) => {
-          const ws = wb.Sheets[name];
-          sheetData[name] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+        workbook.worksheets.forEach((ws) => {
+          const rows = [];
+          for (let r = 1; r <= ws.rowCount; r++) {
+            const row = [];
+            for (let c = 1; c <= ws.columnCount; c++) {
+              row.push(cellText(ws.getCell(r, c).value));
+            }
+            rows.push(row);
+          }
+          sheetData[ws.name] = rows;
         });
 
         if (cancelled) return;
-        setWorkbookMeta(wb);
+        workbookRef.current = workbook;
+        setSheetNames(workbook.worksheets.map((ws) => ws.name));
         setSheets(sheetData);
-        setActiveSheet(wb.SheetNames[0]);
+        setActiveSheet(workbook.worksheets[0]?.name ?? null);
       } catch (err) {
         if (!cancelled) setError(err.message || "Failed to load file.");
       } finally {
@@ -57,7 +83,6 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
   const handleCellChange = (rowIdx, colIdx, value) => {
     setSheets((prev) => {
       const updated = prev[activeSheet].map((row) => [...row]);
-      // pad row if needed
       while (updated[rowIdx].length <= colIdx) updated[rowIdx].push("");
       updated[rowIdx][colIdx] = value;
       return { ...prev, [activeSheet]: updated };
@@ -68,33 +93,38 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
     setSaving(true);
     setError(null);
     try {
-      // 1. Rebuild the workbook from edited sheet data
-      const newWb = XLSX.utils.book_new();
-      Object.keys(sheets).forEach((name) => {
-        const ws = XLSX.utils.aoa_to_sheet(sheets[name]);
-        XLSX.utils.book_append_sheet(newWb, ws, name);
+      // Write only the VALUES back onto the original live workbook.
+      // Merges, column widths, fonts, fills, number formats etc. are
+      // untouched — this is the same workbook instance that was loaded
+      // from storage, so nothing about the file's real formatting is
+      // rebuilt or discarded, even though the editor view above is
+      // deliberately a simplified flat grid.
+      const workbook = workbookRef.current;
+      Object.entries(sheets).forEach(([name, rows]) => {
+        const ws = workbook.getWorksheet(name);
+        rows.forEach((row, rIdx) => {
+          row.forEach((value, cIdx) => {
+            const cell = ws.getCell(rIdx + 1, cIdx + 1);
+            if (cell.type === ExcelJS.ValueType.Merge) return; // only the merge "master" cell can be set
+            cell.value = value === "" ? null : value;
+          });
+        });
       });
 
-      const wbOut = XLSX.write(newWb, { bookType: "xlsx", type: "array" });
-      const newFileBlob = new Blob([wbOut], {
+      const arrayBuffer = await workbook.xlsx.writeBuffer();
+      const newFileBlob = new Blob([arrayBuffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
       const newFile = new File([newFileBlob], file.name, { type: newFileBlob.type });
 
-      // 2. Overwrite the file in Storage
       const bucket = getBucket(file.data_category);
       const { error: uploadError } = await supabase.storage
         .from(bucket)
         .upload(file.path, newFile, { upsert: true, cacheControl: "3600" });
       if (uploadError) throw uploadError;
 
-      // 3. Update files row (size, timestamp) — optional but useful
-      await supabase
-        .from("files")
-        .update({ file_size: newFile.size })
-        .eq("id", file.id);
+      await supabase.from("files").update({ file_size: newFile.size }).eq("id", file.id);
 
-      // 4. Re-parse and resync the DB tables to match the edited data
       if (file.data_category && file.data_category !== "general") {
         await parseAndSyncStructuredData(
           file.data_category,
@@ -137,9 +167,9 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
         </div>
 
         {/* Sheet tabs */}
-        {workbookMeta && workbookMeta.SheetNames.length > 1 && (
+        {sheetNames.length > 1 && (
           <div className="flex items-center gap-1 px-6 pt-3 border-b border-gray-100 shrink-0">
-            {workbookMeta.SheetNames.map((name) => (
+            {sheetNames.map((name) => (
               <button
                 key={name}
                 onClick={() => setActiveSheet(name)}
@@ -156,7 +186,7 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
         )}
 
         {/* Body */}
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-auto p-4 bg-gray-50">
           {loading ? (
             <div className="flex items-center justify-center h-full text-gray-400 gap-2">
               <Loader2 className="animate-spin" size={18} /> Loading file…
@@ -166,23 +196,30 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
               <AlertTriangle size={16} /> {error}
             </div>
           ) : (
-            <table className="border-collapse text-xs">
-              <tbody>
-                {activeRows.map((row, rowIdx) => (
-                  <tr key={rowIdx}>
-                    {Array.from({ length: colCount }).map((_, colIdx) => (
-                      <td key={colIdx} className="border border-gray-200 p-0">
-                        <input
-                          value={row[colIdx] ?? ""}
-                          onChange={(e) => handleCellChange(rowIdx, colIdx, e.target.value)}
-                          className="w-24 px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-blue-50"
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="inline-block rounded-lg border border-gray-200 overflow-hidden bg-white shadow-sm">
+              <table className="border-collapse text-xs">
+                <tbody>
+                  {activeRows.map((row, rowIdx) => (
+                    <tr
+                      key={rowIdx}
+                      className={rowIdx === 0 ? "bg-gray-100" : rowIdx % 2 === 0 ? "bg-gray-50/60" : "bg-white"}
+                    >
+                      {Array.from({ length: colCount }).map((_, colIdx) => (
+                        <td key={colIdx} className="border border-gray-200 p-0">
+                          <input
+                            value={row[colIdx] ?? ""}
+                            onChange={(e) => handleCellChange(rowIdx, colIdx, e.target.value)}
+                            className={`w-28 px-2 py-1.5 text-xs bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:bg-blue-50 ${
+                              rowIdx === 0 ? "font-semibold text-gray-700" : "text-gray-800"
+                            }`}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
