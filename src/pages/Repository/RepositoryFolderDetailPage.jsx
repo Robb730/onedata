@@ -19,6 +19,23 @@ import { supabase } from "../../lib/supabaseClient";
 import { RepositoryHeader } from "../../components/RepositoryComponents/RepositoryHeader";
 import RepositoryBackButton from "../../components/RepositoryComponents/RepositoryBackButton";
 import FileEditModal from "../../components/RepositoryComponents/FileEditModal";
+import { useUser } from "../../contexts/UserContext";
+
+const roleDisplayMap = {
+  division_focal: "Division Focal Person",
+  sectionFocal: "Section Officer",
+  personnel: "Section Personnel",
+  admin: "Administrator",
+};
+const getRoleDisplay = (role) => roleDisplayMap[role] ?? role;
+
+function getBucket(category) {
+  return category === "general" || !category
+    ? "repository-files"
+    : "excel-files";
+}
+
+
 
 function getFileIcon(type) {
   switch (type) {
@@ -76,7 +93,7 @@ export default function RepositoryFolderDetailPage() {
 
   const [editingFile, setEditingFile] = useState(null);
 
-  
+  const { userProfile } = useUser();
 
   // ── Supabase state ─────────────────────────────────────────────
   const [section, setSection] = useState(null);
@@ -92,6 +109,72 @@ export default function RepositoryFolderDetailPage() {
   const [sortBy, setSortBy] = useState("date");
 
   const [deletingId, setDeletingId] = useState(null);
+
+  const [downloadingId, setDownloadingId] = useState(null);
+
+async function handleDownloadFile(file) {
+  if (!file.path) {
+    alert("This file has no associated storage path.");
+    return;
+  }
+
+  setDownloadingId(file.id);
+
+  try {
+    const bucket = getBucket(file.data_category);
+    const { data: blob, error } = await supabase.storage
+      .from(bucket)
+      .download(file.path);
+
+    if (error) throw new Error(`Download failed: ${error.message}`);
+
+    // Trigger a browser download from the blob
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    await logAuditEvent({
+      action: "Download",
+      fileName: file.name,
+      details: `Downloaded from ${section?.name ?? "unknown section"}`,
+      status: "Success",
+    });
+  } catch (err) {
+    console.error(err);
+    alert(err.message || "Something went wrong while downloading the file.");
+
+    await logAuditEvent({
+      action: "Download",
+      fileName: file.name,
+      details: err.message,
+      status: "Failed",
+    });
+  } finally {
+    setDownloadingId(null);
+  }
+}
+
+  const logAuditEvent = async ({
+    action,
+    fileName,
+    details,
+    status = "Success",
+  }) => {
+    const { error } = await supabase.from("audit_logs").insert({
+      action,
+      file_name: fileName,
+      details,
+      performed_by: userProfile?.full_name ?? "Unknown",
+      role: getRoleDisplay(userProfile?.role) ?? "Unknown",
+      status,
+    });
+    if (error) console.error("Audit log insert failed:", error);
+  };
 
   // delete files
   async function handleDeleteFile(file) {
@@ -126,16 +209,28 @@ export default function RepositoryFolderDetailPage() {
 
       // 3. Update local state so the UI reflects the deletion immediately
       setAllFiles((prev) => prev.filter((f) => f.id !== file.id));
+      await logAuditEvent({
+        action: "Delete",
+        fileName: file.name,
+        details: `Deleted from ${section?.name ?? "unknown section"}`,
+        status: "Success",
+      });
     } catch (err) {
       console.error(err);
       alert(err.message || "Something went wrong while deleting the file.");
+
+      await logAuditEvent({
+        action: "Delete",
+        fileName: file.name,
+        details: err.message,
+        status: "Failed",
+      });
     } finally {
       setDeletingId(null);
     }
   }
 
   // ── Fetch section → division → files ──────────────────────────
-  
 
   async function fetchData() {
   setLoading(true);
@@ -169,6 +264,31 @@ export default function RepositoryFolderDetailPage() {
     .eq("section_id", sectionData.id)
     .order("created_at", { ascending: false });
 
+  // ── Resolve uploader UUIDs → names ──────────────────────────
+  // uploaded_by on `files` stores a user UUID, not a display name.
+  // Collect the distinct UUIDs actually present, look them up once
+  // in `users`, and build a lookup map — avoids firing one query
+  // per file row.
+  const uploaderIds = [
+    ...new Set((filesData || []).map((f) => f.uploaded_by).filter(Boolean)),
+  ];
+
+  let uploaderMap = {};
+  if (uploaderIds.length > 0) {
+    const { data: uploaderRows, error: uploaderError } = await supabase
+      .from("users")
+      .select("id, full_name")
+      .in("id", uploaderIds);
+
+    if (uploaderError) {
+      console.error("Failed to resolve uploader names:", uploaderError.message);
+    } else {
+      uploaderMap = Object.fromEntries(
+        uploaderRows.map((u) => [u.id, u.full_name]),
+      );
+    }
+  }
+
   const mapped = (filesData || []).map((f) => ({
     id: f.id,
     name: f.file_name,
@@ -181,7 +301,7 @@ export default function RepositoryFolderDetailPage() {
           year: "numeric",
         })
       : "—",
-    uploader: f.uploaded_by ?? "Unknown",
+    uploader: uploaderMap[f.uploaded_by] ?? "Unknown", // ← resolved name, not raw UUID
     status: f.is_dashboard_source ? "Verified" : "For Review",
     path: f.file_path,
     data_category: f.data_category,
@@ -191,12 +311,10 @@ export default function RepositoryFolderDetailPage() {
   setAllFiles(mapped);
   setLoading(false);
 }
-useEffect(() => {
-  if(!decodedName) return;
-  fetchData();
-}, [decodedName]);
-
-
+  useEffect(() => {
+    if (!decodedName) return;
+    fetchData();
+  }, [decodedName]);
 
   // ── Back target uses real division id ─────────────────────────
   const backTarget = division
@@ -431,6 +549,8 @@ useEffect(() => {
                       <Eye size={14} />
                     </button>
                     <button
+                      onClick={() => handleDownloadFile(file)}
+                      disabled={downloadingId === file.id}
                       className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
                       title="Download"
                     >
@@ -444,18 +564,12 @@ useEffect(() => {
                     >
                       <Trash2 size={14} />
                     </button>
-                    
-                    
                   </div>
                 </div>
               );
-              
             })}
-            
           </div>
-          
         </div>
-        
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {filtered.map((file) => {
@@ -483,7 +597,14 @@ useEffect(() => {
                     {file.status}
                   </span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadFile(file);
+                      }}
+                      disabled={downloadingId === file.id}
+                      className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
+                    >
                       <Download size={12} />
                     </button>
                     <button
@@ -505,8 +626,6 @@ useEffect(() => {
                     >
                       <Trash2 size={12} />
                     </button>
-
-                    
                   </div>
                 </div>
               </div>

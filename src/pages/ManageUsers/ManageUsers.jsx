@@ -138,6 +138,18 @@ export default function ManageUsers() {
     fetchUsers(); // refresh from DB
   };
 
+  const logAuditEvent = async ({ action, fileName, details, role, status = "Success" }) => {
+  const { error } = await supabase.from("audit_logs").insert({
+    action,
+    file_name: fileName,
+    details,
+    performed_by: userProfile?.full_name ?? "System",
+    role: getRoleDisplay(role) ?? "Unknown",
+    status,
+  });
+  if (error) console.error("Audit log insert failed:", error.message);
+};
+
   const handleDeleteUser = async () => {
     if (!deletingUser) return;
 
@@ -150,17 +162,23 @@ export default function ManageUsers() {
     const data = await res.json();
     if (!res.ok) {
       alert("Error deleting user: " + data.error);
+      await logAuditEvent({
+      action: "Other",
+      fileName: deletingUser.name,
+      details: `Failed to delete user account (${deletingUser.email}): ${data.error}`,
+      role: deletingUser.role,
+      status: "Failed",
+    });
       return;
     }
 
-    const { error: logError } = await supabase.from("audit_logs").insert({
-      action: "Other",
-      file_name: deletingUser.name,
-      details: `Deleted user account  (${deletingUser.email})`,
-      performed_by: userProfile?.full_name ?? "System",
-      role: deletingUser.role,
-      status: "Success",
-    });
+     await logAuditEvent({
+    action: "Other",
+    fileName: deletingUser.name,
+    details: `Deleted user account (${deletingUser.email})`,
+    role: deletingUser.role,
+    status: "Success",
+  });
 
     if (logError) {
       console.error("Error logging audit action:", logError.message);
