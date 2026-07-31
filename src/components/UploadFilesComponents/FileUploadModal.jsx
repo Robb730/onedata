@@ -20,17 +20,17 @@ export default function FileUploadModal({
   onUpload,
   subfolders = [],
 }) {
-  const [step, setStep]                           = useState(1);
-  const [fileName, setFileName]                   = useState(initialFileName);
-  const [schoolYear, setSchoolYear]               = useState(SCHOOL_YEAR_OPTIONS[SCHOOL_YEAR_OPTIONS.length - 3]);
-  const [selectedFile, setSelectedFile]           = useState(null);
+  const [step, setStep] = useState(1);
+  const [fileName, setFileName] = useState(initialFileName);
+  const [schoolYear, setSchoolYear] = useState(SCHOOL_YEAR_OPTIONS[SCHOOL_YEAR_OPTIONS.length - 3]);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [selectedSubfolder, setSelectedSubfolder] = useState(null);
-  const [uploadType, setUploadType]               = useState("general");
+  const [uploadType, setUploadType] = useState("general");
 
   const hasSubfolders = subfolders.length > 0;
-  const isTwoStep     = hasSubfolders;
-  const activeCode    = selectedSubfolder?.code ?? null;
-  const codedName     = activeCode && fileName ? buildCodedFilename(fileName, activeCode, schoolYear) : null;
+  const isTwoStep = hasSubfolders;
+  const activeCode = selectedSubfolder?.code ?? null;
+  const codedName = activeCode && fileName ? buildCodedFilename(fileName, activeCode, schoolYear) : null;
 
   useEffect(() => {
     if (isOpen) {
@@ -91,11 +91,10 @@ export default function FileUploadModal({
             {isTwoStep && (
               <div className="flex items-center gap-2 mt-1">
                 <div className="flex items-center gap-1.5">
-                  <div className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold border transition-all ${
-                    step === 1
+                  <div className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold border transition-all ${step === 1
                       ? "bg-blue-600 text-white border-blue-600"
                       : "bg-teal-500 text-white border-teal-500"
-                  }`}>
+                    }`}>
                     {step > 1 ? <CheckCircle size={12} /> : "1"}
                   </div>
                   <span className={`text-xs font-semibold ${step === 1 ? "text-blue-600" : "text-teal-500"}`}>
@@ -104,11 +103,10 @@ export default function FileUploadModal({
                 </div>
                 <div className="w-6 h-px bg-gray-300" />
                 <div className="flex items-center gap-1.5">
-                  <div className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold border transition-all ${
-                    step === 2
+                  <div className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold border transition-all ${step === 2
                       ? "bg-indigo-600 text-white border-indigo-600"
                       : "bg-gray-200 text-gray-400 border-gray-200"
-                  }`}>
+                    }`}>
                     2
                   </div>
                   <span className={`text-xs font-semibold ${step === 2 ? "text-indigo-600" : "text-gray-400"}`}>
@@ -168,15 +166,22 @@ export default function FileUploadModal({
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                 Choose File <span className="text-red-500">*</span>
               </label>
-              <input
-                type="file"
-                onChange={handleFileChange}
-                className="w-full py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-              {selectedFile && (
-                <p className="text-xs text-gray-400 mt-1 truncate">Selected: {selectedFile.name}</p>
-              )}
+              <label
+                htmlFor="file-upload-input"
+                className="flex items-center gap-2 w-full py-2.5 px-3 text-sm border border-gray-300 rounded-lg bg-white cursor-pointer hover:bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500"
+              >
+                <FileText size={16} className="text-gray-400 flex-shrink-0" />
+                <span className={`truncate ${selectedFile ? "text-gray-800" : "text-gray-400"}`}>
+                  {selectedFile ? selectedFile.name : "Choose file"}
+                </span>
+                <input
+                  id="file-upload-input"
+                  type="file"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  required
+                />
+              </label>
             </div>
 
             {/* File Name */}
@@ -273,15 +278,13 @@ export default function FileUploadModal({
                 <button
                   type="button"
                   onClick={() => setSelectedSubfolder(null)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all ${
-                    selectedSubfolder === null
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all ${selectedSubfolder === null
                       ? "border-gray-800 bg-gray-50"
                       : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
-                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                    selectedSubfolder === null ? "border-gray-800" : "border-gray-300"
-                  }`}>
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${selectedSubfolder === null ? "border-gray-800" : "border-gray-300"
+                    }`}>
                     {selectedSubfolder === null && <div className="w-2 h-2 rounded-full bg-gray-800" />}
                   </div>
                   <FolderOpen size={16} className="text-gray-400 flex-shrink-0" />
@@ -296,21 +299,19 @@ export default function FileUploadModal({
                 {/* Subfolder options */}
                 {subfolders.map((sf) => {
                   const isSelected = selectedSubfolder?.name === sf.name;
-                  const preview    = buildCodedFilename(fileName, sf.code, schoolYear);
+                  const preview = buildCodedFilename(fileName, sf.code, schoolYear);
                   return (
                     <button
                       key={sf.name}
                       type="button"
                       onClick={() => setSelectedSubfolder(isSelected ? null : sf)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all ${
-                        isSelected
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all ${isSelected
                           ? "border-indigo-600 bg-indigo-50"
                           : "border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/40"
-                      }`}
+                        }`}
                     >
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                        isSelected ? "border-indigo-600" : "border-gray-300"
-                      }`}>
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? "border-indigo-600" : "border-gray-300"
+                        }`}>
                         {isSelected && <div className="w-2 h-2 rounded-full bg-indigo-600" />}
                       </div>
                       <FolderPlus size={16} className={`flex-shrink-0 ${isSelected ? "text-indigo-500" : "text-gray-400"}`} />
@@ -319,11 +320,10 @@ export default function FileUploadModal({
                           <p className={`text-sm font-semibold ${isSelected ? "text-indigo-900" : "text-gray-800"}`}>
                             {sf.name}
                           </p>
-                          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${
-                            isSelected
+                          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${isSelected
                               ? "bg-indigo-200 text-indigo-800 border-indigo-300"
                               : "bg-gray-100 text-gray-600 border-gray-200"
-                          }`}>
+                            }`}>
                             {sf.code}
                           </span>
                         </div>

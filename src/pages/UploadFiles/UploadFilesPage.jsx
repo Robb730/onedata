@@ -9,6 +9,7 @@ import {
   Clock,
   User,
   Tag,
+  X,
 } from "lucide-react";
 import FolderSelectionModal from "../../components/UploadFilesComponents/FolderSelectionModal";
 import FileUploadModal from "../../components/UploadFilesComponents/FileUploadModal";
@@ -77,6 +78,67 @@ function getRequestStatusStyle(status) {
   return "text-orange-600 bg-orange-50 border border-orange-200";
 }
 
+function UploadSuccessModal({ isOpen, onClose, fileName, folderName, schoolYear }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
+        <div className="h-1.5 w-full bg-gradient-to-r from-[#3b82f6] via-[#2563eb] to-[#6366f1]" />
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-50 ring-1 ring-blue-100">
+              <CheckCircle className="text-[#2563eb]" size={24} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-[#0f172a]">Upload complete</h2>
+              <p className="text-sm text-[#94a3b8]">Your file has been saved successfully.</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-[#94a3b8] transition-colors hover:bg-slate-100 hover:text-[#0f172a]"
+            aria-label="Close success modal"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="space-y-4 px-6 py-5">
+          <div className="rounded-xl border border-blue-100 bg-[#f8fafc] p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#1d4ed8]">Uploaded file</p>
+            <p className="mt-1 break-words text-sm font-semibold text-[#1e293b]">{fileName}</p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 bg-[#f8fafc] p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Destination</p>
+              <p className="mt-1 text-sm font-semibold text-[#0f172a]">{folderName || "General"}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-[#f8fafc] p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">School year</p>
+              <p className="mt-1 text-sm font-semibold text-[#0f172a]">{schoolYear || "—"}</p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm text-[#1e293b]">
+            The upload is finished and the file is now available.
+          </div>
+        </div>
+
+        <div className="border-t border-slate-200 bg-[#f8fafc] px-6 py-4">
+          <button
+            onClick={onClose}
+            className="w-full rounded-xl bg-gradient-to-r from-[#3b82f6] to-[#6366f1] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:-translate-y-0.5"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function UploadFilesPage({
   role = "personnel",
@@ -103,6 +165,47 @@ export default function UploadFilesPage({
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [fileRequests, setFileRequests] = useState([]);
   const [pendingRequestUpload, setPendingRequestUpload] = useState(null);
+  const [uploadResultModal, setUploadResultModal] = useState(null);
+  const [uploadsPage, setUploadsPage] = useState(1);
+  const uploadsPerPage = 5;
+
+  const fetchRecentUploads = async () => {
+    const { data, error } = await supabase
+      .from("audit_logs")
+      .select("id, file_name, details, performed_on, status")
+      .eq("action", "Upload")
+      .order("performed_on", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error("Failed to fetch recent uploads:", error);
+      return;
+    }
+
+    setUploadedFiles(
+      data.map((row) => {
+        // details looks like: "Uploaded to SectionName (2024-2025)"
+        const match = row.details?.match(/^Uploaded to (.+?) \((.+?)\)$/);
+        return {
+          id: row.id,
+          name: row.file_name,
+          folder: match?.[1] || "General",
+          schoolYear: match?.[2] || "",
+          status: row.status === "Success" ? "Completed" : "Failed",
+          uploadedOn: new Date(row.performed_on).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          }),
+        };
+      })
+    );
+    setUploadsPage(1);
+  };
+
+  useEffect(() => {
+    fetchRecentUploads();
+  }, []);
 
   // Near the top, after your state declarations
   useEffect(() => {
@@ -178,21 +281,21 @@ export default function UploadFilesPage({
   };
 
   const logAuditEvent = async ({
-        action,
-        fileName,
-        details,
-        status = "Success",
-      }) => {
-        const { error } = await supabase.from("audit_logs").insert({
-          action,
-          file_name: fileName,
-          details,
-          performed_by: userProfile?.full_name ?? "Unknown",
-          role: getRoleDisplay(userProfile?.role) ?? "Unknown",
-          status,
-        });
-        if (error) console.error("Audit log insert failed:", error);
-      };
+    action,
+    fileName,
+    details,
+    status = "Success",
+  }) => {
+    const { error } = await supabase.from("audit_logs").insert({
+      action,
+      file_name: fileName,
+      details,
+      performed_by: userProfile?.full_name ?? "Unknown",
+      role: getRoleDisplay(userProfile?.role) ?? "Unknown",
+      status,
+    });
+    if (error) console.error("Audit log insert failed:", error);
+  };
 
   // ── Core upload + Supabase insert ─────────────────────────────────────────
   // ── Core upload + Supabase insert ─────────────────────────────────────────
@@ -276,6 +379,7 @@ export default function UploadFilesPage({
         details: `Uploaded to ${sectionName || "General"} (${schoolYear})`,
         status: "Success",
       });
+      await fetchRecentUploads();
     } catch (err) {
       console.error("Upload failed:", err);
       alert(`Upload failed: ${err.message}`);
@@ -640,23 +744,33 @@ export default function UploadFilesPage({
     }
   };
 
-  const handleFileUpload = (fileName, schoolYear, uploadType, file) => {
-    addToUploads(fileName, schoolYear, uploadType, file);
+  const handleFileUpload = async (fileName, schoolYear, uploadType, file) => {
+    await addToUploads(fileName, schoolYear, uploadType, file);
     setShowUploadModal(false);
     setPendingFile(null);
+    setUploadResultModal({
+      fileName,
+      folderName: selectedFolderName || preAssignedFolder || "General",
+      schoolYear,
+    });
   };
 
-  const handleRequestFileUpload = (fileName, schoolYear, uploadType, file) => {
+  const handleRequestFileUpload = async (fileName, schoolYear, uploadType, file) => {
     const req = pendingRequestUpload;
     const newStatus =
       req.status === "Overdue" ? "Completed Overdue" : "Completed";
     setFileRequests((prev) =>
       prev.map((r) => (r.id === req.id ? { ...r, status: newStatus } : r)),
     );
-    addToUploads(fileName, schoolYear, uploadType, file);
+    await addToUploads(fileName, schoolYear, uploadType, file);
     setShowUploadModal(false);
     setPendingFile(null);
     setPendingRequestUpload(null);
+    setUploadResultModal({
+      fileName,
+      folderName: selectedFolderName || preAssignedFolder || req?.requestedBy || "General",
+      schoolYear,
+    });
   };
 
   const filteredRequests = fileRequests.filter((r) => {
@@ -681,14 +795,14 @@ export default function UploadFilesPage({
   };
 
   // Add near your other helper functions, above the component or inside it
-const roleDisplayMap = {
-  division_focal: "Division Focal Person",
-  sectionFocal: "Section Officer",
-  personnel: "Section Personnel",
-  admin: "Administrator",
-};
+  const roleDisplayMap = {
+    division_focal: "Division Focal Person",
+    sectionFocal: "Section Officer",
+    personnel: "Section Personnel",
+    admin: "Administrator",
+  };
 
-const getRoleDisplay = (role) => roleDisplayMap[role] ?? role;
+  const getRoleDisplay = (role) => roleDisplayMap[role] ?? role;
 
   // ── Upload Area ───────────────────────────────────────────────────────────
   const renderUploadArea = () => (
@@ -727,11 +841,10 @@ const getRoleDisplay = (role) => roleDisplayMap[role] ?? role;
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`border-2 border-dashed rounded-xl p-10 text-center transition-all ${
-          isDragging
-            ? "border-indigo-400 bg-indigo-50"
-            : "border-gray-300 hover:border-gray-400"
-        }`}
+        className={`border-2 border-dashed rounded-xl p-10 text-center transition-all ${isDragging
+          ? "border-indigo-400 bg-indigo-50"
+          : "border-gray-300 hover:border-gray-400"
+          }`}
       >
         <div className="flex flex-col items-center justify-center">
           <div
@@ -770,11 +883,10 @@ const getRoleDisplay = (role) => roleDisplayMap[role] ?? role;
             <button
               key={f}
               onClick={() => setFileRequestFilter(f)}
-              className={`px-2.5 py-1.5 rounded-full font-medium transition-colors ${
-                fileRequestFilter === f
-                  ? "bg-teal-500 text-white"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
+              className={`px-2.5 py-1.5 rounded-full font-medium transition-colors ${fileRequestFilter === f
+                ? "bg-teal-500 text-white"
+                : "text-gray-600 hover:bg-gray-100"
+                }`}
             >
               {f}
             </button>
@@ -843,6 +955,12 @@ const getRoleDisplay = (role) => roleDisplayMap[role] ?? role;
     </div>
   );
 
+  const totalUploadsPages = Math.max(1, Math.ceil(uploadedFiles.length / uploadsPerPage));
+  const paginatedUploads = uploadedFiles.slice(
+    (uploadsPage - 1) * uploadsPerPage,
+    uploadsPage * uploadsPerPage
+  );
+
   // ── Recent Uploads ────────────────────────────────────────────────────────
   const renderRecentUploads = () => (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -852,44 +970,73 @@ const getRoleDisplay = (role) => roleDisplayMap[role] ?? role;
           No uploads yet this session.
         </p>
       ) : (
-        <div className="space-y-3">
-          {uploadedFiles.map((file) => {
-            const codeMatch = file.name.match(
-              /^([A-Z0-9]{1,4})-(\d{4}-\d{4})-/,
-            );
-            return (
-              <div
-                key={file.id}
-                className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50"
-              >
-                <div className="flex items-center gap-3">
-                  <FileText className="text-blue-500 flex-shrink-0" size={20} />
-                  <div>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      {codeMatch && (
-                        <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded font-mono border border-indigo-200">
-                          {codeMatch[1]}
-                        </span>
-                      )}
-                      <p className="text-sm font-semibold text-gray-900">
-                        {file.name}
+        <>
+          <div className="space-y-3">
+            {paginatedUploads.map((file) => {
+              const codeMatch = file.name.match(
+                /^([A-Z0-9]{1,4})-(\d{4}-\d{4})-/,
+              );
+              return (
+                <div
+                  key={file.id}
+                  className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <FileText className="text-blue-500 flex-shrink-0" size={20} />
+                    <div>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        {codeMatch && (
+                          <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded font-mono border border-indigo-200">
+                            {codeMatch[1]}
+                          </span>
+                        )}
+                        <p className="text-sm font-semibold text-gray-900">
+                          {file.name}
+                        </p>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {file.folder} · {file.schoolYear}
                       </p>
                     </div>
-                    <p className="text-xs text-gray-500">
-                      {file.folder} · {file.schoolYear}
-                    </p>
                   </div>
+                  <span
+                    className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${getStatusColor(file.status)}`}
+                  >
+                    {getStatusIcon(file.status)}
+                    {file.status}
+                  </span>
                 </div>
-                <span
-                  className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${getStatusColor(file.status)}`}
+              );
+            })}
+          </div>
+
+          {totalUploadsPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+              <p className="text-xs text-gray-400">
+                Page <span className="font-semibold text-gray-600">{uploadsPage}</span> of{" "}
+                <span className="font-semibold text-gray-600">{totalUploadsPages}</span>
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setUploadsPage((p) => Math.max(1, p - 1))}
+                  disabled={uploadsPage === 1}
+                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {getStatusIcon(file.status)}
-                  {file.status}
-                </span>
+                  Prev
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUploadsPage((p) => Math.min(totalUploadsPages, p + 1))}
+                  disabled={uploadsPage === totalUploadsPages}
+                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Next
+                </button>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -991,6 +1138,14 @@ const getRoleDisplay = (role) => roleDisplayMap[role] ?? role;
           subfolders={activeSubfolders}
         />
       )}
+
+      <UploadSuccessModal
+        isOpen={!!uploadResultModal}
+        onClose={() => setUploadResultModal(null)}
+        fileName={uploadResultModal?.fileName || ""}
+        folderName={uploadResultModal?.folderName || ""}
+        schoolYear={uploadResultModal?.schoolYear || ""}
+      />
     </div>
   );
 }
