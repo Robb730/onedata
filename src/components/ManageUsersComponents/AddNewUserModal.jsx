@@ -1,48 +1,95 @@
-import { useState } from "react";
-import { X, User, Hash, Mail } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, User, Hash, Mail, Building2, UserCircle } from "lucide-react";
+import { supabase } from "../../lib/supabaseClient";
+
+// Roles that are scoped to a DIVISION (pick from divisions table)
+const DIVISION_ROLES = ["Division Focal Person"];
+// Roles that are scoped to a SECTION (pick from sections table)
+const SECTION_ROLES = ["Section Officer", "Section Personnel"];
 
 export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
   const [name, setName] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [email, setEmail] = useState("");
-  const [division, setDivision] = useState("Curriculum Implementation Division");
   const [role, setRole] = useState("Section Personnel");
+  const [divisionId, setDivisionId] = useState("");
+  const [sectionId, setSectionId] = useState("");
 
-  if (!isOpen) return null;
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (name && idNumber && email && division && role) {
-      onAdd({ name, idNumber, email, division, role });
-      // Reset form
-      setName("");
-      setIdNumber("");
-      setEmail("");
-      setDivision("Curriculum Implementation Division");
-      setRole("Section Personnel");
-    }
-  };
-
-  const divisions = [
-    "Curriculum Implementation Division",
-    "Office of the Schools Division Superintendent",
-    "School Governance and Operations Division",
-    "DRRM",
-    "Education Facilities",
-    "HRD",
-    "Learner Formation",
-    "Planning and Research",
-    "School Health",
-    "SIME",
-    "SMN",
-    "Sports",
-  ];
+  const [divisions, setDivisions] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [loadingOptions, setLoadingOptions] = useState(true);
 
   const roles = [
     "Division Focal Person",
     "Section Officer",
     "Section Personnel",
   ];
+
+  const isDivisionRole = DIVISION_ROLES.includes(role);
+  const isSectionRole = SECTION_ROLES.includes(role);
+
+  // ─── Fetch divisions & sections once, when modal opens ─────────
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchOptions = async () => {
+      setLoadingOptions(true);
+
+      const [{ data: divData, error: divError }, { data: secData, error: secError }] =
+        await Promise.all([
+          supabase.from("divisions").select("id, name").order("name"),
+          supabase.from("sections").select("id, name, division_id").order("name"),
+        ]);
+
+      if (divError) console.error("Error fetching divisions:", divError.message);
+      if (secError) console.error("Error fetching sections:", secError.message);
+
+      setDivisions(divData ?? []);
+      setSections(secData ?? []);
+      setLoadingOptions(false);
+    };
+
+    fetchOptions();
+  }, [isOpen]);
+
+  // Reset the irrelevant selection whenever the role category changes
+  useEffect(() => {
+    if (isDivisionRole) setSectionId("");
+    if (isSectionRole) setDivisionId("");
+  }, [role, isDivisionRole, isSectionRole]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if (isDivisionRole && !divisionId) {
+      alert("Please select a division for this role.");
+      return;
+    }
+    if (isSectionRole && !sectionId) {
+      alert("Please select a section for this role.");
+      return;
+    }
+
+    if (name && idNumber && email && role) {
+      onAdd({
+        name,
+        idNumber,
+        email,
+        role,
+        divisionId: isDivisionRole ? divisionId : null,
+        sectionId: isSectionRole ? sectionId : null,
+      });
+      // Reset form
+      setName("");
+      setIdNumber("");
+      setEmail("");
+      setRole("Section Personnel");
+      setDivisionId("");
+      setSectionId("");
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -115,43 +162,83 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
             <p className="text-xs text-gray-500 mt-1">Login credentials will be sent to this email</p>
           </div>
 
-          {/* Division */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Division/Section <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={division}
-              onChange={(e) => setDivision(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            >
-              {divisions.map((div) => (
-                <option key={div} value={div}>
-                  {div}
-                </option>
-              ))}
-            </select>
-          </div>
-
           {/* Role */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Role <span className="text-red-500">*</span>
             </label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            >
-              {roles.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <UserCircle className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10 pointer-events-none" size={18} />
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+                required
+              >
+                {roles.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+
+          {/* Division — only for Division Focal Person */}
+          {isDivisionRole && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Division <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10 pointer-events-none" size={18} />
+                <select
+                  value={divisionId}
+                  onChange={(e) => setDivisionId(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+                  required
+                  disabled={loadingOptions}
+                >
+                  <option value="">
+                    {loadingOptions ? "Loading divisions..." : "Select a division"}
+                  </option>
+                  {divisions.map((div) => (
+                    <option key={div.id} value={div.id}>
+                      {div.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Section — only for Section Officer / Section Personnel */}
+          {isSectionRole && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Section <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10 pointer-events-none" size={18} />
+                <select
+                  value={sectionId}
+                  onChange={(e) => setSectionId(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+                  required
+                  disabled={loadingOptions}
+                >
+                  <option value="">
+                    {loadingOptions ? "Loading sections..." : "Select a section"}
+                  </option>
+                  {sections.map((sec) => (
+                    <option key={sec.id} value={sec.id}>
+                      {sec.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex items-center gap-3 pt-4">

@@ -1,30 +1,64 @@
 import React from "react";
-import { Search, Bell, Menu, LogOut } from "lucide-react";
+import { Search, Bell, Menu, LogOut, FolderOpen } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+// Adjust this relative path to match TopHeader's location in your tree
+// (this mirrors the import used in ManageUsers.jsx).
+import { useUser } from "../contexts/UserContext.jsx";
 
 /**
  * TopHeader — Persistent top bar with search, notifications, and user profile.
  *
- * @param {string}   userName   — display name (e.g. "Juan Dela Cruz")
- * @param {string}   userRole   — e.g. "Administrator"
+ * @param {string}   userName     — display name (e.g. "Juan Dela Cruz")
+ * @param {string}   userRole     — raw role key, e.g. "division_focal" | "section_focal" | "section_personnel"
+ * @param {string}   [userSection] — e.g. "Records Section"
+ * @param {string}   [userDivision] — e.g. "Records Management Division"
  * @param {string}   [userInitials] — avatar initials (auto-derived if omitted)
  * @param {function} onMenuToggle — hamburger click handler (mobile sidebar toggle)
+ * @param {function} onLogout
  */
+
+// Maps internal role keys to their human-readable display labels.
+// Kept in sync with roleDisplayMap in ManageUsers.
+const ROLE_LABELS = {
+  division_focal: "Division Focal Person",
+  section_focal: "Section Officer",
+  section_personnel: "Section Personnel",
+  administrator: "Administrator",
+};
+
+function getRoleLabel(role) {
+  return ROLE_LABELS[role] || role;
+}
+
 export function TopHeader({
-  userName = "Juan Dela Cruz",
-  userRole = "Administrator",
+  userName,
+  userRole,
+  userSection,
+  userDivision,
   userInitials,
   onMenuToggle,
   onLogout,
 }) {
+  const { userProfile } = useUser();
+
+  // Props win if explicitly passed; otherwise fall back to the logged-in
+  // user's own profile from context — so TopHeader "just works" wherever
+  // it's rendered without every page having to thread these props through.
+  const resolvedName = userName ?? userProfile?.full_name ?? "Juan Dela Cruz";
+  const resolvedRole = userRole ?? userProfile?.role ?? "Administrator";
+  const resolvedDivision = userDivision ?? userProfile?.division ?? null;
+  const resolvedSection = userSection ?? userProfile?.section ?? null;
+
   const initials =
     userInitials ||
-    userName
+    resolvedName
       .split(" ")
       .map((n) => n[0])
       .join("")
       .substring(0, 2)
       .toUpperCase();
+
+  const roleLabel = getRoleLabel(resolvedRole);
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -96,10 +130,10 @@ export function TopHeader({
           >
             <div className="hidden sm:block text-right">
               <p className="text-[0.78rem] font-semibold text-slate-700 leading-tight group-hover:text-blue-600 transition-colors">
-                {userName}
+                {resolvedName}
               </p>
               <p className="text-[0.62rem] font-medium text-slate-400">
-                {userRole}
+                {roleLabel}
               </p>
             </div>
             <div
@@ -124,27 +158,82 @@ export function TopHeader({
               />
             </svg>
           </div>
-          {/* Dropdown */}
-        {dropdownOpen && (
-          <div
-            className="absolute right-0 top-full mt-2 w-44 rounded-xl bg-white py-1 z-50"
-            style={{
-              border: "1px solid rgba(203,213,225,0.6)",
-              boxShadow: "0 8px 24px rgba(15,23,42,0.10)",
-            }}
-          >
-            <button
-              onClick={() => {
-                setDropdownOpen(false);
-                onLogout?.();
+
+          {/* Dropdown / profile details card */}
+          {dropdownOpen && (
+            <div
+              className="absolute right-0 top-full mt-2 w-64 rounded-xl bg-white py-1 z-50 overflow-hidden"
+              style={{
+                border: "1px solid rgba(203,213,225,0.6)",
+                boxShadow: "0 8px 24px rgba(15,23,42,0.10)",
               }}
-              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[0.78rem] font-medium text-rose-500 hover:bg-rose-50 transition-colors rounded-lg mx-auto"
             >
-              <LogOut size={14} strokeWidth={2} />
-              Logout
-            </button>
-          </div>
-        )}
+              {/* Header block — mirrors the "manage users" user card layout */}
+              <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100">
+                <div
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white text-[0.7rem] font-bold ring-[2.5px] ring-white"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #4f7df5 0%, #6366f1 100%)",
+                    boxShadow: "0 2px 8px rgba(99,102,241,0.3)",
+                  }}
+                >
+                  {initials}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-[0.82rem] font-semibold text-slate-700 leading-tight">
+                    {resolvedName}
+                  </p>
+                  <span
+                    className="mt-0.5 inline-block rounded-full px-2 py-[1px] text-[0.62rem] font-semibold"
+                    style={{
+                      color: "#4f46e5",
+                      background: "rgba(99,102,241,0.10)",
+                    }}
+                  >
+                    {roleLabel}
+                  </span>
+                </div>
+              </div>
+
+              {/* Division / Section — same card treatment used in ManageUsers,
+                  showing the specific division/section this user belongs to */}
+              {resolvedDivision && resolvedDivision !== "—" && (
+                <div className="px-4 py-3 border-b border-slate-100">
+                  <div className="rounded-lg bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 p-3">
+                    <div className="flex items-center gap-1.5">
+                      <FolderOpen size={13} className="text-indigo-500 shrink-0" />
+                      <p className="text-[0.72rem] font-bold text-slate-800 leading-snug truncate">
+                        {resolvedDivision}
+                      </p>
+                    </div>
+                    {/* Section is only meaningful for section-scoped roles */}
+                    {resolvedRole !== "division_focal" &&
+                      resolvedSection &&
+                      resolvedSection !== "—" && (
+                        <div className="flex items-center gap-1 mt-1.5 ml-0.5">
+                          <div className="w-1 h-1 rounded-full bg-indigo-300 shrink-0" />
+                          <span className="inline-block text-[10.5px] font-semibold text-indigo-600 bg-white px-2 py-0.5 rounded-full border border-indigo-200 truncate">
+                            {resolvedSection}
+                          </span>
+                        </div>
+                      )}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => {
+                  setDropdownOpen(false);
+                  onLogout?.();
+                }}
+                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[0.78rem] font-medium text-rose-500 hover:bg-rose-50 transition-colors"
+              >
+                <LogOut size={14} strokeWidth={2} />
+                Logout
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>
