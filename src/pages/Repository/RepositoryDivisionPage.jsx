@@ -7,6 +7,7 @@ import {
 import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
 import { canAccessDivision } from "../../utils/accessControl";
+import { resolveUserDivisionId } from "../../utils/accessControl";
 
 export default function RepositoryDivisionPage() {
   const navigate = useNavigate();
@@ -20,21 +21,22 @@ export default function RepositoryDivisionPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!divisionSlug || !userProfile) return;
-    console.log("divisionSlug:", divisionSlug, "userProfile:", userProfile);
-    // ── Permission check happens before any data is fetched ──────
-    if (!canAccessDivision(userProfile, divisionSlug)) {
-      navigate(`/repository/restricted/${encodeURIComponent(divisionSlug)}`, {
-        replace: true,
-      });
-      return;
-    }
+  if (!divisionSlug || !userProfile) return;
 
-    async function fetchData() {
-      setLoading(true);
-      setError(null);
+  async function checkAccessAndFetch() {
+    setLoading(true);
+    setError(null);
 
-      // Fetch division + its sections in parallel
+    try {
+      const resolvedDivisionId = await resolveUserDivisionId(userProfile);
+
+      if (!canAccessDivision(userProfile, divisionSlug, resolvedDivisionId)) {
+        navigate(`/repository/restricted/${encodeURIComponent(divisionSlug)}`, {
+          replace: true,
+        });
+        return;
+      }
+
       const [divisionRes, sectionsRes] = await Promise.all([
         supabase
           .from("divisions")
@@ -59,12 +61,15 @@ export default function RepositoryDivisionPage() {
       } else {
         setSections(sectionsRes.data || []);
       }
-
+    } catch (err) {
+      setError(err.message || "Something went wrong while checking access.");
+    } finally {
       setLoading(false);
     }
+  }
 
-    fetchData();
-  }, [divisionSlug, userProfile]);
+  checkAccessAndFetch();
+}, [divisionSlug, userProfile]);
 
   // ── Map sections → shape expected by SectionFolderGrid ────────
   const folders = sections.map((section) => ({

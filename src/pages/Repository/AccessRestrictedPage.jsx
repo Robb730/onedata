@@ -1,6 +1,14 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { ArrowLeft, ShieldX, Lock, User, Shield, CheckCircle, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  ShieldX,
+  Lock,
+  User,
+  Shield,
+  CheckCircle,
+  Users,
+} from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
 
@@ -43,14 +51,20 @@ export default function AccessRestrictedPage() {
       if (isDivisionId) {
         const { data: division, error: divisionError } = await supabase
           .from("divisions")
-          .select("id, name, created_at, updated_at")
+          .select("id, name, created_at")
           .eq("id", decodedName)
           .single();
 
         if (!divisionError && division) {
           name = division.name;
           divisionId = division.id;
-          modifiedAt = division.updated_at || division.created_at;
+          modifiedAt = division.created_at;
+        } else if (divisionError) {
+          console.error(
+            "Division fetch failed:",
+            divisionError.message,
+            divisionError.code,
+          );
         }
 
         const { count } = await supabase
@@ -126,7 +140,10 @@ export default function AccessRestrictedPage() {
           Back
         </button>
         <span className="text-gray-300">›</span>
-        <button onClick={() => navigate("/repository")} className="hover:text-gray-700 transition-colors">
+        <button
+          onClick={() => navigate("/repository")}
+          className="hover:text-gray-700 transition-colors"
+        >
           Repository
         </button>
         <span className="text-gray-300">›</span>
@@ -159,7 +176,7 @@ export default function AccessRestrictedPage() {
               <span>Modified {loading ? "…" : modifiedLabel}</span>
             </span>
             <span className="flex items-center gap-1">
-              <span>{loading ? "…" : folderInfo?.fileCount ?? 0} files</span>
+              <span>{loading ? "…" : (folderInfo?.fileCount ?? 0)} files</span>
             </span>
           </div>
         </div>
@@ -175,20 +192,28 @@ export default function AccessRestrictedPage() {
           </div>
         </div>
 
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Access Restricted</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">
+          Access Restricted
+        </h2>
         <p className="text-sm text-gray-500 mb-1">
           You don't have permission to view the contents of this folder.
         </p>
         <p className="text-xs text-gray-400 max-w-sm mb-8">
-          Your current role ({roleLabel}) does not have access to this folder in the repository flow.
+          Your current role ({roleLabel}) does not have access to this folder in
+          the repository flow.
         </p>
 
         <div className="flex items-center gap-3 mb-8 flex-wrap justify-center">
           <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50">
             <Users size={13} className="text-gray-400" />
             <div className="text-left">
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Managed By</p>
-              <p className="text-sm font-semibold text-gray-800 max-w-[220px] truncate" title={managedByLabel}>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">
+                Managed By
+              </p>
+              <p
+                className="text-sm font-semibold text-gray-800 max-w-[220px] truncate"
+                title={managedByLabel}
+              >
                 {loading ? "—" : managedByLabel}
               </p>
             </div>
@@ -197,7 +222,9 @@ export default function AccessRestrictedPage() {
           <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50">
             <Lock size={13} className="text-red-400" />
             <div className="text-left">
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Permission Level</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">
+                Permission Level
+              </p>
               <p className="text-sm font-semibold text-red-500">No Access</p>
             </div>
           </div>
@@ -205,7 +232,9 @@ export default function AccessRestrictedPage() {
           <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50">
             <Shield size={13} className="text-gray-400" />
             <div className="text-left">
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Your Role</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">
+                Your Role
+              </p>
               <p className="text-sm font-semibold text-gray-800">{roleLabel}</p>
             </div>
           </div>
