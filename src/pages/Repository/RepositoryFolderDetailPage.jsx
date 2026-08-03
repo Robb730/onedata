@@ -7,24 +7,26 @@ import {
   List,
   Download,
   Eye,
-  MoreHorizontal,
   File,
   FileSpreadsheet,
   Image,
   FileType,
   SlidersHorizontal,
   Trash2,
+  Lock,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { RepositoryHeader } from "../../components/RepositoryComponents/RepositoryHeader";
 import RepositoryBackButton from "../../components/RepositoryComponents/RepositoryBackButton";
 import FileEditModal from "../../components/RepositoryComponents/FileEditModal";
+import LockedActionButton from "../../components/RepositoryComponents/LockedActionButton";
 import { useUser } from "../../contexts/UserContext";
+import { getSectionAccessLevel } from "../../utils/accessControl";
 
 const roleDisplayMap = {
   division_focal: "Division Focal Person",
-  sectionFocal: "Section Officer",
-  personnel: "Section Personnel",
+  section_focal: "Section Officer",       // fixed: was "sectionFocal"
+  section_personnel: "Section Personnel", // fixed: was "personnel"
   admin: "Administrator",
 };
 const getRoleDisplay = (role) => roleDisplayMap[role] ?? role;
@@ -34,8 +36,6 @@ function getBucket(category) {
     ? "repository-files"
     : "excel-files";
 }
-
-
 
 function getFileIcon(type) {
   switch (type) {
@@ -109,55 +109,70 @@ export default function RepositoryFolderDetailPage() {
   const [sortBy, setSortBy] = useState("date");
 
   const [deletingId, setDeletingId] = useState(null);
-
   const [downloadingId, setDownloadingId] = useState(null);
 
-async function handleDownloadFile(file) {
-  if (!file.path) {
-    alert("This file has no associated storage path.");
-    return;
+  // ── Access control ──────────────────────────────────────────────
+  const accessLevel = useMemo(
+    () => getSectionAccessLevel(userProfile, section),
+    [userProfile, section],
+  );
+  const canEdit = accessLevel === "full";
+
+  useEffect(() => {
+    if (!section || !userProfile) return;
+    if (getSectionAccessLevel(userProfile, section) === "blocked") {
+      navigate(`/repository/restricted/${encodeURIComponent(section.name)}`, {
+        replace: true,
+      });
+    }
+  }, [section, userProfile, navigate]);
+
+  async function handleDownloadFile(file) {
+    if (!canEdit) return; // defense in depth — button shouldn't be clickable anyway
+    if (!file.path) {
+      alert("This file has no associated storage path.");
+      return;
+    }
+
+    setDownloadingId(file.id);
+
+    try {
+      const bucket = getBucket(file.data_category);
+      const { data: blob, error } = await supabase.storage
+        .from(bucket)
+        .download(file.path);
+
+      if (error) throw new Error(`Download failed: ${error.message}`);
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      await logAuditEvent({
+        action: "Download",
+        fileName: file.name,
+        details: `Downloaded from ${section?.name ?? "unknown section"}`,
+        status: "Success",
+      });
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Something went wrong while downloading the file.");
+
+      await logAuditEvent({
+        action: "Download",
+        fileName: file.name,
+        details: err.message,
+        status: "Failed",
+      });
+    } finally {
+      setDownloadingId(null);
+    }
   }
-
-  setDownloadingId(file.id);
-
-  try {
-    const bucket = getBucket(file.data_category);
-    const { data: blob, error } = await supabase.storage
-      .from(bucket)
-      .download(file.path);
-
-    if (error) throw new Error(`Download failed: ${error.message}`);
-
-    // Trigger a browser download from the blob
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = file.name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-
-    await logAuditEvent({
-      action: "Download",
-      fileName: file.name,
-      details: `Downloaded from ${section?.name ?? "unknown section"}`,
-      status: "Success",
-    });
-  } catch (err) {
-    console.error(err);
-    alert(err.message || "Something went wrong while downloading the file.");
-
-    await logAuditEvent({
-      action: "Download",
-      fileName: file.name,
-      details: err.message,
-      status: "Failed",
-    });
-  } finally {
-    setDownloadingId(null);
-  }
-}
 
   const logAuditEvent = async ({
     action,
@@ -176,8 +191,8 @@ async function handleDownloadFile(file) {
     if (error) console.error("Audit log insert failed:", error);
   };
 
-  // delete files
   async function handleDeleteFile(file) {
+    if (!canEdit) return; // defense in depth
     const confirmed = window.confirm(
       `Delete "${file.name}"? This will permanently remove the file from storage and cannot be undone.`,
     );
@@ -186,10 +201,9 @@ async function handleDownloadFile(file) {
     setDeletingId(file.id);
 
     try {
-      // 1. Remove the object from Supabase Storage first
       if (file.path) {
         const { error: storageError } = await supabase.storage
-          .from("excel-files") // ← replace with your actual bucket name
+          .from("excel-files")
           .remove([file.path]);
 
         if (storageError) {
@@ -197,7 +211,6 @@ async function handleDownloadFile(file) {
         }
       }
 
-      // 2. Remove the row from the files table
       const { error: dbError } = await supabase
         .from("files")
         .delete()
@@ -207,7 +220,6 @@ async function handleDownloadFile(file) {
         throw new Error(`Database deletion failed: ${dbError.message}`);
       }
 
-      // 3. Update local state so the UI reflects the deletion immediately
       setAllFiles((prev) => prev.filter((f) => f.id !== file.id));
       await logAuditEvent({
         action: "Delete",
@@ -230,100 +242,92 @@ async function handleDownloadFile(file) {
     }
   }
 
-  // ── Fetch section → division → files ──────────────────────────
-
   async function fetchData() {
-  setLoading(true);
-  setError(null);
+    setLoading(true);
+    setError(null);
 
-  const { data: sectionData, error: sectionError } = await supabase
-    .from("sections")
-    .select("id, name, managed_by, division_id")
-    .eq("name", decodedName)
-    .single();
+    const { data: sectionData, error: sectionError } = await supabase
+      .from("sections")
+      .select("id, name, managed_by, division_id")
+      .eq("name", decodedName)
+      .single();
 
-  if (sectionError) {
-    setError(sectionError.message);
-    setLoading(false);
-    return;
-  }
-
-  setSection(sectionData);
-
-  const { data: divisionData, error: divisionError } = await supabase
-    .from("divisions")
-    .select("id, name, managed_by")
-    .eq("id", sectionData.division_id)
-    .single();
-
-  if (!divisionError) setDivision(divisionData);
-
-  const { data: filesData } = await supabase
-    .from("files")
-    .select("*")
-    .eq("section_id", sectionData.id)
-    .order("created_at", { ascending: false });
-
-  // ── Resolve uploader UUIDs → names ──────────────────────────
-  // uploaded_by on `files` stores a user UUID, not a display name.
-  // Collect the distinct UUIDs actually present, look them up once
-  // in `users`, and build a lookup map — avoids firing one query
-  // per file row.
-  const uploaderIds = [
-    ...new Set((filesData || []).map((f) => f.uploaded_by).filter(Boolean)),
-  ];
-
-  let uploaderMap = {};
-  if (uploaderIds.length > 0) {
-    const { data: uploaderRows, error: uploaderError } = await supabase
-      .from("users")
-      .select("id, full_name")
-      .in("id", uploaderIds);
-
-    if (uploaderError) {
-      console.error("Failed to resolve uploader names:", uploaderError.message);
-    } else {
-      uploaderMap = Object.fromEntries(
-        uploaderRows.map((u) => [u.id, u.full_name]),
-      );
+    if (sectionError) {
+      setError(sectionError.message);
+      setLoading(false);
+      return;
     }
+
+    setSection(sectionData);
+
+    const { data: divisionData, error: divisionError } = await supabase
+      .from("divisions")
+      .select("id, name, managed_by")
+      .eq("id", sectionData.division_id)
+      .single();
+
+    if (!divisionError) setDivision(divisionData);
+
+    const { data: filesData } = await supabase
+      .from("files")
+      .select("*")
+      .eq("section_id", sectionData.id)
+      .order("created_at", { ascending: false });
+
+    const uploaderIds = [
+      ...new Set((filesData || []).map((f) => f.uploaded_by).filter(Boolean)),
+    ];
+
+    let uploaderMap = {};
+    if (uploaderIds.length > 0) {
+      const { data: uploaderRows, error: uploaderError } = await supabase
+        .from("users")
+        .select("id, full_name")
+        .in("id", uploaderIds);
+
+      if (uploaderError) {
+        console.error("Failed to resolve uploader names:", uploaderError.message);
+      } else {
+        uploaderMap = Object.fromEntries(
+          uploaderRows.map((u) => [u.id, u.full_name]),
+        );
+      }
+    }
+
+    const mapped = (filesData || []).map((f) => ({
+      id: f.id,
+      name: f.file_name,
+      type: inferType(f.file_type, f.file_name),
+      size: f.file_size ? `${(f.file_size / 1024).toFixed(1)} KB` : "—",
+      date: f.created_at
+        ? new Date(f.created_at).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
+        : "—",
+      uploader: uploaderMap[f.uploaded_by] ?? "Unknown",
+      status: f.is_dashboard_source ? "Verified" : "For Review",
+      path: f.file_path,
+      data_category: f.data_category,
+      school_year: f.school_year,
+    }));
+
+    setAllFiles(mapped);
+    setLoading(false);
   }
 
-  const mapped = (filesData || []).map((f) => ({
-    id: f.id,
-    name: f.file_name,
-    type: inferType(f.file_type, f.file_name),
-    size: f.file_size ? `${(f.file_size / 1024).toFixed(1)} KB` : "—",
-    date: f.created_at
-      ? new Date(f.created_at).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })
-      : "—",
-    uploader: uploaderMap[f.uploaded_by] ?? "Unknown", // ← resolved name, not raw UUID
-    status: f.is_dashboard_source ? "Verified" : "For Review",
-    path: f.file_path,
-    data_category: f.data_category,
-    school_year: f.school_year,
-  }));
-
-  setAllFiles(mapped);
-  setLoading(false);
-}
   useEffect(() => {
     if (!decodedName) return;
     fetchData();
   }, [decodedName]);
 
-  // ── Back target uses real division id ─────────────────────────
   const backTarget = division
     ? `/repository/divisions/${division.id}`
     : "/repository";
 
   const backLabel = division?.name ?? "Repository";
 
-  // ── Filter + sort files ───────────────────────────────────────
   const filtered = useMemo(() => {
     return allFiles
       .filter((file) => {
@@ -366,6 +370,15 @@ async function handleDownloadFile(file) {
         title={decodedName}
         subtitle={`${allFiles.length} files · Last modified ${allFiles[0]?.date ?? "—"}`}
       />
+
+      {/* ── Locked-access banner ────────────────────────────────── */}
+      {accessLevel === "locked" && (
+        <div className="mb-6 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+          <Lock size={14} className="shrink-0" />
+          You can view files in this section, but view, download, edit, and
+          delete are limited to your assigned section.
+        </div>
+      )}
 
       {/* ── Stats row ───────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-3">
@@ -540,31 +553,40 @@ async function handleDownloadFile(file) {
                       {file.uploader}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => setEditingFile(file)}
-                      className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
-                      title="Preview"
-                    >
-                      <Eye size={14} />
-                    </button>
-                    <button
-                      onClick={() => handleDownloadFile(file)}
-                      disabled={downloadingId === file.id}
-                      className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
-                      title="Download"
-                    >
-                      <Download size={14} />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteFile(file)}
-                      disabled={deletingId === file.id}
-                      className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Delete"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+
+                  {canEdit ? (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => setEditingFile(file)}
+                        className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
+                        title="Preview"
+                      >
+                        <Eye size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDownloadFile(file)}
+                        disabled={downloadingId === file.id}
+                        className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
+                        title="Download"
+                      >
+                        <Download size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteFile(file)}
+                        disabled={deletingId === file.id}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <LockedActionButton label="View — outside your section" />
+                      <LockedActionButton label="Download — outside your section" />
+                      <LockedActionButton label="Delete — outside your section" />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -596,37 +618,55 @@ async function handleDownloadFile(file) {
                   >
                     {file.status}
                   </span>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDownloadFile(file);
-                      }}
-                      disabled={downloadingId === file.id}
-                      className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
-                    >
-                      <Download size={12} />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingFile(file);
-                      }}
-                      className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
-                    >
-                      <Eye size={12} />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation(); // prevent the card's own onClick (if you add one later) from firing
-                        handleDeleteFile(file);
-                      }}
-                      disabled={deletingId === file.id}
-                      className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
+
+                  {canEdit ? (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadFile(file);
+                        }}
+                        disabled={downloadingId === file.id}
+                        className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
+                      >
+                        <Download size={12} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingFile(file);
+                        }}
+                        className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
+                      >
+                        <Eye size={12} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteFile(file);
+                        }}
+                        disabled={deletingId === file.id}
+                        className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-1">
+                      <LockedActionButton
+                        label="Download — outside your section"
+                        size={12}
+                      />
+                      <LockedActionButton
+                        label="View — outside your section"
+                        size={12}
+                      />
+                      <LockedActionButton
+                        label="Delete — outside your section"
+                        size={12}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -640,10 +680,8 @@ async function handleDownloadFile(file) {
         uploaderName={editingFile?.uploader}
         onSaved={() => {
           setEditingFile(null);
-          // re-fetch so size/timestamp refresh in the list
           if (decodedName) {
-            // simplest option: trigger your existing fetchData by re-running the effect
-            // e.g. call a shared fetchFiles() function, or just window.location.reload() for now
+            fetchData();
           }
         }}
       />

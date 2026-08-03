@@ -5,10 +5,13 @@ import {
   SectionFolderGrid,
 } from "../../components/RepositoryComponents";
 import { supabase } from "../../lib/supabaseClient";
+import { useUser } from "../../contexts/UserContext";
+import { canAccessDivision } from "../../utils/accessControl";
 
 export default function RepositoryDivisionPage() {
   const navigate = useNavigate();
   const { divisionSlug } = useParams(); // this is the division id
+  const { userProfile } = useUser();
 
   // ── Supabase state ─────────────────────────────────────────────
   const [division, setDivision] = useState(null);
@@ -17,7 +20,15 @@ export default function RepositoryDivisionPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!divisionSlug) return;
+    if (!divisionSlug || !userProfile) return;
+    console.log("divisionSlug:", divisionSlug, "userProfile:", userProfile);
+    // ── Permission check happens before any data is fetched ──────
+    if (!canAccessDivision(userProfile, divisionSlug)) {
+      navigate(`/repository/restricted/${encodeURIComponent(divisionSlug)}`, {
+        replace: true,
+      });
+      return;
+    }
 
     async function fetchData() {
       setLoading(true);
@@ -53,7 +64,7 @@ export default function RepositoryDivisionPage() {
     }
 
     fetchData();
-  }, [divisionSlug]);
+  }, [divisionSlug, userProfile]);
 
   // ── Map sections → shape expected by SectionFolderGrid ────────
   const folders = sections.map((section) => ({
