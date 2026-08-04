@@ -25,7 +25,12 @@ body {
 }
 
 /* Headings — slightly tighter line-height */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   line-height: 1.25;
   letter-spacing: -0.01em;
 }
@@ -36,6 +41,25 @@ a {
 }
 
 /* Inputs inherit font */
-input, textarea, select, button {
+input,
+textarea,
+select,
+button {
   font-family: inherit;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-toast-in {
+  animation: toastIn 250ms ease-out;
 }
