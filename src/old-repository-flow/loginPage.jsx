@@ -147,12 +147,12 @@ function LoginForm() {
   };
 
   return (
-    <div className="flex-1 flex flex-col justify-between px-14 pt-12 pb-8 bg-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+    <div className="flex-1 flex flex-col justify-between px-14 pt-12 pb-8 bg-white" style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       <div className="flex-1 flex flex-col justify-center">
 
         {/* Heading */}
         <h1 className="text-center text-[33px] font-bold mb-1.5 tracking-tight"
-          style={{ fontFamily: "'Montserrat', sans-serif", color: "#1A73E8" }}>
+          style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", color: "#1A73E8" }}>
           Welcome!
         </h1>
         <p className="text-center text-[14.5px] mb-7" style={{ color: "#4A5568" }}>

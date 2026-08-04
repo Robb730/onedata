@@ -1,10 +1,9 @@
 @import "tailwindcss";
 
-/* ── Global Poppins font override ────────────────────────── */
+/* ── Global Inter font override ────────────────────────── */
 @theme {
-  --font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    "Noto Sans", sans-serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
 }
 
 /* ── Base typography ─────────────────────────────────────── */

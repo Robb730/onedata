@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X, ArrowRight } from "lucide-react";
-import logo from "../../assets/one-data-logo.png";
+import logo from "../../assets/one_data-icon-v3.svg";
 
 const navItems = [
   { label: "Home", href: "#home" },
