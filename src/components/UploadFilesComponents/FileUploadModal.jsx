@@ -157,6 +157,7 @@ export default function FileUploadModal({
                   <option value="seats">Seats Inventory (Parse & Store Data)</option>
                   <option value="teachers_inventory">Teachers Inventory (Parse & Store Data)</option>
                   <option value="textbook_inventory">Textbooks Inventory (Parse & Store Data)</option>
+                  <option value="cespes">CESPES (Parse & Store Data)</option>
                 </select>
               </div>
             </div>

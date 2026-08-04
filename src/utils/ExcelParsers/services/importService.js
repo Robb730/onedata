@@ -36,6 +36,7 @@ import { parseStudents }        from "../parsers/studentsParser";
 import { parseSeatsFile }       from "../parsers/seatsParser";
 import { parseTeachersInventoryFile } from "../parsers/teachersInventoryParser";
 import { parseTextbooksInventoryFile } from "../parsers/textbooksInventoryParser";
+import { parseCespesFile } from "../parsers/cespesParser";
 
 // ── Supported import types ────────────────────────────────────────────────────
 //
@@ -73,6 +74,11 @@ export const IMPORT_TYPES = {
     label:     "Textbooks Inventory",
     strategy:  "file",
     parseFile: parseTextbooksInventoryFile,
+  },
+  cespes: {
+    label:     "CESPES",
+    strategy:  "file",
+    parseFile: parseCespesFile,
   },
   schools: {
     label:    "Number of Schools",
