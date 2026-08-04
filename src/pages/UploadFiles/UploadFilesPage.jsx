@@ -453,17 +453,22 @@ export default function UploadFilesPage({
             school_id: r.schoolId,
             school_name: r.schoolName,
             division: r.division,
-            kinder_needs: r.kinderNeeds,
-            kinder_excess: r.kinderExcess,
-            g1g6_needs: r.g1g6Needs,
-            g1g6_excess: r.g1g6Excess,
-            sned_needs: r.snedNeeds,
-            sned_excess: r.snedExcess,
             pprd_checker: r.pprdChecker,
             remarks: r.remarks,
             school_year: schoolYear,
             uploaded_by: uploaderName,
           };
+          if (prefix === "textbooks") {
+            base.textbook_needs = r.textbookNeeds;
+            base.textbook_excess = r.textbookExcess;
+          } else {
+            base.kinder_needs = r.kinderNeeds;
+            base.kinder_excess = r.kinderExcess;
+            base.g1g6_needs = r.g1g6Needs;
+            base.g1g6_excess = r.g1g6Excess;
+            base.sned_needs = r.snedNeeds;
+            base.sned_excess = r.snedExcess;
+          }
           if (prefix === "teachers") {
             base.prev_total_teachers_inventory = r.prevTotalTeachersInventory;
             base.prev_needs = r.prevNeeds;
@@ -480,9 +485,6 @@ export default function UploadFilesPage({
             base.prev_g1g6_excess = r.prevG1g6Excess;
             base.prev_sned_needs = r.prevSnedNeeds;
             base.prev_sned_excess = r.prevSnedExcess;
-          } else if (prefix === "textbooks") {
-            base.textbook_needs = r.textbookNeeds;
-            base.textbook_excess = r.textbookExcess;
           }
           return base;
         });
