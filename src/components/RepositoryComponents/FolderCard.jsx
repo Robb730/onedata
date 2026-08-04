@@ -1,3 +1,4 @@
+//DVISION FOLDER CARD COMPONENT
 import { User, FolderOpen } from "lucide-react";
 import { FolderColorPicker } from "./FolderColorPicker";
 
@@ -8,6 +9,7 @@ import { FolderColorPicker } from "./FolderColorPicker";
  * @param {string}   name
  * @param {number}   [sectionCount]
  * @param {string}   owner
+ * @param {string[]} [managers]    — list of people managing this folder
  * @param {string}   iconColor     — Tailwind text color class
  * @param {string}   iconBgColor   — Tailwind bg color class
  * @param {string}   [colorId]     — color preset id for the picker
@@ -15,10 +17,60 @@ import { FolderColorPicker } from "./FolderColorPicker";
  * @param {function} [onClick]
  * @param {boolean}  [locked=false]
  */
+
+const AVATAR_PALETTE = [
+  { bg: "bg-emerald-100", text: "text-emerald-700" },
+  { bg: "bg-sky-100", text: "text-sky-700" },
+  { bg: "bg-amber-100", text: "text-amber-700" },
+  { bg: "bg-violet-100", text: "text-violet-700" },
+  { bg: "bg-rose-100", text: "text-rose-700" },
+  { bg: "bg-cyan-100", text: "text-cyan-700" },
+];
+
+function hashString(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function getAvatarColors(identifier) {
+  return AVATAR_PALETTE[hashString(identifier) % AVATAR_PALETTE.length];
+}
+
+function getInitials(identifier) {
+  const namePart = identifier.includes("@") ? identifier.split("@")[0] : identifier;
+  const pieces = namePart.split(/[.\s_-]+/).filter(Boolean);
+  if (pieces.length >= 2) {
+    return (pieces[0][0] + pieces[1][0]).toUpperCase();
+  }
+  return namePart.slice(0, 2).toUpperCase();
+}
+
+function ManagerRow({ identifier }) {
+  const { bg, text } = getAvatarColors(identifier);
+  return (
+    <div className="flex items-center gap-2 py-1">
+      <div
+        className={`${bg} ${text} rounded-full flex items-center justify-center font-semibold shrink-0`}
+        style={{ width: 20, height: 20, fontSize: 8 }}
+      >
+        {getInitials(identifier)}
+      </div>
+      <span className="text-xs font-medium text-slate-800 break-words leading-snug">
+        {identifier}
+      </span>
+    </div>
+  );
+}
+
 export function FolderCard({
   name,
   sectionCount,
   owner,
+  managers,
   iconColor = "text-slate-700",
   iconBgColor = "bg-slate-50",
   colorId,
@@ -31,6 +83,8 @@ export function FolderCard({
     e.stopPropagation();
     if (onClick) onClick();
   };
+
+  const managerList = managers?.length ? managers : owner ? [owner] : [];
 
   return (
     <div
@@ -88,16 +142,23 @@ export function FolderCard({
         </div>
       </div>
 
-      {/* Detail rows */}
+      {/* Managed by — its own block, full names always visible */}
       <div className="mt-auto">
-        <div className="surface-secondary rounded-lg p-2 transition-colors">
-          <div className="flex items-center gap-1.5 text-sm">
-            <User size={12} className="text-slate-400 shrink-0" />
-            <span className="text-slate-500 text-xs">Owner</span>
-            <span className="ml-auto font-medium text-slate-800 text-xs">
-              {owner}
-            </span>
+        <div className="surface-secondary rounded-lg px-2.5 py-2 transition-colors">
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mb-0.5">
+            <User size={11} className="text-slate-400 shrink-0" />
+            <span>{managerList.length > 1 ? "Managed by" : "Managed by"}</span>
           </div>
+
+          {managerList.length === 0 ? (
+            <p className="text-xs text-slate-400 italic pl-0.5">Unassigned</p>
+          ) : (
+            <div className="flex flex-col divide-y divide-slate-200/60">
+              {managerList.map((m) => (
+                <ManagerRow key={m} identifier={m} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

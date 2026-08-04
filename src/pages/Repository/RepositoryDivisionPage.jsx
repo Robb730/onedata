@@ -1,3 +1,4 @@
+// PINAPAKITA DITO YUNG MGA SECTION FOLDERS; ETO YUNG LOOB NG DIVISION FOLDER
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
@@ -19,6 +20,8 @@ export default function RepositoryDivisionPage() {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [managersBySection, setManagersBySection] = useState({});
 
   useEffect(() => {
   if (!divisionSlug || !userProfile) return;
@@ -60,6 +63,30 @@ export default function RepositoryDivisionPage() {
         setError((prev) => prev || sectionsRes.error.message);
       } else {
         setSections(sectionsRes.data || []);
+
+        const sectionIds = (sectionsRes.data || []).map((s) => s.id);
+
+        if (sectionIds.length > 0) {
+          const { data: managersData, error: managersError } = await supabase
+            .from("users")
+            .select("full_name, section_id")
+            .in("role", ["section_focal", "section_personnel"])
+            .eq("is_active", true)
+            .in("section_id", sectionIds);
+
+          if (managersError) {
+            setError((prev) => prev || managersError.message);
+          } else {
+            const grouped = {};
+            (managersData || []).forEach(({ section_id, full_name }) => {
+              if (!grouped[section_id]) grouped[section_id] = [];
+              grouped[section_id].push(full_name);
+            });
+            setManagersBySection(grouped);
+          }
+        } else {
+          setManagersBySection({});
+        }
       }
     } catch (err) {
       setError(err.message || "Something went wrong while checking access.");
@@ -69,15 +96,19 @@ export default function RepositoryDivisionPage() {
   }
 
   checkAccessAndFetch();
-}, [divisionSlug, userProfile]);
+}, [divisionSlug, userProfile?.id, userProfile?.role, userProfile?.division_id, userProfile?.section_id]);
 
   // ── Map sections → shape expected by SectionFolderGrid ────────
-  const folders = sections.map((section) => ({
+  const folders = sections.map((section) => {
+  const managers = managersBySection[section.id] || [];
+  return {
     id: section.id,
     name: section.name,
-    owner: section.managed_by,
+    managers,                                          // full list, if SectionFolderCard wants it
+    owner: managers.length ? managers.join(", ") : "Unassigned",
     route: `/repository/folder/${encodeURIComponent(section.name)}`,
-  }));
+  };
+});
 
   return (
     <div className="p-8 bg-linear-to-b from-slate-50 to-white min-h-screen">

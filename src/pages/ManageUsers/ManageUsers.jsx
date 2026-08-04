@@ -34,7 +34,7 @@ export default function ManageUsers() {
   const [successEmail, setSuccessEmail] = useState("");
   const [deactivatingUser, setDeactivatingUser] = useState(null);
   const [activatingUser, setActivatingUser] = useState(null);
-  const { userProfile } = useUser();
+  const { userProfile, refreshProfile } = useUser();
   const [showToast, setShowToast] = useState(false);
 
   // ─── Fetch users from Supabase ───────────────────────────────
@@ -146,6 +146,10 @@ export default function ManageUsers() {
       alert("Error updating user: " + error.message);
       return;
     }
+
+    if (userId === userProfile?.id) {
+    await refreshProfile();
+  }
     fetchUsers(); // refresh from DB
   };
 
