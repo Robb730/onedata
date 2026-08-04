@@ -13,7 +13,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
 
 const roleDisplayMap = {
-  admin: "Administrator",
+  administrator: "Administrator",
   division_focal: "Division Officer",
   section_focal: "Section Focal Officer",
   section_personnel: "Section Personnel",
