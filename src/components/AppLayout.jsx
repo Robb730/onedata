@@ -23,7 +23,7 @@ import { ChangePasswordModal } from "./Modals/ChangePasswordModal";
 export function AppLayout({
   children,
 }) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
   const { userProfile, setUserProfile } = useUser();
 
@@ -42,7 +42,7 @@ export function AppLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#eef2f7" }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: "#f0f4f9" }}>
 
       <ChangePasswordModal
         isOpen={mustChange}

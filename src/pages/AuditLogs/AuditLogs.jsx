@@ -56,7 +56,7 @@ export default function AuditLogs() {
         <style>
           * { box-sizing: border-box; }
           body {
-            font-family: 'Segoe UI', Arial, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: #f1f5f9;
             color: #1e293b;
             padding: 32px;

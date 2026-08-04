@@ -32,7 +32,7 @@ export async function resolveUserDivisionId(userProfile) {
 }
 
 export const ROLES = {
-  ADMIN: "admin",
+  ADMIN: "administrator",
   DIVISION_FOCAL: "division_focal",
   SECTION_FOCAL: "section_focal",     // fixed: was "sectionFocal"
   PERSONNEL: "section_personnel",     // fixed: was "personnel"
