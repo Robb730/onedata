@@ -433,7 +433,7 @@ export default function BaliwagExtractor() {
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f8fafc", fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#f8fafc", fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
 
       {/* ── top bar ── */}
       <div style={{ background: "white", borderBottom: "1px solid #e2e8f0", padding: "0 32px", display: "flex", alignItems: "stretch", gap: 0 }}>

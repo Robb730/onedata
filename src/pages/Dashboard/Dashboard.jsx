@@ -1,11 +1,9 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
-import { TrendingUp, Info, BarChart3, Target, FileText, BookOpen, School, Users, GraduationCap } from "lucide-react";
+import { TrendingUp, Info, BarChart3, Target, FileText, BookOpen, School, Users, GraduationCap, CalendarDays, ChevronDown, ArrowLeftRight } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import {
-  DashboardHeader,
   DashboardOverview,
-  DashboardSection,
   DashboardFilters,
   DashboardAccordion,
   DashboardGrid,
@@ -401,24 +399,68 @@ export default function Dashboard() {
   }, [selectedYear]);
 
   return (
-    <div className="min-h-screen">
-      <div className="mx-auto max-w-[1100px] px-5 py-7">
-        {/* ── Header ──────────────────────────────────── */}
-        <DashboardHeader
-          selectedYear={selectedYear}
-          onYearChange={setSelectedYear}
-          onCompare={() => { }}
-        />
+    <div className="min-h-screen bg-slate-50/40">
+      <div className="mx-auto max-w-[1100px] px-5 py-8">
 
-        {/* ── Title ───────────────────────────────────── */}
-        <DashboardSection title="Dashboard" subtitle={`SY ${selectedYear}`}>
-          {/* ── Overview KPIs ────────────────────────── */}
-          <DashboardOverview data={overviewData} selectedYear={selectedYear} />
-        </DashboardSection>
+        {/* ── Page header ─────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-7">
+          <div>
+            <h1 className="text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
+              Dashboard
+            </h1>
+            <p className="text-[0.78rem] text-slate-400 font-medium mt-1">
+              SY {selectedYear} · SDO Baliwag Division
+            </p>
+          </div>
 
-        <SectionDivider />
+          <div className="flex items-center gap-2.5 shrink-0 pt-1">
+            {/* Year selector */}
+            <div
+              className="relative flex items-center gap-1.5 rounded-[10px] border border-slate-200/80 bg-white px-3 py-[7px]"
+              style={{ boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }}
+            >
+              <CalendarDays size={13} className="text-slate-400 shrink-0" />
+              <select
+                id="dashboard-year-select"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="bg-transparent text-[0.78rem] font-semibold text-slate-700 outline-none cursor-pointer pr-4 appearance-none"
+              >
+                {["2025-2026", "2024-2025", "2023-2024", "2022-2023"].map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              <ChevronDown size={12} className="text-slate-400 pointer-events-none absolute right-2.5" />
+            </div>
 
-        {/* ── Performance Indicators (accordion) ─────── */}
+            {/* Compare button */}
+            <button
+              id="dashboard-compare-btn"
+              onClick={() => { }}
+              className="flex items-center gap-1.5 rounded-[10px] bg-blue-500 px-4 py-[7px] text-[0.78rem] font-semibold text-white hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer"
+              style={{ boxShadow: "0 2px 8px rgba(59,130,246,0.28)" }}
+            >
+              <ArrowLeftRight size={13} />
+              Compare
+            </button>
+          </div>
+        </div>
+
+        {/* ── Overview KPIs ───────────────────────────────── */}
+        <DashboardOverview data={overviewData} selectedYear={selectedYear} />
+
+        {/* ── Data Categories header ──────────────────────── */}
+        <div className="flex items-baseline justify-between mt-8 mb-4">
+          <div>
+            <h3 className="text-[0.9rem] font-bold text-slate-700">Data Categories</h3>
+            <p className="text-[0.7rem] text-slate-400 mt-0.5">
+              Expand a section to view detailed reports
+            </p>
+          </div>
+          <span className="text-[0.72rem] font-medium text-slate-400">5 sections</span>
+        </div>
+
+        {/* ── Performance Indicators ─────────────────────── */}
         <DashboardAccordion
           icon={
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50">
@@ -427,8 +469,21 @@ export default function Dashboard() {
           }
           title="Performance Indicators"
           subtitle="Enrollment · Dropout · Promotion · Cohort Survival"
+          subtitleColor="#4f7df5"
+          accentBg="rgba(239,246,255,0.7)"
           defaultOpen
         >
+          {!loading && enrollmentSummary.total === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="mb-3 opacity-25 text-indigo-400">
+                <BarChart3 size={36} strokeWidth={1.5} />
+              </div>
+              <p className="text-[0.78rem] font-semibold" style={{ color: "rgba(79,125,245,0.6)" }}>
+                No data available for SY {selectedYear}
+              </p>
+            </div>
+          ) : (
+            <>
           {/* Enrollment summary */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
@@ -545,11 +600,13 @@ export default function Dashboard() {
               message="The overall dropout rate has decreased by 0.28% over the past three years, indicating positive retention outcomes."
             />
           </div>
+            </>
+          )}
         </DashboardAccordion>
 
-        <div className="mt-4" />
+        <div className="mt-3" />
 
-        {/* ── CESPES (accordion) ──────────────────────── */}
+        {/* ── CESPES ────────────────────────────────────── */}
         <DashboardAccordion
           icon={
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50">
@@ -558,6 +615,8 @@ export default function Dashboard() {
           }
           title="CESPES"
           subtitle="Part I Operations · Program Targets & Accomplishments"
+          subtitleColor="#e11d48"
+          accentBg="rgba(255,241,242,0.7)"
         >
           <InsightCard
             icon={<Info size={14} />}
@@ -588,9 +647,9 @@ export default function Dashboard() {
           </div>
         </DashboardAccordion>
 
-        <div className="mt-4" />
+        <div className="mt-3" />
 
-        {/* ── Accomplishment Report (accordion) ──────── */}
+        {/* ── Accomplishment Report ─────────────────────── */}
         <DashboardAccordion
           icon={
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50">
@@ -599,15 +658,22 @@ export default function Dashboard() {
           }
           title="Accomplishment Report"
           subtitle="Program targets vs. actual performance"
+          subtitleColor="#10b981"
+          accentBg="rgba(236,253,245,0.7)"
         >
-          <div className="flex items-center justify-center py-10 text-slate-400 text-[0.8rem]">
-            Accomplishment data will appear here once uploaded.
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="mb-3 opacity-25 text-emerald-500">
+              <FileText size={36} strokeWidth={1.5} />
+            </div>
+            <p className="text-[0.78rem] font-semibold" style={{ color: "rgba(16,185,129,0.55)" }}>
+              No data available for SY {selectedYear}
+            </p>
           </div>
         </DashboardAccordion>
 
-        <div className="mt-4" />
+        <div className="mt-3" />
 
-        {/* ── Crucial Resources (accordion) ──────────── */}
+        {/* ── Crucial Resources ─────────────────────────── */}
         <DashboardAccordion
           icon={
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50">
@@ -616,7 +682,20 @@ export default function Dashboard() {
           }
           title="Crucial Resources"
           subtitle="No. of Teachers · Classrooms · Seats · Textbooks"
+          subtitleColor="#d97706"
+          accentBg="rgba(255,251,235,0.7)"
         >
+          {!resources.teachers.loading && resources.teachers.total === 0 && resources.classrooms.total === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="mb-3 opacity-25 text-amber-500">
+                <School size={36} strokeWidth={1.5} />
+              </div>
+              <p className="text-[0.78rem] font-semibold" style={{ color: "rgba(217,119,6,0.55)" }}>
+                No data available for SY {selectedYear}
+              </p>
+            </div>
+          ) : (
+            <>
           <div className="flex items-center justify-end mb-4">
             <DashboardFilters
               options={["Summary", "Charts", "By Level", "Breakdown"]}
@@ -781,11 +860,13 @@ export default function Dashboard() {
               />
             </div>
           )}
+            </>
+          )}
         </DashboardAccordion>
 
-        <div className="mt-4" />
+        <div className="mt-3" />
 
-        {/* ── QBEDP (accordion) ──────────────────────── */}
+        {/* ── QBEDP ─────────────────────────────────────── */}
         <DashboardAccordion
           icon={
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50">
@@ -794,15 +875,22 @@ export default function Dashboard() {
           }
           title="QBEDP"
           subtitle="Quality Basic Education Development Plan"
+          subtitleColor="#6366f1"
+          accentBg="rgba(238,242,255,0.7)"
         >
-          <div className="flex items-center justify-center py-10 text-slate-400 text-[0.8rem]">
-            QBEDP data will appear here once uploaded.
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="mb-3 opacity-25 text-indigo-400">
+              <BarChart3 size={36} strokeWidth={1.5} />
+            </div>
+            <p className="text-[0.78rem] font-semibold" style={{ color: "rgba(99,102,241,0.55)" }}>
+              No data available for SY {selectedYear}
+            </p>
           </div>
         </DashboardAccordion>
 
-        <div className="mt-4" />
+        <div className="mt-3" />
 
-        {/* ── AIP (accordion) ────────────────────────── */}
+        {/* ── AIP ───────────────────────────────────────── */}
         <DashboardAccordion
           icon={
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-50">
@@ -811,9 +899,16 @@ export default function Dashboard() {
           }
           title="AIP"
           subtitle="Annual Implementation Plan"
+          subtitleColor="#ef4444"
+          accentBg="rgba(254,242,242,0.7)"
         >
-          <div className="flex items-center justify-center py-10 text-slate-400 text-[0.8rem]">
-            AIP data will appear here once uploaded.
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="mb-3 opacity-25 text-red-400">
+              <BookOpen size={36} strokeWidth={1.5} />
+            </div>
+            <p className="text-[0.78rem] font-semibold" style={{ color: "rgba(239,68,68,0.55)" }}>
+              No data available for SY {selectedYear}
+            </p>
           </div>
         </DashboardAccordion>
 

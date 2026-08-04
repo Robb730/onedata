@@ -2,90 +2,95 @@ import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
-  FolderOpen,
+  Database,
   Users,
   Upload,
-  ScrollText,
-  X,
+  ClipboardList,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
-import logo from "../assets/one-data-logo.png";
+import iconSvg from "../assets/one_data-icon-v3.svg";
 
 const navItems = [
-  { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-  { label: "Repository", path: "/repository", icon: FolderOpen },
-  { label: "Manage Users", path: "/manage-user", icon: Users },
-  { label: "Upload Files", path: "/upload-files", icon: Upload },
-  { label: "Audit Logs", path: "/audit-logs", icon: ScrollText },
+  { label: "Dashboard",    path: "/dashboard",    icon: LayoutDashboard },
+  { label: "Repository",   path: "/repository",   icon: Database        },
+  { label: "Manage Users", path: "/manage-user",  icon: Users           },
+  { label: "Upload Files", path: "/upload-files", icon: Upload          },
+  { label: "Audit Logs",   path: "/audit-logs",   icon: ClipboardList   },
 ];
 
 /**
  * Sidebar — Left-side navigation panel.
  *
- * @param {boolean}  collapsed    — whether sidebar is collapsed (mobile)
- * @param {function} onToggle     — toggle collapsed state
+ * @param {boolean}  collapsed — icon-only mode when true
+ * @param {function} onToggle  — toggle collapsed state
  */
 export function Sidebar({ collapsed = false, onToggle }) {
   const location = useLocation();
 
   return (
     <>
-      {/* Mobile overlay */}
+      {/* Mobile backdrop */}
       {!collapsed && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/25 backdrop-blur-[3px] lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-[2px] lg:hidden"
           onClick={onToggle}
         />
       )}
 
       <aside
         className={`
-          fixed top-0 left-0 z-50 flex h-screen w-[260px] flex-col bg-white
-          transition-transform duration-300 ease-in-out
-          lg:translate-x-0 lg:static lg:z-auto
-          ${collapsed ? "-translate-x-full" : "translate-x-0"}
+          relative flex h-screen flex-col bg-white shrink-0
+          transition-[width] duration-300 ease-in-out
+          ${collapsed ? "w-[68px]" : "w-[240px]"}
         `}
         style={{
-          borderRight: "1px solid rgba(226,232,240,0.6)",
-          boxShadow: "1px 0 12px rgba(15,23,42,0.03)",
+          borderRight: "1px solid rgba(226,232,240,0.8)",
+          boxShadow: "1px 0 20px rgba(15,23,42,0.04)",
         }}
       >
-        {/* ── Logo header ─────────────────────────── */}
-        <div className="flex items-center justify-between px-6 pt-7 pb-4">
-          <div className="flex items-center gap-3.5">
-            <div className="flex h-[46px] w-[46px] items-center justify-center rounded-[12px] bg-gradient-to-br from-blue-50 to-indigo-50/80 shadow-sm border border-blue-100/50">
-              <img
-                src={logo}
-                alt="OneData"
-                className="h-[32px] w-auto"
-              />
-            </div>
-            <div className="leading-tight">
-              <p className="text-[1.25rem] font-black text-slate-800 tracking-tight">
+        {/* ── Brand ──────────────────────────────────────────── */}
+        <div
+          className={`flex items-center gap-3 pt-6 pb-6 ${
+            collapsed ? "justify-center px-0" : "px-5"
+          }`}
+        >
+          {/* SVG icon — no container, no background */}
+          <img
+            src={iconSvg}
+            alt="OneData"
+            className={`shrink-0 ${collapsed ? "h-8 w-8" : "h-9 w-9"}`}
+          />
+
+          {/* Wordmark */}
+          {!collapsed && (
+            <div className="overflow-hidden leading-none">
+              <p className="text-[1.05rem] font-black text-slate-800 tracking-tight">
                 OneData
               </p>
-              <p className="text-[0.62rem] font-bold text-blue-600/90 tracking-[0.15em] uppercase mt-0.5">
+              <p className="mt-0.5 text-[0.62rem] font-semibold text-slate-400 tracking-[0.06em]">
                 Admin Panel
               </p>
             </div>
+          )}
+        </div>
+
+        {/* ── Thin separator ─────────────────────────────────── */}
+        <div className="mx-4 h-px bg-slate-100" />
+
+        {/* ── Section label ──────────────────────────────────── */}
+        {!collapsed && (
+          <div className="px-5 pt-5 pb-1.5">
+            <p className="text-[0.55rem] font-bold uppercase tracking-[0.2em] text-slate-400">
+              Navigation
+            </p>
           </div>
-          <button
-            onClick={onToggle}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all lg:hidden cursor-pointer"
-            aria-label="Close sidebar"
-          >
-            <X size={15} />
-          </button>
-        </div>
+        )}
 
-        {/* ── Section label ───────────────────────── */}
-        <div className="px-6 pt-6 pb-2">
-          <p className="text-[0.6rem] font-bold text-slate-400 uppercase tracking-[0.15em]">
-            Main Menu
-          </p>
-        </div>
-
-        {/* ── Nav links ───────────────────────────── */}
-        <nav className="flex-1 space-y-1 px-4">
+        {/* ── Nav ────────────────────────────────────────────── */}
+        <nav
+          className={`flex-1 py-2 space-y-0.5 ${collapsed ? "px-2" : "px-3"}`}
+        >
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
 
@@ -93,42 +98,101 @@ export function Sidebar({ collapsed = false, onToggle }) {
               <NavLink
                 key={item.path}
                 to={item.path}
+                title={collapsed ? item.label : undefined}
                 className={`
-                  group flex items-center gap-3.5 rounded-[12px] px-4 py-[11px] text-[0.85rem]
-                  transition-all duration-200 relative
+                  group relative flex items-center rounded-[10px]
+                  transition-all duration-200
+                  ${collapsed ? "justify-center py-3" : "gap-3 px-3 py-2.5"}
                   ${
                     isActive
-                      ? "bg-gradient-to-r from-blue-50 to-indigo-50/50 text-blue-600 font-semibold"
-                      : "text-slate-500 font-medium hover:bg-slate-50 hover:text-slate-700"
+                      ? "bg-blue-50 shadow-[0_1px_4px_rgba(59,130,246,0.12)]"
+                      : "hover:bg-slate-50"
                   }
                 `}
               >
-                {/* Active indicator bar */}
-                {isActive && (
-                  <span className="absolute left-0 top-[6px] bottom-[6px] w-[3px] rounded-full bg-blue-500" />
+                {/* Active left bar */}
+                {isActive && !collapsed && (
+                  <span className="absolute left-0 top-[8px] bottom-[8px] w-[3px] rounded-full bg-blue-500 transition-all duration-300" />
                 )}
 
-                <item.icon
-                  size={19}
-                  strokeWidth={isActive ? 2.2 : 1.8}
-                  className={`shrink-0 transition-colors ${
-                    isActive
-                      ? "text-blue-500"
-                      : "text-slate-400 group-hover:text-slate-500"
+                {/* Icon */}
+                <div
+                  className={`flex shrink-0 items-center justify-center transition-all duration-200 ${
+                    collapsed ? "h-9 w-9 rounded-[10px]" : ""
+                  } ${
+                    isActive && collapsed
+                      ? "bg-blue-100"
+                      : collapsed
+                      ? "group-hover:bg-slate-100"
+                      : ""
                   }`}
-                />
-                <span className="truncate">{item.label}</span>
+                >
+                  <item.icon
+                    size={17}
+                    strokeWidth={isActive ? 2.1 : 1.6}
+                    className={`transition-colors duration-200 ${
+                      isActive
+                        ? "text-blue-500"
+                        : "text-slate-400 group-hover:text-slate-600"
+                    }`}
+                  />
+                </div>
+
+                {/* Label */}
+                {!collapsed && (
+                  <span
+                    className={`flex-1 text-[0.82rem] transition-colors duration-200 ${
+                      isActive
+                        ? "font-semibold text-blue-600"
+                        : "font-medium text-slate-500 group-hover:text-slate-700"
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                )}
+
+                {/* Active dot */}
+                {isActive && !collapsed && (
+                  <span className="h-[5px] w-[5px] shrink-0 rounded-full bg-blue-400 opacity-80" />
+                )}
               </NavLink>
             );
           })}
         </nav>
 
-        {/* ── Bottom ──────────────────────────────── */}
-        <div className="px-4 pb-5 pt-3">
-          <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-3" />
-          <p className="text-[0.55rem] text-slate-300 text-center tracking-wider">
-            OneData v1.0
-          </p>
+        {/* ── Footer — Collapse only ──────────────────────────── */}
+        <div className="mt-auto">
+          <div className="mx-4 h-px bg-slate-100 mb-2" />
+          <button
+            id="sidebar-collapse-btn"
+            onClick={onToggle}
+            title={collapsed ? "Expand sidebar" : undefined}
+            className={`
+              group flex w-full items-center gap-3 py-3.5 mb-2
+              transition-all duration-200 cursor-pointer
+              hover:bg-slate-50
+              ${collapsed ? "justify-center px-0" : "px-4"}
+            `}
+          >
+            {collapsed ? (
+              <PanelLeftOpen
+                size={16}
+                strokeWidth={1.7}
+                className="shrink-0 text-slate-400 group-hover:text-slate-600 transition-colors"
+              />
+            ) : (
+              <>
+                <PanelLeftClose
+                  size={16}
+                  strokeWidth={1.7}
+                  className="shrink-0 text-slate-400 group-hover:text-slate-600 transition-colors"
+                />
+                <span className="text-[0.8rem] font-medium text-slate-400 group-hover:text-slate-600 transition-colors">
+                  Collapse
+                </span>
+              </>
+            )}
+          </button>
         </div>
       </aside>
     </>

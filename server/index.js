@@ -65,7 +65,7 @@ app.post("/api/create-user", async (req, res) => {
       to: [{ email, name: full_name }],
       sender: { name: "OneData", email: process.env.BREVO_SENDER_EMAIL },
       htmlContent: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #2986e8;">Welcome to OneData!</h2>
           <p>Hello <strong>${full_name}</strong>,</p>
           <p>Your account has been created by the administrator. Here are your login credentials:</p>
