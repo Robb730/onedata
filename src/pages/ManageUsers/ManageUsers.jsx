@@ -338,7 +338,8 @@ export default function ManageUsers() {
   }
 
   return (
-    <div className="p-8">
+    <div className="min-h-screen bg-slate-50/40">
+      <div className="mx-auto max-w-[1100px] px-5 py-8">
       {showToast && (
         <div
           className="fixed top-6 right-6 z-50 flex bg-white overflow-hidden animate-toast-in"
@@ -703,6 +704,7 @@ export default function ManageUsers() {
             userName={activatingUser.name}
           />
         )}
+      </div>
       </div>
     </div>
   );

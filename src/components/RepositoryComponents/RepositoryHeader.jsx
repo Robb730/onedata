@@ -10,12 +10,12 @@ export function RepositoryHeader({
   subtitle = "Central storage for all division folders and official documents",
 }) {
   return (
-    <div className="mb-6">
+    <div className="mb-7">
       {/* Title + subtitle */}
-      <h1 className="text-3xl font-semibold text-slate-900 leading-tight tracking-tight" style={{ marginBottom: '6px' }}>
+      <h1 className="text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
         {title}
       </h1>
-      <p className="text-slate-500 mt-0 text-sm leading-relaxed max-w-xl">
+      <p className="text-[0.78rem] text-slate-400 font-medium mt-1">
         {subtitle}
       </p>
     </div>
