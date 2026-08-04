@@ -24,21 +24,13 @@ function MetricCard({
 
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 transition-all duration-300 hover:-translate-y-0.5"
-      style={{
-        boxShadow: "0 1px 3px rgba(15,23,42,0.04)",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = `0 8px 30px ${glowColor}`;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,42,0.04)";
-      }}
+      className="group relative rounded-[16px] border border-slate-100/80 bg-white p-5 transition-all duration-300 hover:shadow-[0_8px_28px_rgba(15,23,42,0.08)] hover:-translate-y-[2px]"
+      style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 mb-4">
         {/* Gradient circle icon */}
         <div
-          className="flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-md transition-transform duration-300 group-hover:scale-110"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white shadow-md transition-transform duration-300 group-hover:scale-105"
           style={{
             background: gradient,
             boxShadow: `0 4px 14px ${glowColor}`,
@@ -58,11 +50,11 @@ function MetricCard({
         )}
       </div>
 
-      <div className="mt-4">
-        <p className="text-3xl font-bold tracking-tight text-slate-900">
+      <div className="mt-1">
+        <p className="text-[1.55rem] font-black text-slate-800 tracking-tight leading-none mb-1.5">
           {value}
         </p>
-        <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+        <p className="text-[0.68rem] font-bold uppercase tracking-[0.08em] text-slate-400">
           {label}
         </p>
       </div>

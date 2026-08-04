@@ -15,10 +15,10 @@ export default function AuditLogsHeader({
   return (
     <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+        <h1 className="text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
           {title}
         </h1>
-        <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-500">
+        <p className="text-[0.78rem] text-slate-400 font-medium mt-1 max-w-xl">
           {subtitle}
         </p>
       </div>

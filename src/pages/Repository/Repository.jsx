@@ -124,12 +124,13 @@ export default function Repository({ onFolderClick }) {
   };
 
   return (
-    <div className="p-8">
-      {/* ── Header ───────────────────────────────────── */}
-      <RepositoryHeader />
+    <div className="min-h-screen bg-slate-50/40">
+      <div className="mx-auto max-w-[1100px] px-5 py-8">
+        {/* ── Header ───────────────────────────────────── */}
+        <RepositoryHeader />
 
       {/* ── Search / Sort / View Toggle ────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+      <div className="bg-white rounded-[16px] border border-slate-100/80 p-4 mb-6" style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.03)" }}>
         <RepositorySearchBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -170,6 +171,7 @@ export default function Repository({ onFolderClick }) {
           }
         />
       )}
+      </div>
     </div>
   );
 }

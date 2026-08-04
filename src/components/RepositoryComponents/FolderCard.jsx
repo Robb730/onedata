@@ -89,9 +89,10 @@ export function FolderCard({
   return (
     <div
       onClick={handleClick}
-      className={`surface-elevated card-hover p-4 transition-all relative group cursor-pointer soft-border flex flex-col ${
-        locked ? "opacity-80" : "hover:border-slate-200"
+      className={`group relative rounded-[16px] border border-slate-100/80 bg-white p-5 transition-all duration-300 hover:shadow-[0_8px_28px_rgba(15,23,42,0.08)] hover:-translate-y-[2px] cursor-pointer flex flex-col ${
+        locked ? "opacity-80" : ""
       }`}
+      style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
       role="button"
       tabIndex={0}
     >
@@ -142,9 +143,9 @@ export function FolderCard({
         </div>
       </div>
 
-      {/* Managed by — its own block, full names always visible */}
+    {/* Managed by — its own block, full names always visible */}
       <div className="mt-auto">
-        <div className="surface-secondary rounded-lg px-2.5 py-2 transition-colors">
+        <div className="bg-slate-50/70 border border-slate-100 rounded-lg px-2.5 py-2 transition-colors">
           <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mb-0.5">
             <User size={11} className="text-slate-400 shrink-0" />
             <span>{managerList.length > 1 ? "Managed by" : "Managed by"}</span>
