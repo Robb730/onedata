@@ -2,17 +2,7 @@ import React from "react";
 
 /**
  * LoginFormInput — Reusable labelled text input with optional
- * right-side icon (e.g. password-visibility toggle).
- *
- * @param {object}   props
- * @param {string}   props.id          — unique input id
- * @param {string}   props.label       — visible label text
- * @param {string}   props.type        — input type (text, password, etc.)
- * @param {string}   props.value       — controlled value
- * @param {function} props.onChange     — change handler
- * @param {string}   [props.placeholder]
- * @param {React.ReactNode} [props.endIcon] — optional icon button rendered at the end
- * @param {string}   [props.autoComplete]
+ * right-side icon and error state styling.
  */
 export function LoginFormInput({
   id,
@@ -23,12 +13,15 @@ export function LoginFormInput({
   placeholder = "",
   endIcon = null,
   autoComplete,
+  hasError = false,
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label
         htmlFor={id}
-        className="text-[0.82rem] font-semibold text-[#374151] tracking-wide"
+        className={`text-[0.82rem] font-semibold tracking-wide transition-colors ${
+          hasError ? "text-rose-600" : "text-[#374151]"
+        }`}
       >
         {label}
       </label>
@@ -41,11 +34,14 @@ export function LoginFormInput({
           onChange={onChange}
           placeholder={placeholder}
           autoComplete={autoComplete}
-          className="w-full rounded-xl border-[1.5px] border-[#d1dce8] bg-[#f8fafd] px-4 py-3 text-sm text-gray-800
+          className={`w-full rounded-xl border-[1.5px] px-4 py-3 text-sm text-gray-800
                      outline-none transition-all duration-300
                      placeholder:text-gray-400
-                     focus:border-[#2986e8] focus:bg-white focus:ring-[3px] focus:ring-[#2986e8]/12
-                     hover:border-[#a0b8d8]"
+                     ${
+                       hasError
+                         ? "border-rose-400 bg-rose-50/20 text-rose-900 focus:border-rose-500 focus:bg-white focus:ring-[3px] focus:ring-rose-500/15"
+                         : "border-[#d1dce8] bg-[#f8fafd] focus:border-[#2986e8] focus:bg-white focus:ring-[3px] focus:ring-[#2986e8]/12 hover:border-[#a0b8d8]"
+                     }`}
           style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
         />
         {endIcon && (

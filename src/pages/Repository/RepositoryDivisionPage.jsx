@@ -5,10 +5,14 @@ import {
   SectionFolderGrid,
 } from "../../components/RepositoryComponents";
 import { supabase } from "../../lib/supabaseClient";
+import { useUser } from "../../contexts/UserContext";
+import { canAccessDivision } from "../../utils/accessControl";
+import { resolveUserDivisionId } from "../../utils/accessControl";
 
 export default function RepositoryDivisionPage() {
   const navigate = useNavigate();
   const { divisionSlug } = useParams(); // this is the division id
+  const { userProfile } = useUser();
 
   // ── Supabase state ─────────────────────────────────────────────
   const [division, setDivision] = useState(null);
@@ -17,13 +21,22 @@ export default function RepositoryDivisionPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!divisionSlug) return;
+  if (!divisionSlug || !userProfile) return;
 
-    async function fetchData() {
-      setLoading(true);
-      setError(null);
+  async function checkAccessAndFetch() {
+    setLoading(true);
+    setError(null);
 
-      // Fetch division + its sections in parallel
+    try {
+      const resolvedDivisionId = await resolveUserDivisionId(userProfile);
+
+      if (!canAccessDivision(userProfile, divisionSlug, resolvedDivisionId)) {
+        navigate(`/repository/restricted/${encodeURIComponent(divisionSlug)}`, {
+          replace: true,
+        });
+        return;
+      }
+
       const [divisionRes, sectionsRes] = await Promise.all([
         supabase
           .from("divisions")
@@ -48,12 +61,15 @@ export default function RepositoryDivisionPage() {
       } else {
         setSections(sectionsRes.data || []);
       }
-
+    } catch (err) {
+      setError(err.message || "Something went wrong while checking access.");
+    } finally {
       setLoading(false);
     }
+  }
 
-    fetchData();
-  }, [divisionSlug]);
+  checkAccessAndFetch();
+}, [divisionSlug, userProfile]);
 
   // ── Map sections → shape expected by SectionFolderGrid ────────
   const folders = sections.map((section) => ({

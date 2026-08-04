@@ -1,148 +1,247 @@
-import { useState } from "react";
-import { Search, Download, Filter, Calendar, FileText, CheckCircle, Upload, Trash2, Edit, UserPlus, Shield } from "lucide-react";
-
-const auditLogs = [
-  {
-    id: "1",
-    fileName: "Student Enrollment Data Q1.pdf",
-    action: "Upload",
-    performedBy: "Juan Dela Cruz",
-    role: "Division Focal Person",
-    performedOn: "Feb 24, 2026 10:30 AM",
-    ipAddress: "192.168.1.101",
-    details: "Uploaded to Planning and Research folder",
-    status: "Success",
-  },
-  {
-    id: "2",
-    fileName: "Annual Implementation Plan.docx",
-    action: "Verify",
-    performedBy: "Hensley Santos",
-    role: "Division Focal Person",
-    performedOn: "Feb 24, 2026 09:15 AM",
-    ipAddress: "192.168.1.105",
-    details: "Document verified and approved",
-    status: "Success",
-  },
-  {
-    id: "3",
-    fileName: "Teacher Performance Report.xlsx",
-    action: "Download",
-    performedBy: "Maria Santos",
-    role: "Section Officer",
-    performedOn: "Feb 24, 2026 08:45 AM",
-    ipAddress: "192.168.1.112",
-    details: "Downloaded from HRD folder",
-    status: "Success",
-  },
-  {
-    id: "4",
-    fileName: "Budget Forecast 2026.xlsx",
-    action: "Edit",
-    performedBy: "Carlos Mendoza",
-    role: "Section Officer",
-    performedOn: "Feb 23, 2026 04:20 PM",
-    ipAddress: "192.168.1.108",
-    details: "Updated file metadata - School Year changed",
-    status: "Success",
-  },
-  {
-    id: "5",
-    fileName: "N/A",
-    action: "Role Change",
-    performedBy: "Juan Dela Cruz",
-    role: "Administrator",
-    performedOn: "Feb 23, 2026 03:10 PM",
-    ipAddress: "192.168.1.101",
-    details: "Changed Pedro Santos role from Section Personnel to Section Officer",
-    status: "Success",
-  },
-  {
-    id: "6",
-    fileName: "Research Proposal Template.docx",
-    action: "Access Request",
-    performedBy: "Anna Reyes",
-    role: "Section Personnel",
-    performedOn: "Feb 23, 2026 02:30 PM",
-    ipAddress: "192.168.1.115",
-    details: "Requested access to restricted document",
-    status: "Pending",
-  },
-  {
-    id: "7",
-    fileName: "Policy Brief - Education Reform.pdf",
-    action: "Access Grant",
-    performedBy: "Juan Dela Cruz",
-    role: "Administrator",
-    performedOn: "Feb 23, 2026 01:45 PM",
-    ipAddress: "192.168.1.101",
-    details: "Granted access to Robbi Olano for restricted document",
-    status: "Success",
-  },
-  {
-    id: "8",
-    fileName: "Old Survey Data 2020.pdf",
-    action: "Delete",
-    performedBy: "Juan Dela Cruz",
-    role: "Administrator",
-    performedOn: "Feb 23, 2026 11:20 AM",
-    ipAddress: "192.168.1.101",
-    details: "Permanently deleted outdated file",
-    status: "Success",
-  },
-  {
-    id: "9",
-    fileName: "Strategic Plan 2026-2027.pdf",
-    action: "Upload",
-    performedBy: "Hensley Santos",
-    role: "Division Focal Person",
-    performedOn: "Feb 22, 2026 03:30 PM",
-    ipAddress: "192.168.1.105",
-    details: "Uploaded to Superintendent Office folder",
-    status: "Success",
-  },
-  {
-    id: "10",
-    fileName: "DRRM Action Plan.docx",
-    action: "Verify",
-    performedBy: "Jose Martinez",
-    role: "Section Officer",
-    performedOn: "Feb 22, 2026 02:15 PM",
-    ipAddress: "192.168.1.120",
-    details: "Document verified and approved",
-    status: "Success",
-  },
-  {
-    id: "11",
-    fileName: "School Health Assessment.pdf",
-    action: "Download",
-    performedBy: "Dr. Carmen Lopez",
-    role: "Section Officer",
-    performedOn: "Feb 22, 2026 01:00 PM",
-    ipAddress: "192.168.1.125",
-    details: "Downloaded from School Health folder",
-    status: "Success",
-  },
-  {
-    id: "12",
-    fileName: "Corrupted_file.pdf",
-    action: "Upload",
-    performedBy: "Unknown User",
-    role: "Unknown",
-    performedOn: "Feb 22, 2026 10:30 AM",
-    ipAddress: "192.168.1.200",
-    details: "Upload failed - File corrupted",
-    status: "Failed",
-  },
-];
+import { useState, useEffect } from "react";
+import {
+  AuditLogsHeader,
+  AuditLogsStats,
+  AuditLogsFilters,
+  AuditLogsTable,
+  AuditLogsFooter,
+} from "../../components/AuditLogsComponents";
+import { supabase } from "../../lib/supabaseClient";
 
 export default function AuditLogs() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterAction, setFilterAction] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
 
-  const actions = ["All", "Upload", "Download", "Verify", "Delete", "Edit", "Role Change", "Access Request", "Access Grant"];
+  const actions = [
+    "All",
+    "Upload",
+    "Download",
+    "Verify",
+    "Delete",
+    "Edit",
+    "Role Change",
+    "Access Request",
+    "Access Grant",
+  ];
   const statuses = ["All", "Success", "Failed", "Pending"];
+
+  // Export Logs Button Functionality
+  function handleExport() {
+    const rows = auditLogs.map((log) => {
+      const { date, time } = formatPerformedOn(log.performedOn);
+      const statusColor =
+        log.status === "Success" ? "#16a34a" :
+          log.status === "Failed" ? "#dc2626" :
+            "#d97706";
+      return `
+      <tr>
+        <td>${log.action}</td>
+        <td>${log.fileName}</td>
+        <td>${log.performedBy}</td>
+        <td>${log.role}</td>
+        <td>${date} ${time}</td>
+        <td><span class="status-badge" style="background:${statusColor}1a; color:${statusColor};">${log.status}</span></td>
+      </tr>`;
+    }).join("");
+
+    const html = `
+    <html>
+      <head>
+        <title>Audit Logs Export</title>
+        <style>
+          * { box-sizing: border-box; }
+          body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
+            padding: 32px;
+            margin: 0;
+          }
+          .header {
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            border-radius: 12px;
+            padding: 24px 28px;
+            color: #ffffff;
+            margin-bottom: 24px;
+          }
+          .header h1 {
+            font-size: 20px;
+            margin: 0 0 4px 0;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+          }
+          .header p {
+            font-size: 12.5px;
+            margin: 0;
+            color: #e0e7ff;
+          }
+          .card {
+            background: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          thead th {
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 11.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 12px 14px;
+            text-align: left;
+            font-weight: 600;
+          }
+          tbody td {
+            padding: 11px 14px;
+            font-size: 12.5px;
+            color: #1e293b;
+            border-bottom: 1px solid #f1f5f9;
+          }
+          tbody tr:nth-child(even) {
+            background: #f8fafc;
+          }
+          tbody tr:hover {
+            background: #f1f5f9;
+          }
+          .status-badge {
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+          }
+          .footer {
+            margin-top: 18px;
+            font-size: 11px;
+            color: #94a3b8;
+            text-align: right;
+          }
+          @media print {
+            body { background: #ffffff; padding: 12px; }
+            .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>OneData: Audit Logs</h1>
+          <p>Exported on ${new Date().toLocaleString()} • ${auditLogs.length} record(s)</p>
+        </div>
+        <div class="card">
+          <table>
+            <thead>
+              <tr>
+                <th>Action</th><th>File Name</th><th>Performed By</th>
+                <th>Role</th><th>Performed On</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </body>
+    </html>`;
+
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.onload = () => printWindow.print();
+  }
+
+  function formatPerformedOn(isoString) {
+    if (!isoString) return { date: "—", time: "" };
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return { date: "—", time: "" };
+    return {
+      date: d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+      time: d.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }),
+    };
+  }
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterAction, filterStatus]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function fetchLogs() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("audit_logs")
+        .select("*")
+        .order("performed_on", { ascending: false })
+        .limit(200); // paginate/adjust as needed
+
+      if (error) {
+        console.error("Failed to fetch audit logs:", error);
+      } else if (isMounted) {
+        setAuditLogs(
+          data.map((row) => ({
+            id: row.id,
+            action: row.action,
+            fileName: row.file_name ?? "N/A",
+            details: row.details ?? "",
+            performedBy: row.performed_by,
+            role: row.role,
+            performedOn: row.performed_on,
+            status: row.status,
+          }))
+        );
+      }
+      if (isMounted) setLoading(false);
+    }
+
+    fetchLogs();
+
+    // Optional: live updates so new uploads appear without a refresh
+    const channel = supabase
+      .channel("audit_logs_changes")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "audit_logs" },
+        (payload) => {
+          const row = payload.new;
+          setAuditLogs((prev) => [
+            {
+              id: row.id,
+              action: row.action,
+              fileName: row.file_name ?? "N/A",
+              details: row.details ?? "",
+              performedBy: row.performed_by,
+              role: row.role,
+              performedOn: row.performed_on,
+              status: row.status,
+            },
+            ...prev,
+          ]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const filteredLogs = auditLogs.filter((log) => {
     const matchesSearch =
@@ -154,267 +253,51 @@ export default function AuditLogs() {
     return matchesSearch && matchesAction && matchesStatus;
   });
 
-  const getActionIcon = (action) => {
-    switch (action) {
-      case "Upload":
-        return <Upload className="text-blue-600" size={16} />;
-      case "Download":
-        return <Download className="text-teal-600" size={16} />;
-      case "Verify":
-        return <CheckCircle className="text-green-600" size={16} />;
-      case "Delete":
-        return <Trash2 className="text-red-600" size={16} />;
-      case "Edit":
-        return <Edit className="text-orange-600" size={16} />;
-      case "Role Change":
-        return <UserPlus className="text-purple-600" size={16} />;
-      case "Access Request":
-        return <Shield className="text-yellow-600" size={16} />;
-      case "Access Grant":
-        return <Shield className="text-green-600" size={16} />;
-    }
-  };
-
-  const getActionColor = (action) => {
-    switch (action) {
-      case "Upload":
-        return "bg-blue-50 text-blue-700 border-blue-200";
-      case "Download":
-        return "bg-teal-50 text-teal-700 border-teal-200";
-      case "Verify":
-        return "bg-green-50 text-green-700 border-green-200";
-      case "Delete":
-        return "bg-red-50 text-red-700 border-red-200";
-      case "Edit":
-        return "bg-orange-50 text-orange-700 border-orange-200";
-      case "Role Change":
-        return "bg-purple-50 text-purple-700 border-purple-200";
-      case "Access Request":
-        return "bg-yellow-50 text-yellow-700 border-yellow-200";
-      case "Access Grant":
-        return "bg-green-50 text-green-700 border-green-200";
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Success":
-        return "text-green-600";
-      case "Failed":
-        return "text-red-600";
-      case "Pending":
-        return "text-orange-600";
-    }
-  };
+  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / rowsPerPage));
+  const paginatedLogs = filteredLogs.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
 
   const actionCounts = {
     Upload: auditLogs.filter((l) => l.action === "Upload").length,
     Download: auditLogs.filter((l) => l.action === "Download").length,
     Verify: auditLogs.filter((l) => l.action === "Verify").length,
-    Other: auditLogs.filter((l) => !["Upload", "Download", "Verify"].includes(l.action)).length,
+    Other: auditLogs.filter(
+      (l) => !["Upload", "Download", "Verify"].includes(l.action)
+    ).length,
   };
 
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Audit Logs</h1>
-        <p className="text-gray-500 mt-1">Track all system activities and user actions</p>
-      </div>
+    <div className="p-6 sm:p-8">
+      <AuditLogsHeader onExport={handleExport} />
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-              <Upload className="text-blue-600" size={20} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Uploads</p>
-              <p className="text-2xl font-bold text-gray-900">{actionCounts.Upload}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center">
-              <Download className="text-teal-600" size={20} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Downloads</p>
-              <p className="text-2xl font-bold text-gray-900">{actionCounts.Download}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
-              <CheckCircle className="text-green-600" size={20} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Verifications</p>
-              <p className="text-2xl font-bold text-gray-900">{actionCounts.Verify}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center">
-              <FileText className="text-purple-600" size={20} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Other Actions</p>
-              <p className="text-2xl font-bold text-gray-900">{actionCounts.Other}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AuditLogsStats actionCounts={actionCounts} />
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-        <div className="flex flex-col md:flex-row items-center gap-4">
-          <div className="flex-1 w-full relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search by file name, user, or details..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Filter className="text-gray-400" size={18} />
-            <select
-              value={filterAction}
-              onChange={(e) => setFilterAction(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {actions.map((action) => (
-                <option key={action} value={action}>
-                  {action} {action !== "All" && "Actions"}
-                </option>
-              ))}
-            </select>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {statuses.map((status) => (
-                <option key={status} value={status}>
-                  {status} {status !== "All" && "Status"}
-                </option>
-              ))}
-            </select>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm transition-colors inline-flex items-center gap-2">
-              <Download size={16} />
-              Export
-            </button>
-          </div>
-        </div>
-      </div>
+      <AuditLogsFilters
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        filterAction={filterAction}
+        onFilterActionChange={setFilterAction}
+        filterStatus={filterStatus}
+        onFilterStatusChange={setFilterStatus}
+        actions={actions}
+        statuses={statuses}
+      />
 
-      {/* Logs Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Action
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  File Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Performed By
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Action Done On
-                </th>
-                
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Details
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${getActionColor(
-                        log.action
-                      )}`}
-                    >
-                      {getActionIcon(log.action)}
-                      {log.action}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      {log.fileName !== "N/A" && <FileText className="text-gray-400" size={16} />}
-                      <span className="text-sm font-medium text-gray-900">{log.fileName}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-600">{log.performedBy}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-600">{log.role}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <Calendar size={12} />
-                      <span>{log.performedOn}</span>
-                    </div>
-                  </td>
-                  
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-600">{log.details}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`text-sm font-semibold ${getStatusColor(log.status)}`}>
-                      {log.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <AuditLogsTable
+        logs={paginatedLogs}
+        filteredCount={filteredLogs.length}
+        totalCount={auditLogs.length}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between mt-6">
-        <p className="text-sm text-gray-500">
-          Showing {filteredLogs.length} of {auditLogs.length} logs
-        </p>
-        <div className="flex items-center gap-2">
-          <button className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
-            Previous
-          </button>
-          <button className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium">
-            1
-          </button>
-          <button className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium">
-            2
-          </button>
-          <button className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium">
-            3
-          </button>
-          <button className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium">
-            Next
-          </button>
-        </div>
-      </div>
+      <AuditLogsFooter
+        shownCount={filteredLogs.length}
+        totalCount={auditLogs.length}
+      />
     </div>
   );
 }

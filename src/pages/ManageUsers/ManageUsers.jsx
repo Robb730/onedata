@@ -8,8 +8,10 @@ import {
   UserX,
   // eslint-disable-next-line no-unused-vars
   RefreshCw,
+  Folder,
+  FolderOpen,
   UserCheck,
-} from "lucide-react";  
+} from "lucide-react";
 import EditUserModal from "../../components/ManageUsersComponents/EditUserModal";
 import DeleteConfirmationModal from "../../components/ManageUsersComponents/DeleteConfirmationModal";
 import UserLogsModal from "../../components/ManageUsersComponents/UserLogsModal";
@@ -18,6 +20,7 @@ import SuccessModal from "../../components/ManageUsersComponents/SuccessModal";
 import DeactivateConfirmationModal from "../../components/ManageUsersComponents/DeactivateConfirmationModal";
 import ActivateConfirmationModal from "../../components/ManageUsersComponents/ActivateConfirmationModal";
 import { supabase } from "../../lib/supabaseClient";
+import { useUser } from "../../contexts/UserContext";
 
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);
@@ -31,6 +34,8 @@ export default function ManageUsers() {
   const [successEmail, setSuccessEmail] = useState("");
   const [deactivatingUser, setDeactivatingUser] = useState(null);
   const [activatingUser, setActivatingUser] = useState(null);
+
+  const { userProfile } = useUser();
 
   // ─── Fetch users from Supabase ───────────────────────────────
   const fetchUsers = async () => {
@@ -48,7 +53,7 @@ export default function ManageUsers() {
         is_active,
         created_at,
         divisions ( id, name ),
-        sections  ( id, name )
+        sections  ( id, name, division_id, divisions ( id, name ) )
       `,
       )
       .order("created_at", { ascending: true });
@@ -60,24 +65,31 @@ export default function ManageUsers() {
     }
 
     // Normalize into flat shape for the UI
-    const normalized = data.map((u) => ({
-      id: u.id,
-      name: u.full_name,
-      idNumber: u.id_number,
-      email: u.email,
-      role: u.role,
-      division: u.divisions?.name ?? "—",
-      divisionId: u.divisions?.id ?? null,
-      section: u.sections?.name ?? "—",
-      sectionId: u.sections?.id ?? null,
-      status: u.is_active ? "Active" : "Inactive",
-      avatar: u.full_name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .substring(0, 2)
-        .toUpperCase(),
-    }));
+    // Normalize into flat shape for the UI
+    const normalized = data.map((u) => {
+      // Prefer the user's own division; fall back to the division
+      // linked through their section (for section-scoped roles).
+      const resolvedDivision = u.divisions ?? u.sections?.divisions ?? null;
+
+      return {
+        id: u.id,
+        name: u.full_name,
+        idNumber: u.id_number,
+        email: u.email,
+        role: u.role,
+        division: resolvedDivision?.name ?? "—",
+        divisionId: resolvedDivision?.id ?? null,
+        section: u.sections?.name ?? "—",
+        sectionId: u.sections?.id ?? null,
+        status: u.is_active ? "Active" : "Inactive",
+        avatar: u.full_name
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .substring(0, 2)
+          .toUpperCase(),
+      };
+    });
 
     setUsers(normalized);
     setLoading(false);
@@ -116,12 +128,12 @@ export default function ManageUsers() {
   }, {});
 
   // ─── Handlers ────────────────────────────────────────────────
+  // updates: { role, divisionId, sectionId } — division/section are already
+  // scoped correctly by EditUserModal based on the selected role.
   const handleEditUser = async (userId, updates) => {
     const { error } = await supabase
       .from("users")
       .update({
-        full_name: updates.name,
-        id_number: updates.idNumber,
         role: updates.role,
         division_id: updates.divisionId,
         section_id: updates.sectionId,
@@ -135,22 +147,53 @@ export default function ManageUsers() {
     fetchUsers(); // refresh from DB
   };
 
+  const logAuditEvent = async ({ action, fileName, details, role, status = "Success" }) => {
+    const { error } = await supabase.from("audit_logs").insert({
+      action,
+      file_name: fileName,
+      details,
+      performed_by: userProfile?.full_name ?? "System",
+      role: getRoleDisplay(role) ?? "Unknown",
+      status,
+    });
+    if (error) console.error("Audit log insert failed:", error.message);
+  };
+
   const handleDeleteUser = async () => {
     if (!deletingUser) return;
 
-    const { error } = await supabase
-      .from("users")
-      .delete()
-      .eq("id", deletingUser.id);
+    const res = await fetch("http://localhost:3001/api/delete-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: deletingUser.id }),
+    });
 
-    if (error) {
-      alert("Error deleting user: " + error.message);
+    const data = await res.json();
+    if (!res.ok) {
+      alert("Error deleting user: " + data.error);
+      await logAuditEvent({
+        action: "Other",
+        fileName: deletingUser.name,
+        details: `Failed to delete user account (${deletingUser.email}): ${data.error}`,
+        role: deletingUser.role,
+        status: "Failed",
+      });
       return;
     }
+
+    await logAuditEvent({
+      action: "Other",
+      fileName: deletingUser.name,
+      details: `Deleted user account (${deletingUser.email})`,
+      role: deletingUser.role,
+      status: "Success",
+    });
+
     setDeletingUser(null);
     fetchUsers();
   };
 
+  // newUserData: { name, idNumber, email, role, divisionId, sectionId }
   const handleAddNewUser = async (newUserData) => {
     const res = await fetch("http://localhost:3001/api/create-user", {
       method: "POST",
@@ -160,7 +203,7 @@ export default function ManageUsers() {
         full_name: newUserData.name,
         division_id: newUserData.divisionId,
         section_id: newUserData.sectionId,
-        role: newUserData.role,
+        role: getRoleDisplay(newUserData.role),
         idNumber: newUserData.idNumber,
       }),
     });
@@ -170,6 +213,15 @@ export default function ManageUsers() {
       alert("Error: " + data.error);
       return;
     }
+
+    // ─── Log this action to Audit Logs ─────────────────────────
+    await logAuditEvent({
+      action: "Other",
+      fileName: newUserData.name,
+      details: `Created new user account (${newUserData.email})`,
+      role: newUserData.role,
+      status: "Success",
+    });
 
     setAddingNewUser(false);
     setSuccessEmail(newUserData.email);
@@ -384,20 +436,22 @@ export default function ManageUsers() {
 
                   {/* Details */}
                   <div className="space-y-2 mb-4">
-                    <div className="bg-gray-50 rounded-lg p-2.5">
-                      <p className="text-xs text-gray-500 mb-1">Division</p>
-                      <p className="text-xs font-semibold text-gray-900 leading-tight">
-                        {user.division}
-                      </p>
-                    </div>
-                    {user.section !== "—" && (
-                      <div className="bg-gray-50 rounded-lg p-2.5">
-                        <p className="text-xs text-gray-500 mb-1">Section</p>
-                        <p className="text-xs font-semibold text-gray-900 leading-tight">
-                          {user.section}
+                    <div className="rounded-lg bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 p-3">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <FolderOpen size={13} className="text-indigo-500 shrink-0" />
+                        <p className="text-xs font-bold text-gray-900 leading-snug">
+                          {user.division}
                         </p>
                       </div>
-                    )}
+                      {user.role !== "division_focal" && (
+                        <div className="flex items-center gap-1 mt-1.5 ml-0.5">
+                          <div className="w-1 h-1 rounded-full bg-indigo-300" />
+                          <span className="inline-block text-[10.5px] font-semibold text-indigo-600 bg-white px-2 py-0.5 rounded-full border border-indigo-200">
+                            {user.section}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                     <div className="flex items-center justify-center">
                       <span
                         className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${getRoleBadgeColor(user.role)}`}

@@ -7,16 +7,35 @@ import {
   List,
   Download,
   Eye,
-  MoreHorizontal,
   File,
   FileSpreadsheet,
   Image,
   FileType,
   SlidersHorizontal,
+  Trash2,
+  Lock,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { RepositoryHeader } from "../../components/RepositoryComponents/RepositoryHeader";
 import RepositoryBackButton from "../../components/RepositoryComponents/RepositoryBackButton";
+import FileEditModal from "../../components/RepositoryComponents/FileEditModal";
+import LockedActionButton from "../../components/RepositoryComponents/LockedActionButton";
+import { useUser } from "../../contexts/UserContext";
+import { getSectionAccessLevel } from "../../utils/accessControl";
+
+const roleDisplayMap = {
+  division_focal: "Division Focal Person",
+  section_focal: "Section Officer",       // fixed: was "sectionFocal"
+  section_personnel: "Section Personnel", // fixed: was "personnel"
+  admin: "Administrator",
+};
+const getRoleDisplay = (role) => roleDisplayMap[role] ?? role;
+
+function getBucket(category) {
+  return category === "general" || !category
+    ? "repository-files"
+    : "excel-files";
+}
 
 function getFileIcon(type) {
   switch (type) {
@@ -24,7 +43,11 @@ function getFileIcon(type) {
       return { Icon: FileType, color: "text-red-500", bg: "bg-red-50" };
     case "Excel":
     case "Spreadsheet":
-      return { Icon: FileSpreadsheet, color: "text-green-600", bg: "bg-green-50" };
+      return {
+        Icon: FileSpreadsheet,
+        color: "text-green-600",
+        bg: "bg-green-50",
+      };
     case "Word":
     case "Document":
       return { Icon: FileText, color: "text-blue-500", bg: "bg-blue-50" };
@@ -49,9 +72,15 @@ function inferType(mimeType, fileName) {
   if (!mimeType && !fileName) return "Other";
   const ext = fileName?.split(".").pop()?.toLowerCase();
   if (mimeType?.includes("pdf") || ext === "pdf") return "PDF";
-  if (mimeType?.includes("sheet") || ["xlsx", "xls", "csv"].includes(ext)) return "Excel";
-  if (mimeType?.includes("word") || ["docx", "doc"].includes(ext)) return "Word";
-  if (mimeType?.includes("image") || ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) return "Image";
+  if (mimeType?.includes("sheet") || ["xlsx", "xls", "csv"].includes(ext))
+    return "Excel";
+  if (mimeType?.includes("word") || ["docx", "doc"].includes(ext))
+    return "Word";
+  if (
+    mimeType?.includes("image") ||
+    ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)
+  )
+    return "Image";
   if (ext === "pptx" || ext === "ppt") return "Other";
   return "Other";
 }
@@ -61,6 +90,10 @@ export default function RepositoryFolderDetailPage() {
   const navigate = useNavigate();
 
   const decodedName = decodeURIComponent(folderName || "");
+
+  const [editingFile, setEditingFile] = useState(null);
+
+  const { userProfile } = useUser();
 
   // ── Supabase state ─────────────────────────────────────────────
   const [section, setSection] = useState(null);
@@ -75,72 +108,226 @@ export default function RepositoryFolderDetailPage() {
   const [viewMode, setViewMode] = useState("list");
   const [sortBy, setSortBy] = useState("date");
 
-  // ── Fetch section → division → files ──────────────────────────
+  const [deletingId, setDeletingId] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
+
+  // ── Access control ──────────────────────────────────────────────
+  const accessLevel = useMemo(
+    () => getSectionAccessLevel(userProfile, section),
+    [userProfile, section],
+  );
+  const canEdit = accessLevel === "full";
+
   useEffect(() => {
-    if (!decodedName) return;
+    if (!section || !userProfile) return;
+    if (getSectionAccessLevel(userProfile, section) === "blocked") {
+      navigate(`/repository/restricted/${encodeURIComponent(section.name)}`, {
+        replace: true,
+      });
+    }
+  }, [section, userProfile, navigate]);
 
-    async function fetchData() {
-      setLoading(true);
-      setError(null);
-
-      // 1. Fetch section by name
-      const { data: sectionData, error: sectionError } = await supabase
-        .from("sections")
-        .select("id, name, managed_by, division_id")
-        .eq("name", decodedName)
-        .single();
-
-      if (sectionError) {
-        setError(sectionError.message);
-        setLoading(false);
-        return;
-      }
-
-      setSection(sectionData);
-
-      // 2. Fetch parent division using division_id
-      const { data: divisionData, error: divisionError } = await supabase
-        .from("divisions")
-        .select("id, name, managed_by")
-        .eq("id", sectionData.division_id)
-        .single();
-
-      if (!divisionError) setDivision(divisionData);
-
-     // 3. Fetch files for this section
-const { data: filesData } = await supabase
-  .from("files")
-  .select("*")
-  .eq("section_id", sectionData.id)
-  .order("created_at", { ascending: false });
-
-const mapped = (filesData || []).map((f) => ({
-  id:       f.id,
-  name:     f.file_name,
-  type:     inferType(f.file_type, f.file_name),
-  size:     f.file_size ? `${(f.file_size / 1024).toFixed(1)} KB` : "—",
-  date:     f.created_at ? new Date(f.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—",
-  uploader: f.uploaded_by ?? "Unknown",
-  status:   f.is_dashboard_source ? "Verified" : "For Review",
-  path:     f.file_path,
-}));
-
-setAllFiles(mapped);
-
-      setLoading(false);
+  async function handleDownloadFile(file) {
+    if (!canEdit) return; // defense in depth — button shouldn't be clickable anyway
+    if (!file.path) {
+      alert("This file has no associated storage path.");
+      return;
     }
 
+    setDownloadingId(file.id);
+
+    try {
+      const bucket = getBucket(file.data_category);
+      const { data: blob, error } = await supabase.storage
+        .from(bucket)
+        .download(file.path);
+
+      if (error) throw new Error(`Download failed: ${error.message}`);
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      await logAuditEvent({
+        action: "Download",
+        fileName: file.name,
+        details: `Downloaded from ${section?.name ?? "unknown section"}`,
+        status: "Success",
+      });
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Something went wrong while downloading the file.");
+
+      await logAuditEvent({
+        action: "Download",
+        fileName: file.name,
+        details: err.message,
+        status: "Failed",
+      });
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
+  const logAuditEvent = async ({
+    action,
+    fileName,
+    details,
+    status = "Success",
+  }) => {
+    const { error } = await supabase.from("audit_logs").insert({
+      action,
+      file_name: fileName,
+      details,
+      performed_by: userProfile?.full_name ?? "Unknown",
+      role: getRoleDisplay(userProfile?.role) ?? "Unknown",
+      status,
+    });
+    if (error) console.error("Audit log insert failed:", error);
+  };
+
+  async function handleDeleteFile(file) {
+    if (!canEdit) return; // defense in depth
+    const confirmed = window.confirm(
+      `Delete "${file.name}"? This will permanently remove the file from storage and cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingId(file.id);
+
+    try {
+      if (file.path) {
+        const { error: storageError } = await supabase.storage
+          .from("excel-files")
+          .remove([file.path]);
+
+        if (storageError) {
+          throw new Error(`Storage deletion failed: ${storageError.message}`);
+        }
+      }
+
+      const { error: dbError } = await supabase
+        .from("files")
+        .delete()
+        .eq("id", file.id);
+
+      if (dbError) {
+        throw new Error(`Database deletion failed: ${dbError.message}`);
+      }
+
+      setAllFiles((prev) => prev.filter((f) => f.id !== file.id));
+      await logAuditEvent({
+        action: "Delete",
+        fileName: file.name,
+        details: `Deleted from ${section?.name ?? "unknown section"}`,
+        status: "Success",
+      });
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Something went wrong while deleting the file.");
+
+      await logAuditEvent({
+        action: "Delete",
+        fileName: file.name,
+        details: err.message,
+        status: "Failed",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  async function fetchData() {
+    setLoading(true);
+    setError(null);
+
+    const { data: sectionData, error: sectionError } = await supabase
+      .from("sections")
+      .select("id, name, managed_by, division_id")
+      .eq("name", decodedName)
+      .single();
+
+    if (sectionError) {
+      setError(sectionError.message);
+      setLoading(false);
+      return;
+    }
+
+    setSection(sectionData);
+
+    const { data: divisionData, error: divisionError } = await supabase
+      .from("divisions")
+      .select("id, name, managed_by")
+      .eq("id", sectionData.division_id)
+      .single();
+
+    if (!divisionError) setDivision(divisionData);
+
+    const { data: filesData } = await supabase
+      .from("files")
+      .select("*")
+      .eq("section_id", sectionData.id)
+      .order("created_at", { ascending: false });
+
+    const uploaderIds = [
+      ...new Set((filesData || []).map((f) => f.uploaded_by).filter(Boolean)),
+    ];
+
+    let uploaderMap = {};
+    if (uploaderIds.length > 0) {
+      const { data: uploaderRows, error: uploaderError } = await supabase
+        .from("users")
+        .select("id, full_name")
+        .in("id", uploaderIds);
+
+      if (uploaderError) {
+        console.error("Failed to resolve uploader names:", uploaderError.message);
+      } else {
+        uploaderMap = Object.fromEntries(
+          uploaderRows.map((u) => [u.id, u.full_name]),
+        );
+      }
+    }
+
+    const mapped = (filesData || []).map((f) => ({
+      id: f.id,
+      name: f.file_name,
+      type: inferType(f.file_type, f.file_name),
+      size: f.file_size ? `${(f.file_size / 1024).toFixed(1)} KB` : "—",
+      date: f.created_at
+        ? new Date(f.created_at).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
+        : "—",
+      uploader: uploaderMap[f.uploaded_by] ?? "Unknown",
+      status: f.is_dashboard_source ? "Verified" : "For Review",
+      path: f.file_path,
+      data_category: f.data_category,
+      school_year: f.school_year,
+    }));
+
+    setAllFiles(mapped);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    if (!decodedName) return;
     fetchData();
   }, [decodedName]);
 
-  // ── Back target uses real division id ─────────────────────────
   const backTarget = division
     ? `/repository/divisions/${division.id}`
     : "/repository";
 
   const backLabel = division?.name ?? "Repository";
 
-  // ── Filter + sort files ───────────────────────────────────────
   const filtered = useMemo(() => {
     return allFiles
       .filter((file) => {
@@ -183,6 +370,15 @@ setAllFiles(mapped);
         title={decodedName}
         subtitle={`${allFiles.length} files · Last modified ${allFiles[0]?.date ?? "—"}`}
       />
+
+      {/* ── Locked-access banner ────────────────────────────────── */}
+      {accessLevel === "locked" && (
+        <div className="mb-6 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+          <Lock size={14} className="shrink-0" />
+          You can view files in this section, but view, download, edit, and
+          delete are limited to your assigned section.
+        </div>
+      )}
 
       {/* ── Stats row ───────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-3">
@@ -301,20 +497,24 @@ setAllFiles(mapped);
             No files found
           </h3>
           <p className="text-sm text-slate-400">
-            {loading ? "Loading…" : "No files have been uploaded to this section yet."}
+            {loading
+              ? "Loading…"
+              : "No files have been uploaded to this section yet."}
           </p>
         </div>
       ) : viewMode === "list" ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 px-5 py-3 bg-slate-50 border-b border-slate-100">
-            {["File Name", "Type", "Size", "Modified", "Uploaded By", ""].map((h) => (
-              <span
-                key={h}
-                className="text-xs font-medium text-slate-500 uppercase tracking-wider"
-              >
-                {h}
-              </span>
-            ))}
+            {["File Name", "Type", "Size", "Modified", "Uploaded By", ""].map(
+              (h) => (
+                <span
+                  key={h}
+                  className="text-xs font-medium text-slate-500 uppercase tracking-wider"
+                >
+                  {h}
+                </span>
+              ),
+            )}
           </div>
           <div className="divide-y divide-gray-100">
             {filtered.map((file) => {
@@ -325,7 +525,9 @@ setAllFiles(mapped);
                   className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center px-5 py-3.5 hover:bg-gray-50 transition-colors group"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-8 h-8 ${bg} rounded-lg flex items-center justify-center shrink-0`}>
+                    <div
+                      className={`w-8 h-8 ${bg} rounded-lg flex items-center justify-center shrink-0`}
+                    >
                       <Icon size={16} className={color} />
                     </div>
                     <span className="text-sm font-medium text-slate-800 truncate">
@@ -351,26 +553,40 @@ setAllFiles(mapped);
                       {file.uploader}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
-                      title="Preview"
-                    >
-                      <Eye size={14} />
-                    </button>
-                    <button
-                      className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
-                      title="Download"
-                    >
-                      <Download size={14} />
-                    </button>
-                    <button
-                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-                      title="More"
-                    >
-                      <MoreHorizontal size={14} />
-                    </button>
-                  </div>
+
+                  {canEdit ? (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => setEditingFile(file)}
+                        className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
+                        title="Preview"
+                      >
+                        <Eye size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDownloadFile(file)}
+                        disabled={downloadingId === file.id}
+                        className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
+                        title="Download"
+                      >
+                        <Download size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteFile(file)}
+                        disabled={deletingId === file.id}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <LockedActionButton label="View — outside your section" />
+                      <LockedActionButton label="Download — outside your section" />
+                      <LockedActionButton label="Delete — outside your section" />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -402,17 +618,73 @@ setAllFiles(mapped);
                   >
                     {file.status}
                   </span>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors">
-                      <Download size={12} />
-                    </button>
-                  </div>
+
+                  {canEdit ? (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadFile(file);
+                        }}
+                        disabled={downloadingId === file.id}
+                        className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
+                      >
+                        <Download size={12} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingFile(file);
+                        }}
+                        className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
+                      >
+                        <Eye size={12} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteFile(file);
+                        }}
+                        disabled={deletingId === file.id}
+                        className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-1">
+                      <LockedActionButton
+                        label="Download — outside your section"
+                        size={12}
+                      />
+                      <LockedActionButton
+                        label="View — outside your section"
+                        size={12}
+                      />
+                      <LockedActionButton
+                        label="Delete — outside your section"
+                        size={12}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
       )}
+      <FileEditModal
+        isOpen={!!editingFile}
+        onClose={() => setEditingFile(null)}
+        file={editingFile}
+        uploaderName={editingFile?.uploader}
+        onSaved={() => {
+          setEditingFile(null);
+          if (decodedName) {
+            fetchData();
+          }
+        }}
+      />
     </div>
   );
 }

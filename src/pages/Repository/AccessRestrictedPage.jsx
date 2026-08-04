@@ -1,22 +1,133 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ShieldX, Lock, User, Shield, CheckCircle } from "lucide-react";
-import { REPOSITORY_TOP_LEVEL_FOLDERS } from "../../constants/repositoryFolders";
+import { useEffect, useState } from "react";
+import {
+  ArrowLeft,
+  ShieldX,
+  Lock,
+  User,
+  Shield,
+  CheckCircle,
+  Users,
+} from "lucide-react";
+import { supabase } from "../../lib/supabaseClient";
+import { useUser } from "../../contexts/UserContext";
+
+const roleDisplayMap = {
+  admin: "Administrator",
+  division_focal: "Division Officer",
+  section_focal: "Section Focal Officer",
+  section_personnel: "Section Personnel",
+};
 
 export default function AccessRestrictedPage() {
   const navigate = useNavigate();
   const { folderName } = useParams();
   const decodedName = decodeURIComponent(folderName || "");
-  const folder = REPOSITORY_TOP_LEVEL_FOLDERS.find((item) => item.name === decodedName);
-  const role = localStorage.getItem("role") || "";
+  const { userProfile } = useUser();
 
-  const roleDisplayMap = {
-    admin: "Administrator",
-    division: "Division Officer",
-    sectionFocal: "Section Focal Officer",
-    personnel: "Section Personnel",
-  };
+  const [folderInfo, setFolderInfo] = useState(null); // { name, fileCount, modifiedAt }
+  const [managers, setManagers] = useState([]); // all division_focal users for this division
+  const [loading, setLoading] = useState(true);
 
-  const roleLabel = roleDisplayMap[role] || role || "Unknown Role";
+  const roleLabel =
+    roleDisplayMap[userProfile?.role] || userProfile?.role || "Unknown Role";
+
+  useEffect(() => {
+    if (!decodedName) return;
+
+    async function resolveFolder() {
+      setLoading(true);
+
+      // The restricted route is reached two different ways:
+      //  - RepositoryDivisionPage redirects with a division id (numeric string)
+      //  - RepositoryFolderDetailPage redirects with a section name
+      const isDivisionId = /^\d+$/.test(decodedName);
+
+      let name = decodedName;
+      let divisionId = null;
+      let fileCount = 0;
+      let modifiedAt = null;
+
+      if (isDivisionId) {
+        const { data: division, error: divisionError } = await supabase
+          .from("divisions")
+          .select("id, name, created_at")
+          .eq("id", decodedName)
+          .single();
+
+        if (!divisionError && division) {
+          name = division.name;
+          divisionId = division.id;
+          modifiedAt = division.created_at;
+        } else if (divisionError) {
+          console.error(
+            "Division fetch failed:",
+            divisionError.message,
+            divisionError.code,
+          );
+        }
+
+        const { count } = await supabase
+          .from("sections")
+          .select("id", { count: "exact", head: true })
+          .eq("division_id", decodedName);
+        fileCount = count || 0;
+      } else {
+        const { data: section, error: sectionError } = await supabase
+          .from("sections")
+          .select("id, name, division_id, created_at, updated_at")
+          .eq("name", decodedName)
+          .single();
+
+        if (!sectionError && section) {
+          name = section.name;
+          divisionId = section.division_id;
+          modifiedAt = section.updated_at || section.created_at;
+
+          const { count } = await supabase
+            .from("files")
+            .select("id", { count: "exact", head: true })
+            .eq("section_id", section.id);
+          fileCount = count || 0;
+        }
+      }
+
+      setFolderInfo({ name, fileCount, modifiedAt });
+
+      if (divisionId != null) {
+        const { data: focals, error: focalsError } = await supabase
+          .from("users")
+          .select("full_name, email")
+          .eq("role", "division_focal")
+          .eq("division_id", divisionId);
+
+        if (!focalsError) setManagers(focals || []);
+      } else {
+        setManagers([]);
+      }
+
+      setLoading(false);
+    }
+
+    resolveFolder();
+  }, [decodedName]);
+
+  const displayName = loading
+    ? "Loading…"
+    : folderInfo?.name || decodedName || "Restricted Folder";
+
+  const managedByLabel =
+    managers.length === 0
+      ? "Unassigned"
+      : managers.map((m) => m.full_name || m.email).join(", ");
+
+  const modifiedLabel = folderInfo?.modifiedAt
+    ? new Date(folderInfo.modifiedAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "—";
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -29,11 +140,14 @@ export default function AccessRestrictedPage() {
           Back
         </button>
         <span className="text-gray-300">›</span>
-        <button onClick={() => navigate("/repository")} className="hover:text-gray-700 transition-colors">
+        <button
+          onClick={() => navigate("/repository")}
+          className="hover:text-gray-700 transition-colors"
+        >
           Repository
         </button>
         <span className="text-gray-300">›</span>
-        <span className="text-gray-800 font-medium">{folder?.name || decodedName || "Restricted Folder"}</span>
+        <span className="text-gray-800 font-medium">{displayName}</span>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 px-6 py-4 mb-4 flex items-center gap-4">
@@ -47,7 +161,7 @@ export default function AccessRestrictedPage() {
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-lg font-bold text-gray-900">{folder?.name || decodedName || "Restricted Folder"}</h1>
+            <h1 className="text-lg font-bold text-gray-900">{displayName}</h1>
             <span className="flex items-center gap-1 text-[11px] font-semibold text-red-500 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
               <Lock size={9} />
               Restricted Access
@@ -56,13 +170,13 @@ export default function AccessRestrictedPage() {
           <div className="flex items-center gap-4 text-xs text-gray-400">
             <span className="flex items-center gap-1">
               <User size={11} />
-              {folder?.owner || "OneData Admin"}
+              {loading ? "…" : managedByLabel}
             </span>
             <span className="flex items-center gap-1">
-              <span>Modified {folder?.date || "Feb 20, 2026"}</span>
+              <span>Modified {loading ? "…" : modifiedLabel}</span>
             </span>
             <span className="flex items-center gap-1">
-              <span>{folder?.fileCount || 0} files</span>
+              <span>{loading ? "…" : (folderInfo?.fileCount ?? 0)} files</span>
             </span>
           </div>
         </div>
@@ -78,27 +192,39 @@ export default function AccessRestrictedPage() {
           </div>
         </div>
 
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Access Restricted</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">
+          Access Restricted
+        </h2>
         <p className="text-sm text-gray-500 mb-1">
           You don't have permission to view the contents of this folder.
         </p>
         <p className="text-xs text-gray-400 max-w-sm mb-8">
-          Your current role ({roleLabel}) does not have access to this folder in the repository flow.
+          Your current role ({roleLabel}) does not have access to this folder in
+          the repository flow.
         </p>
 
         <div className="flex items-center gap-3 mb-8 flex-wrap justify-center">
           <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50">
-            <User size={13} className="text-gray-400" />
+            <Users size={13} className="text-gray-400" />
             <div className="text-left">
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Managed By</p>
-              <p className="text-sm font-semibold text-gray-800">{folder?.owner || "OneData Admin"}</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">
+                Managed By
+              </p>
+              <p
+                className="text-sm font-semibold text-gray-800 max-w-[220px] truncate"
+                title={managedByLabel}
+              >
+                {loading ? "—" : managedByLabel}
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50">
             <Lock size={13} className="text-red-400" />
             <div className="text-left">
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Permission Level</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">
+                Permission Level
+              </p>
               <p className="text-sm font-semibold text-red-500">No Access</p>
             </div>
           </div>
@@ -106,7 +232,9 @@ export default function AccessRestrictedPage() {
           <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50">
             <Shield size={13} className="text-gray-400" />
             <div className="text-left">
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Your Role</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">
+                Your Role
+              </p>
               <p className="text-sm font-semibold text-gray-800">{roleLabel}</p>
             </div>
           </div>

@@ -1,53 +1,44 @@
 import React from "react";
-import {useState} from "react";
 import { LoginBranding, LoginForm } from "../../components/LoginPageComponents";
-import {supabase} from '../../lib/supabaseClient';
 
 /**
  * LoginPage — Full-screen login page.
  *
- * Layout: a floating card split into two panels
- *  • Left  — branding, organic SVG shapes, illustrations, tagline
- *  • Right — login form
- *
- * The card sits on a rich ambient gradient background with
- * multiple layered decorative blobs and a subtle noise texture.
+ * Features 2 prominent ambient blue and green gradient blobs that move slowly
+ * and change positions continuously across the background as an idle animation.
  */
 export default function LoginPage() {
-
-  
-
   return (
     <div
       id="login-page"
-      className="relative flex min-h-screen items-center justify-center overflow-hidden"
+      className="relative flex min-h-screen items-center justify-center overflow-hidden p-4"
       style={{
-        background: "linear-gradient(145deg, #c9defa 0%, #dce8fa 25%, #e3f0fd 50%, #d8f0ea 75%, #c4e8dc 100%)",
+        background: "linear-gradient(-45deg, #c9defa, #dce8fa, #e3f0fd, #d8f0ea, #c4e8dc, #d4e6f9)",
+        backgroundSize: "400% 400%",
+        animation: "subtleGradientMove 18s ease infinite",
       }}
     >
-      {/* === Ambient background blobs === */}
-      <div className="pointer-events-none absolute -top-40 -left-40 h-[28rem] w-[28rem] rounded-full blur-3xl"
-        style={{ background: "radial-gradient(circle, rgba(41,134,232,0.25), transparent 70%)" }}
-      />
-      <div className="pointer-events-none absolute -bottom-48 -right-48 h-[34rem] w-[34rem] rounded-full blur-3xl"
-        style={{ background: "radial-gradient(circle, rgba(39,174,122,0.2), transparent 70%)" }}
-      />
-      <div className="pointer-events-none absolute top-[15%] right-[20%] h-64 w-64 rounded-full blur-2xl"
+      {/* === 1. Ambient Moving Blue Gradient Blob === */}
+      <div
+        className="pointer-events-none absolute -top-32 -left-32 h-[34rem] w-[34rem] rounded-full blur-3xl opacity-80"
         style={{
-          background: "radial-gradient(circle, rgba(41,134,232,0.15), transparent 70%)",
-          animation: "loginPagePulse 6s ease-in-out infinite",
+          background: "radial-gradient(circle, rgba(41, 134, 232, 0.45) 0%, rgba(26, 111, 224, 0.25) 45%, transparent 70%)",
+          animation: "blueBlobIdle 22s ease-in-out infinite",
         }}
       />
-      <div className="pointer-events-none absolute bottom-[20%] left-[15%] h-48 w-48 rounded-full blur-2xl"
+
+      {/* === 2. Ambient Moving Green Gradient Blob === */}
+      <div
+        className="pointer-events-none absolute -bottom-40 -right-40 h-[38rem] w-[38rem] rounded-full blur-3xl opacity-80"
         style={{
-          background: "radial-gradient(circle, rgba(39,174,122,0.12), transparent 70%)",
-          animation: "loginPagePulse 8s ease-in-out infinite 2s",
+          background: "radial-gradient(circle, rgba(39, 174, 122, 0.42) 0%, rgba(29, 170, 116, 0.22) 45%, transparent 70%)",
+          animation: "greenBlobIdle 26s ease-in-out infinite",
         }}
       />
 
       {/* Subtle noise texture overlay */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.03]"
+        className="pointer-events-none absolute inset-0 opacity-[0.025]"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
           backgroundSize: "128px 128px",
@@ -70,11 +61,26 @@ export default function LoginPage() {
         <LoginForm />
       </div>
 
-      {/* === Page-level keyframes === */}
+      {/* === Background Keyframe Animations === */}
       <style>{`
-        @keyframes loginPagePulse {
-          0%, 100% { transform: scale(1); opacity: 0.6; }
-          50% { transform: scale(1.15); opacity: 1; }
+        @keyframes subtleGradientMove {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes blueBlobIdle {
+          0% { transform: translate(0px, 0px) scale(1); }
+          25% { transform: translate(160px, 100px) scale(1.15); }
+          50% { transform: translate(80px, 240px) scale(0.95); }
+          75% { transform: translate(-70px, 130px) scale(1.1); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        @keyframes greenBlobIdle {
+          0% { transform: translate(0px, 0px) scale(1); }
+          25% { transform: translate(-170px, -120px) scale(1.12); }
+          50% { transform: translate(-100px, -260px) scale(1.05); }
+          75% { transform: translate(60px, -140px) scale(0.92); }
+          100% { transform: translate(0px, 0px) scale(1); }
         }
       `}</style>
     </div>
