@@ -78,67 +78,6 @@ function getRequestStatusStyle(status) {
   return "text-orange-600 bg-orange-50 border border-orange-200";
 }
 
-function UploadSuccessModal({ isOpen, onClose, fileName, folderName, schoolYear }) {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
-        <div className="h-1.5 w-full bg-gradient-to-r from-[#3b82f6] via-[#2563eb] to-[#6366f1]" />
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-50 ring-1 ring-blue-100">
-              <CheckCircle className="text-[#2563eb]" size={24} />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-[#0f172a]">Upload complete</h2>
-              <p className="text-sm text-[#94a3b8]">Your file has been saved successfully.</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-[#94a3b8] transition-colors hover:bg-slate-100 hover:text-[#0f172a]"
-            aria-label="Close success modal"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="space-y-4 px-6 py-5">
-          <div className="rounded-xl border border-blue-100 bg-[#f8fafc] p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#1d4ed8]">Uploaded file</p>
-            <p className="mt-1 break-words text-sm font-semibold text-[#1e293b]">{fileName}</p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 bg-[#f8fafc] p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Destination</p>
-              <p className="mt-1 text-sm font-semibold text-[#0f172a]">{folderName || "General"}</p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-[#f8fafc] p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">School year</p>
-              <p className="mt-1 text-sm font-semibold text-[#0f172a]">{schoolYear || "—"}</p>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm text-[#1e293b]">
-            The upload is finished and the file is now available.
-          </div>
-        </div>
-
-        <div className="border-t border-slate-200 bg-[#f8fafc] px-6 py-4">
-          <button
-            onClick={onClose}
-            className="w-full rounded-xl bg-gradient-to-r from-[#3b82f6] to-[#6366f1] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:-translate-y-0.5"
-          >
-            Done
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function UploadFilesPage({
   role = "personnel",
@@ -165,7 +104,7 @@ export default function UploadFilesPage({
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [fileRequests, setFileRequests] = useState([]);
   const [pendingRequestUpload, setPendingRequestUpload] = useState(null);
-  const [uploadResultModal, setUploadResultModal] = useState(null);
+  const [showToast, setShowToast] = useState(false);
   const [uploadsPage, setUploadsPage] = useState(1);
   const uploadsPerPage = 5;
 
@@ -206,6 +145,12 @@ export default function UploadFilesPage({
   useEffect(() => {
     fetchRecentUploads();
   }, []);
+
+  useEffect(() => {
+    if (!showToast) return;
+    const timer = setTimeout(() => setShowToast(false), 5000);
+    return () => clearTimeout(timer);
+  }, [showToast]);
 
   // Near the top, after your state declarations
   useEffect(() => {
@@ -453,17 +398,22 @@ export default function UploadFilesPage({
             school_id: r.schoolId,
             school_name: r.schoolName,
             division: r.division,
-            kinder_needs: r.kinderNeeds,
-            kinder_excess: r.kinderExcess,
-            g1g6_needs: r.g1g6Needs,
-            g1g6_excess: r.g1g6Excess,
-            sned_needs: r.snedNeeds,
-            sned_excess: r.snedExcess,
             pprd_checker: r.pprdChecker,
             remarks: r.remarks,
             school_year: schoolYear,
             uploaded_by: uploaderName,
           };
+          if (prefix === "textbooks") {
+            base.textbook_needs = r.textbookNeeds;
+            base.textbook_excess = r.textbookExcess;
+          } else {
+            base.kinder_needs = r.kinderNeeds;
+            base.kinder_excess = r.kinderExcess;
+            base.g1g6_needs = r.g1g6Needs;
+            base.g1g6_excess = r.g1g6Excess;
+            base.sned_needs = r.snedNeeds;
+            base.sned_excess = r.snedExcess;
+          }
           if (prefix === "teachers") {
             base.prev_total_teachers_inventory = r.prevTotalTeachersInventory;
             base.prev_needs = r.prevNeeds;
@@ -480,9 +430,6 @@ export default function UploadFilesPage({
             base.prev_g1g6_excess = r.prevG1g6Excess;
             base.prev_sned_needs = r.prevSnedNeeds;
             base.prev_sned_excess = r.prevSnedExcess;
-          } else if (prefix === "textbooks") {
-            base.textbook_needs = r.textbookNeeds;
-            base.textbook_excess = r.textbookExcess;
           }
           return base;
         });
@@ -748,11 +695,7 @@ export default function UploadFilesPage({
     await addToUploads(fileName, schoolYear, uploadType, file);
     setShowUploadModal(false);
     setPendingFile(null);
-    setUploadResultModal({
-      fileName,
-      folderName: selectedFolderName || preAssignedFolder || "General",
-      schoolYear,
-    });
+    setShowToast(true);
   };
 
   const handleRequestFileUpload = async (fileName, schoolYear, uploadType, file) => {
@@ -766,11 +709,7 @@ export default function UploadFilesPage({
     setShowUploadModal(false);
     setPendingFile(null);
     setPendingRequestUpload(null);
-    setUploadResultModal({
-      fileName,
-      folderName: selectedFolderName || preAssignedFolder || req?.requestedBy || "General",
-      schoolYear,
-    });
+    setShowToast(true);
   };
 
   const filteredRequests = fileRequests.filter((r) => {
@@ -1139,13 +1078,62 @@ export default function UploadFilesPage({
         />
       )}
 
-      <UploadSuccessModal
-        isOpen={!!uploadResultModal}
-        onClose={() => setUploadResultModal(null)}
-        fileName={uploadResultModal?.fileName || ""}
-        folderName={uploadResultModal?.folderName || ""}
-        schoolYear={uploadResultModal?.schoolYear || ""}
-      />
+      {showToast && (
+        <div
+          className="fixed top-6 right-6 z-50 flex bg-white overflow-hidden animate-toast-in"
+          style={{
+            width: "360px",
+            height: "72px",
+            borderRadius: "12px",
+            boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
+            fontFamily: "Poppins, sans-serif",
+          }}
+        >
+          <div style={{ width: "6px", backgroundColor: "#43D45B", flexShrink: 0 }} />
+
+          <div
+            className="flex items-center flex-1 relative"
+            style={{ padding: "0 14px", gap: "12px" }}
+          >
+            <div
+              className="flex items-center justify-center shrink-0"
+              style={{
+                width: "34px",
+                height: "34px",
+                borderRadius: "50%",
+                backgroundColor: "#43D45B",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+
+            <div className="flex flex-col justify-center">
+              <p style={{ fontSize: "15px", fontWeight: 700, color: "#1F1F2E", lineHeight: 1.2, margin: 0 }}>
+                Success
+              </p>
+              <p style={{ fontSize: "12.5px", fontWeight: 500, color: "#666666", marginTop: "2px", margin: 0 }}>
+                File uploaded successfully.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowToast(false)}
+              className="absolute top-2 right-2.5 cursor-pointer"
+              style={{
+                color: "#666666",
+                background: "none",
+                border: "none",
+                fontSize: "16px",
+                lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

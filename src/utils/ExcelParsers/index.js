@@ -22,6 +22,7 @@ export { parseStudents,   validateStudentsHeaders,   STUDENTS_REQUIRED_HEADERS  
 export { parseSeatsFile, SEATS_SHEETS } from "./parsers/seatsParser";
 export { parseTeachersInventoryFile, TEACHERS_SHEETS } from "./parsers/teachersInventoryParser";
 export { parseTextbooksInventoryFile, TEXTBOOKS_SHEETS } from "./parsers/textbooksInventoryParser";
+export { parseCespesFile, CESPES_SHEETS } from "./parsers/cespesParser";
 
 // ── Shared validation utilities ────────────────────────────────
 export { checkRequiredHeaders, buildHeaderErrorMessage } from "./validations/validateHeaders";

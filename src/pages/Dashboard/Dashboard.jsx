@@ -23,6 +23,7 @@ import {
   EnrollmentByLevel,
   ResourcesByLevel,
 } from "../../components/DashboardComponents";
+import { DEFAULT_CESPES_DATA } from "../../data/cespesTemplateData";
 
 // ─── Sample data ────────────────────────────────────────────
 // In production this would come from Supabase or context/store.
@@ -110,84 +111,7 @@ const cohortTrend = [
   { year: "24-2025", rate: 91 },
 ];
 
-const cespesPrograms = [
-  {
-    name: "Education Policy Development Program",
-    outcomes: 2,
-    outputs: 3,
-    reported: "2/5",
-    rows: [
-      {
-        type: "OUTCOME",
-        label:
-          "Percentage of completed education researches used for policy development",
-        sem1Target: "—",
-        sem1Accomp: "Pending",
-        sem2Target: "—",
-        sem2Accomp: "Pending",
-      },
-      {
-        type: "OUTCOME",
-        label:
-          "Percentage of satisfactory feedback from clients on issued policies",
-        sem1Target: "5",
-        sem1Accomp: "4.99",
-        sem2Target: "4.99",
-        sem2Accomp: "Awaiting",
-        carried: true,
-      },
-      {
-        type: "OUTPUT",
-        label: "Number of policies formulated, reviewed, and issued",
-        sem1Target: "—",
-        sem1Accomp: "Pending",
-        sem2Target: "—",
-        sem2Accomp: "Pending",
-      },
-      {
-        type: "OUTPUT",
-        label: "Number of education researches completed",
-        sem1Target: "52",
-        sem1Accomp: "60",
-        sem2Target: "60",
-        sem2Accomp: "Awaiting",
-        carried: true,
-      },
-      {
-        type: "OUTPUT",
-        label: "Number of proposed policies reviewed",
-        sem1Target: "—",
-        sem1Accomp: "Pending",
-        sem2Target: "—",
-        sem2Accomp: "Pending",
-      },
-    ],
-  },
-  {
-    name: "Basic Education Inputs Program",
-    outcomes: 8,
-    outputs: 7,
-    reported: "15/15",
-  },
-  {
-    name: "Inclusive Education Program",
-    outcomes: 5,
-    outputs: 5,
-    reported: "10/10",
-  },
-  {
-    name: "Support to Schools and Learners Program",
-    outcomes: 7,
-    outputs: 4,
-    reported: "11/11",
-  },
-  {
-    name: "Education Human Resource Development Program",
-    outcomes: 1,
-    outputs: 1,
-    reported: "2/2",
-  },
-];
+
 
 // ─── Component ──────────────────────────────────────────────
 
@@ -221,6 +145,17 @@ export default function Dashboard() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // ── CESPES State ───────────────────────────────────────────
+  const [cespes, setCespes] = useState({
+    operations: [],
+    supportOperations: [],
+    generalAdmin: [],
+    individualPerformance: [],
+    innovation: [],
+    loading: true,
+  });
+  const [activeCespesTab, setActiveCespesTab] = useState("Operations");
 
   useEffect(() => {
     async function fetchEnrollmentSummary() {
@@ -394,8 +329,32 @@ export default function Dashboard() {
       }
     }
 
+    async function fetchCespes() {
+      try {
+        const [ops, support, admin, perf, innov] = await Promise.all([
+          supabase.from("cespes_operations").select("*").eq("school_year", selectedYear),
+          supabase.from("cespes_support_operations").select("*").eq("school_year", selectedYear),
+          supabase.from("cespes_general_admin").select("*").eq("school_year", selectedYear),
+          supabase.from("cespes_individual_performance").select("*").eq("school_year", selectedYear),
+          supabase.from("cespes_innovation").select("*").eq("school_year", selectedYear),
+        ]);
+        setCespes({
+          operations: ops.data || [],
+          supportOperations: support.data || [],
+          generalAdmin: admin.data || [],
+          individualPerformance: perf.data || [],
+          innovation: innov.data || [],
+          loading: false,
+        });
+      } catch (err) {
+        console.error("Error fetching CESPES:", err);
+        setCespes((prev) => ({ ...prev, loading: false }));
+      }
+    }
+
     fetchEnrollmentSummary();
     fetchCrucialResources();
+    fetchCespes();
   }, [selectedYear]);
 
   return (
@@ -606,7 +565,7 @@ export default function Dashboard() {
 
         <div className="mt-3" />
 
-        {/* ── CESPES ────────────────────────────────────── */}
+        {/* ── CESPES (Single Accordion with Tabs) ────── */}
         <DashboardAccordion
           icon={
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50">
@@ -614,37 +573,141 @@ export default function Dashboard() {
             </div>
           }
           title="CESPES"
-          subtitle="Part I Operations · Program Targets & Accomplishments"
-          subtitleColor="#e11d48"
-          accentBg="rgba(255,241,242,0.7)"
+          subtitle="Comprehensive Evaluation of Schools' Performance and Effectiveness"
         >
-          <InsightCard
-            icon={<Info size={14} />}
-            variant="warning"
-            title="2nd Semester logic"
-            message="The 2nd semester target equals the 1st semester's actual accomplishment. The 2nd semester accomplishment column is pending submission."
-          />
+          {cespes.loading ? (
+            <div className="flex items-center justify-center py-10 text-slate-400 text-[0.8rem]">
+              Loading CESPES data…
+            </div>
+          ) : (
+            <>
+              {/* Tab Navigation */}
+              <div className="flex items-center gap-2 border-b border-slate-100 mb-5 overflow-x-auto pb-2">
+                {["Operations", "Support to Operations", "General Admin", "Individual Performance", "Innovation & Intervention"].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveCespesTab(tab)}
+                    className={`whitespace-nowrap px-4 py-2 text-[0.75rem] font-semibold rounded-t-lg transition-colors ${
+                      activeCespesTab === tab
+                        ? "text-blue-600 bg-blue-50/50 border-b-2 border-blue-500"
+                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
 
-          <div className="mt-4 flex items-center gap-4 mb-5">
-            <span className="flex items-center gap-1.5 text-[0.68rem] font-medium text-blue-600">
-              <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
-              1st Semester
-            </span>
-            <span className="flex items-center gap-1.5 text-[0.68rem] font-medium text-emerald-600">
-              <span className="h-[6px] w-[6px] rounded-full bg-emerald-500" />
-              2nd Semester
-            </span>
-            <span className="flex items-center gap-1.5 text-[0.68rem] font-medium text-amber-600">
-              <span className="h-[6px] w-[6px] rounded-full bg-amber-500" />
-              Awaiting 2nd Sem Accomplishment
-            </span>
-          </div>
+              {/* Tab Content */}
+              <div className="min-h-[200px]">
+                {activeCespesTab === "Operations" && (
+                  <>
+                    <InsightCard
+                      icon={<Info size={14} />}
+                      variant={cespes.operations.length === 0 ? "info" : "warning"}
+                      title={cespes.operations.length === 0 ? "Showing Template View" : "2nd Semester logic"}
+                      message={cespes.operations.length === 0 
+                        ? `No Operations data uploaded for SY ${selectedYear}. Displaying empty template structure.` 
+                        : "The 2nd semester target equals the 1st semester's actual accomplishment. The 2nd semester accomplishment column is pending submission."}
+                    />
+                    <div className="mt-4 flex items-center gap-4 mb-5">
+                      <span className="flex items-center gap-1.5 text-[0.68rem] font-medium text-blue-600">
+                        <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
+                        1st Semester
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[0.68rem] font-medium text-emerald-600">
+                        <span className="h-[6px] w-[6px] rounded-full bg-emerald-500" />
+                        2nd Semester
+                      </span>
+                    </div>
+                    <div className="space-y-3">
+                      {(() => {
+                        // Group operations by program
+                        const programs = [];
+                        const programMap = new Map();
+                        const dataSource = cespes.operations.length > 0 ? cespes.operations : DEFAULT_CESPES_DATA.operations;
+                        
+                        dataSource.forEach((row) => {
+                          const pName = row.program || "(No Program)";
+                          if (!programMap.has(pName)) {
+                            const prog = { name: pName, rows: [] };
+                            programMap.set(pName, prog);
+                            programs.push(prog);
+                          }
+                          const iType = (row.indicator_type || "").toUpperCase();
+                          programMap.get(pName).rows.push({
+                            type: iType.startsWith("OUTCOME") ? "OUTCOME" : "OUTPUT",
+                            label: row.indicator,
+                            sem1Target: row.sem1_target || "—",
+                            sem1Accomp: row.sem1_accomplishment || "—",
+                            sem2Target: row.sem2_target || "—",
+                            sem2Accomp: row.sem2_accomplishment || "—",
+                          });
+                        });
+                        // Count outcomes/outputs per program
+                        programs.forEach((p) => {
+                          p.outcomes = p.rows.filter((r) => r.type === "OUTCOME").length;
+                          p.outputs = p.rows.filter((r) => r.type === "OUTPUT").length;
+                          p.reported = `${p.rows.length}/${p.rows.length}`;
+                        });
+                        return programs.map((prog) => (
+                          <CespesProgramRow key={prog.name} program={prog} />
+                        ));
+                      })()}
+                    </div>
+                  </>
+                )}
 
-          <div className="space-y-3">
-            {cespesPrograms.map((prog) => (
-              <CespesProgramRow key={prog.name} program={prog} />
-            ))}
-          </div>
+                {activeCespesTab === "Support to Operations" && (
+                  <div className="space-y-4">
+                    {cespes.supportOperations.length === 0 && (
+                      <div className="text-[0.75rem] text-slate-500 italic px-1">Showing empty template format. Upload data for SY {selectedYear} to populate values.</div>
+                    )}
+                    <CespesSemesterTable 
+                      rows={cespes.supportOperations.length > 0 ? cespes.supportOperations : DEFAULT_CESPES_DATA.supportOperations} 
+                      groupKey="service_activity" 
+                      showPerson 
+                    />
+                  </div>
+                )}
+
+                {activeCespesTab === "General Admin" && (
+                  <div className="space-y-4">
+                    {cespes.generalAdmin.length === 0 && (
+                      <div className="text-[0.75rem] text-slate-500 italic px-1">Showing empty template format. Upload data for SY {selectedYear} to populate values.</div>
+                    )}
+                    <CespesSemesterTable 
+                      rows={cespes.generalAdmin.length > 0 ? cespes.generalAdmin : DEFAULT_CESPES_DATA.generalAdmin} 
+                      groupKey="service_activity" 
+                      showPerson 
+                    />
+                  </div>
+                )}
+
+                {activeCespesTab === "Individual Performance" && (
+                  <div className="space-y-4">
+                    {cespes.individualPerformance.length === 0 && (
+                      <div className="text-[0.75rem] text-slate-500 italic px-1">Showing empty template format. Upload data for SY {selectedYear} to populate values.</div>
+                    )}
+                    <CespesPerformanceTable 
+                      rows={cespes.individualPerformance.length > 0 ? cespes.individualPerformance : DEFAULT_CESPES_DATA.individualPerformance} 
+                    />
+                  </div>
+                )}
+
+                {activeCespesTab === "Innovation & Intervention" && (
+                  <div className="space-y-4">
+                    {cespes.innovation.length === 0 && (
+                      <div className="text-[0.75rem] text-slate-500 italic px-1">Showing empty template format. Upload data for SY {selectedYear} to populate values.</div>
+                    )}
+                    <CespesInnovationTable 
+                      rows={cespes.innovation.length > 0 ? cespes.innovation : DEFAULT_CESPES_DATA.innovation} 
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </DashboardAccordion>
 
         <div className="mt-3" />
@@ -1080,3 +1143,156 @@ function CespesProgramRow({ program }) {
   );
 }
 {/* ── Crucial Resources (accordion) ──────────── */ }
+
+// ─── Sub-component: CESPES Semester Table (Support / General Admin) ──
+
+function CespesSemesterTable({ rows, groupKey, showPerson }) {
+  return (
+    <div className="overflow-x-auto rounded-[10px] border border-slate-100/80">
+      <table className="w-full text-[0.72rem]">
+        <thead>
+          <tr className="bg-slate-50/70">
+            <th className="px-4 py-2.5 text-left font-semibold text-slate-500 w-[22%]">Service / Activity</th>
+            <th className="px-3 py-2.5 text-left font-semibold text-slate-500 w-[22%]">Performance Indicator</th>
+            <th className="px-3 py-2.5 text-center font-semibold text-blue-500" colSpan={2}>1st Semester</th>
+            <th className="px-3 py-2.5 text-center font-semibold text-emerald-500" colSpan={2}>2nd Semester</th>
+            {showPerson && <th className="px-3 py-2.5 text-center font-semibold text-slate-500">Person</th>}
+          </tr>
+          <tr className="bg-slate-50/30">
+            <th /><th />
+            <th className="px-3 py-1.5 text-center text-slate-400 font-medium">Target</th>
+            <th className="px-3 py-1.5 text-center text-slate-400 font-medium">Accomplishment</th>
+            <th className="px-3 py-1.5 text-center text-slate-400 font-medium">Target</th>
+            <th className="px-3 py-1.5 text-center text-slate-400 font-medium">Accomplishment</th>
+            {showPerson && <th />}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className="border-t border-slate-100/60 hover:bg-blue-50/20 transition-colors">
+              <td className="px-4 py-3 text-slate-600">{row[groupKey] || ""}</td>
+              <td className="px-3 py-3 text-slate-600">{row.indicator || ""}</td>
+              <td className="px-3 py-3 text-center text-slate-600">{row.sem1_target || "—"}</td>
+              <td className="px-3 py-3 text-center text-slate-600">{row.sem1_accomplishment || "—"}</td>
+              <td className="px-3 py-3 text-center text-slate-600">{row.sem2_target || "—"}</td>
+              <td className="px-3 py-3 text-center text-slate-600">{row.sem2_accomplishment || "—"}</td>
+              {showPerson && <td className="px-3 py-3 text-center text-slate-500 text-[0.65rem]">{row.person_involved || ""}</td>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ─── Sub-component: CESPES Individual Performance Table ─────
+
+function CespesPerformanceTable({ rows }) {
+  const formatIndicatorList = (text) => {
+    if (!text) return "";
+    
+    // Split by the key performance dimensions
+    const regex = /(QUALITY|EFFICIENCY|TIMELINESS)/gi;
+    const parts = text.split(regex);
+    
+    if (parts.length <= 1) {
+      return text;
+    }
+    
+    const items = [];
+    for (let i = 1; i < parts.length; i += 2) {
+      const keyword = parts[i].toUpperCase();
+      let content = (parts[i + 1] || "").trim();
+      
+      // Clean up leading dashes that might have been left
+      if (content.startsWith("-")) {
+        content = content.substring(1).trim();
+      }
+      
+      items.push({ keyword, content });
+    }
+    
+    return (
+      <ul className="list-disc pl-4 space-y-1.5 marker:text-slate-400">
+        {items.map((item, idx) => (
+          <li key={idx} className="pl-1">
+            <span className="font-semibold text-slate-700">{item.keyword}</span>
+            {item.content ? ` - ${item.content}` : ""}
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  return (
+    <div className="overflow-x-auto rounded-[10px] border border-slate-100/80">
+      <table className="w-full text-[0.72rem]">
+        <thead>
+          <tr className="bg-slate-50/70">
+            <th className="px-4 py-2.5 text-left font-semibold text-slate-500 w-[20%]">Program Output</th>
+            <th className="px-3 py-2.5 text-left font-semibold text-slate-500 w-[20%]">Process Output</th>
+            <th className="px-3 py-2.5 text-left font-semibold text-slate-500 w-[35%]">Performance Indicator</th>
+            <th className="px-3 py-2.5 text-center font-semibold text-blue-500">Target</th>
+            <th className="px-3 py-2.5 text-center font-semibold text-emerald-500">Accomplishment</th>
+            <th className="px-3 py-2.5 text-center font-semibold text-amber-500">Rating</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className="border-t border-slate-100/60 hover:bg-blue-50/20 transition-colors">
+              <td className="px-4 py-3 text-slate-600 leading-relaxed">{row.program_output || ""}</td>
+              <td className="px-3 py-3 text-slate-600 leading-relaxed">{row.process_output || ""}</td>
+              <td className="px-3 py-3 text-slate-600 leading-relaxed">{formatIndicatorList(row.performance_indicator)}</td>
+              <td className="px-3 py-3 text-center text-slate-600">{row.target || "—"}</td>
+              <td className="px-3 py-3 text-center text-slate-600">{row.accomplishment || "—"}</td>
+              <td className="px-3 py-3 text-center">
+                {row.rating ? (
+                  <span className="inline-block px-2 py-0.5 rounded-full text-[0.68rem] font-semibold bg-amber-50 text-amber-700">
+                    {row.rating}
+                  </span>
+                ) : "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ─── Sub-component: CESPES Innovation Table ─────────────────
+
+function CespesInnovationTable({ rows }) {
+  return (
+    <div className="overflow-x-auto rounded-[10px] border border-slate-100/80">
+      <table className="w-full text-[0.72rem]">
+        <thead>
+          <tr className="bg-slate-50/70">
+            <th className="px-4 py-2.5 text-left font-semibold text-slate-500 w-[40%]">Output / Outcomes</th>
+            <th className="px-3 py-2.5 text-center font-semibold text-blue-500">Quality</th>
+            <th className="px-3 py-2.5 text-center font-semibold text-emerald-500">Quantity</th>
+            <th className="px-3 py-2.5 text-center font-semibold text-amber-500">Timeliness</th>
+            <th className="px-3 py-2.5 text-center font-semibold text-purple-500">Average</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className="border-t border-slate-100/60 hover:bg-blue-50/20 transition-colors">
+              <td className="px-4 py-3 text-slate-600 leading-relaxed">{row.output_outcomes || ""}</td>
+              <td className="px-3 py-3 text-center text-slate-600">{row.quality || "—"}</td>
+              <td className="px-3 py-3 text-center text-slate-600">{row.quantity || "—"}</td>
+              <td className="px-3 py-3 text-center text-slate-600">{row.timeliness || "—"}</td>
+              <td className="px-3 py-3 text-center">
+                {row.average ? (
+                  <span className="inline-block px-2 py-0.5 rounded-full text-[0.68rem] font-semibold bg-purple-50 text-purple-700">
+                    {row.average}
+                  </span>
+                ) : "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

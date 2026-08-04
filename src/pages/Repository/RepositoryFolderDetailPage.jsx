@@ -85,6 +85,49 @@ function inferType(mimeType, fileName) {
   return "Other";
 }
 
+function DeleteFileConfirmModal({ isOpen, onClose, onConfirm, fileName, isDeleting }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
+        <div className="flex flex-col items-center text-center gap-4 px-8 pt-8 pb-6">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50 ring-1 ring-red-100">
+            <Trash2 className="text-red-600" size={28} />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">Delete file?</h2>
+            <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+              This will permanently remove
+              <br />
+              <span className="font-semibold text-slate-700">"{fileName}"</span>
+              <br />
+              This action cannot be undone.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-3 px-8 pb-8 pt-2">
+          <button
+            onClick={onClose}
+            disabled={isDeleting}
+            className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function RepositoryFolderDetailPage() {
   const { folderName } = useParams();
   const navigate = useNavigate();
@@ -110,6 +153,9 @@ export default function RepositoryFolderDetailPage() {
 
   const [deletingId, setDeletingId] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
+
+  const [fileToDelete, setFileToDelete] = useState(null);
+  const [showDeleteToast, setShowDeleteToast] = useState(false);
 
   // ── Access control ──────────────────────────────────────────────
   const accessLevel = useMemo(
@@ -191,12 +237,14 @@ export default function RepositoryFolderDetailPage() {
     if (error) console.error("Audit log insert failed:", error);
   };
 
-  async function handleDeleteFile(file) {
+  function handleDeleteFile(file) {
     if (!canEdit) return; // defense in depth
-    const confirmed = window.confirm(
-      `Delete "${file.name}"? This will permanently remove the file from storage and cannot be undone.`,
-    );
-    if (!confirmed) return;
+    setFileToDelete(file);
+  }
+
+  async function confirmDeleteFile() {
+    const file = fileToDelete;
+    if (!file) return;
 
     setDeletingId(file.id);
 
@@ -227,6 +275,9 @@ export default function RepositoryFolderDetailPage() {
         details: `Deleted from ${section?.name ?? "unknown section"}`,
         status: "Success",
       });
+
+      setFileToDelete(null);
+      setShowDeleteToast(true);
     } catch (err) {
       console.error(err);
       alert(err.message || "Something went wrong while deleting the file.");
@@ -301,10 +352,10 @@ export default function RepositoryFolderDetailPage() {
       size: f.file_size ? `${(f.file_size / 1024).toFixed(1)} KB` : "—",
       date: f.created_at
         ? new Date(f.created_at).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
         : "—",
       uploader: uploaderMap[f.uploaded_by] ?? "Unknown",
       status: f.is_dashboard_source ? "Verified" : "For Review",
@@ -321,6 +372,12 @@ export default function RepositoryFolderDetailPage() {
     if (!decodedName) return;
     fetchData();
   }, [decodedName]);
+
+  useEffect(() => {
+    if (!showDeleteToast) return;
+    const timer = setTimeout(() => setShowDeleteToast(false), 5000);
+    return () => clearTimeout(timer);
+  }, [showDeleteToast]);
 
   const backTarget = division
     ? `/repository/divisions/${division.id}`
@@ -433,21 +490,19 @@ export default function RepositoryFolderDetailPage() {
           <div className="flex items-center gap-1 border border-slate-100 rounded-lg p-1">
             <button
               onClick={() => setViewMode("list")}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === "list"
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
-              }`}
+              className={`p-2 rounded-md transition-all ${viewMode === "list"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                }`}
             >
               <List size={16} />
             </button>
             <button
               onClick={() => setViewMode("grid")}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === "grid"
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
-              }`}
+              className={`p-2 rounded-md transition-all ${viewMode === "grid"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                }`}
             >
               <Grid3x3 size={16} />
             </button>
@@ -461,19 +516,17 @@ export default function RepositoryFolderDetailPage() {
               <button
                 key={tab}
                 onClick={() => setActiveType(tab)}
-                className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all border ${
-                  isActive
-                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                    : "text-slate-600 hover:bg-slate-50 border-slate-100 bg-white"
-                }`}
+                className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all border ${isActive
+                  ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                  : "text-slate-600 hover:bg-slate-50 border-slate-100 bg-white"
+                  }`}
               >
                 {tab}
                 <span
-                  className={`ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                    isActive
-                      ? "bg-white/20 text-white"
-                      : "bg-slate-100 text-slate-500"
-                  }`}
+                  className={`ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${isActive
+                    ? "bg-white/20 text-white"
+                    : "bg-slate-100 text-slate-500"
+                    }`}
                 >
                   {typeCounts[tab]}
                 </span>
@@ -685,6 +738,71 @@ export default function RepositoryFolderDetailPage() {
           }
         }}
       />
+
+      <DeleteFileConfirmModal
+        isOpen={!!fileToDelete}
+        onClose={() => setFileToDelete(null)}
+        onConfirm={confirmDeleteFile}
+        fileName={fileToDelete?.name || ""}
+        isDeleting={deletingId === fileToDelete?.id}
+      />
+
+      {showDeleteToast && (
+        <div
+          className="fixed top-6 right-6 z-50 flex bg-white overflow-hidden animate-toast-in"
+          style={{
+            width: "360px",
+            height: "72px",
+            borderRadius: "12px",
+            boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
+            fontFamily: "Poppins, sans-serif",
+          }}
+        >
+          <div style={{ width: "6px", backgroundColor: "#43D45B", flexShrink: 0 }} />
+
+          <div
+            className="flex items-center flex-1 relative"
+            style={{ padding: "0 14px", gap: "12px" }}
+          >
+            <div
+              className="flex items-center justify-center shrink-0"
+              style={{
+                width: "34px",
+                height: "34px",
+                borderRadius: "50%",
+                backgroundColor: "#43D45B",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+
+            <div className="flex flex-col justify-center">
+              <p style={{ fontSize: "15px", fontWeight: 700, color: "#1F1F2E", lineHeight: 1.2, margin: 0 }}>
+                Success
+              </p>
+              <p style={{ fontSize: "12.5px", fontWeight: 500, color: "#666666", marginTop: "2px", margin: 0 }}>
+                File deleted successfully.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowDeleteToast(false)}
+              className="absolute top-2 right-2.5 cursor-pointer"
+              style={{
+                color: "#666666",
+                background: "none",
+                border: "none",
+                fontSize: "16px",
+                lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

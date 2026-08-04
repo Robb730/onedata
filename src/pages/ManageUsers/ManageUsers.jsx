@@ -34,8 +34,8 @@ export default function ManageUsers() {
   const [successEmail, setSuccessEmail] = useState("");
   const [deactivatingUser, setDeactivatingUser] = useState(null);
   const [activatingUser, setActivatingUser] = useState(null);
-
   const { userProfile } = useUser();
+  const [showToast, setShowToast] = useState(false);
 
   // ─── Fetch users from Supabase ───────────────────────────────
   const fetchUsers = async () => {
@@ -97,6 +97,12 @@ export default function ManageUsers() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    if (!showToast) return;
+    const timer = setTimeout(() => setShowToast(false), 5000);
+    return () => clearTimeout(timer);
+  }, [showToast]);
 
   // ─── Divisions list for filter dropdown ──────────────────────
   const divisions = [
@@ -186,6 +192,7 @@ export default function ManageUsers() {
     });
 
     setDeletingUser(null);
+    setShowToast(true);
     fetchUsers();
   };
 
@@ -327,10 +334,71 @@ export default function ManageUsers() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/40">
-      <div className="mx-auto max-w-[1100px] px-5 py-8">
-        {/* ── Page Header ─────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-7">
+    <div className="p-8">
+      {showToast && (
+        <div
+          className="fixed top-6 right-6 z-50 flex bg-white overflow-hidden animate-toast-in"
+          style={{
+            width: "360px",
+            height: "72px",
+            borderRadius: "12px",
+            boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
+            fontFamily: "Poppins, sans-serif",
+          }}
+        >
+          {/* Green accent bar */}
+          <div style={{ width: "6px", backgroundColor: "#43D45B", flexShrink: 0 }} />
+
+          {/* Content */}
+          <div
+            className="flex items-center flex-1 relative"
+            style={{ padding: "0 14px", gap: "12px" }}
+          >
+            {/* Icon circle */}
+            <div
+              className="flex items-center justify-center shrink-0"
+              style={{
+                width: "34px",
+                height: "34px",
+                borderRadius: "50%",
+                backgroundColor: "#43D45B",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+
+            {/* Text */}
+            <div className="flex flex-col justify-center">
+              <p style={{ fontSize: "15px", fontWeight: 700, color: "#1F1F2E", lineHeight: 1.2, margin: 0 }}>
+                Success
+              </p>
+              <p style={{ fontSize: "12.5px", fontWeight: 500, color: "#666666", marginTop: "2px", margin: 0 }}>
+                User deleted successfully.
+              </p>
+            </div>
+
+            {/* Close button */}
+            <button
+              onClick={() => setShowToast(false)}
+              className="absolute top-2 right-2.5 cursor-pointer"
+              style={{
+                color: "#666666",
+                background: "none",
+                border: "none",
+                fontSize: "16px",
+                lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-2">
           <div>
             <h1 className="text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
               Manage Users
