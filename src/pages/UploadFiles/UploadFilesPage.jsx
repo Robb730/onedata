@@ -292,7 +292,9 @@ export default function UploadFilesPage({
           school_year: schoolYear,
           section_id: sectionId,
           division_id: divisionId,
-          uploaded_by: userProfile?.id ?? null,
+          uploaded_by: userProfile?.uuid ?? null,
+          uploaded_by_name: userProfile?.full_name ?? null,
+          status: "Unverified",
           is_dashboard_source: uploadType !== "general",
         })
         .select()

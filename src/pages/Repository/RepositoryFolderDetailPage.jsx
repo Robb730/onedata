@@ -46,7 +46,9 @@ const roleDisplayMap = {
 const getRoleDisplay = (role) => roleDisplayMap[role] ?? role;
 
 function getBucket(category) {
-  return category === "general" || !category ? "repository-files" : "excel-files";
+  return category === "general" || !category
+    ? "repository-files"
+    : "excel-files";
 }
 
 // ── File icon helper ─────────────────────────────────────────────
@@ -56,7 +58,11 @@ function getFileIcon(type) {
       return { Icon: FileType, color: "text-red-500", bg: "bg-red-50" };
     case "Excel":
     case "Spreadsheet":
-      return { Icon: FileSpreadsheet, color: "text-emerald-600", bg: "bg-emerald-50" };
+      return {
+        Icon: FileSpreadsheet,
+        color: "text-emerald-600",
+        bg: "bg-emerald-50",
+      };
     case "Word":
     case "Document":
       return { Icon: FileText, color: "text-blue-500", bg: "bg-blue-50" };
@@ -73,9 +79,15 @@ function inferType(mimeType, fileName) {
   if (!mimeType && !fileName) return "Other";
   const ext = fileName?.split(".").pop()?.toLowerCase();
   if (mimeType?.includes("pdf") || ext === "pdf") return "PDF";
-  if (mimeType?.includes("sheet") || ["xlsx", "xls", "csv"].includes(ext)) return "Excel";
-  if (mimeType?.includes("word") || ["docx", "doc"].includes(ext)) return "Word";
-  if (mimeType?.includes("image") || ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) return "Image";
+  if (mimeType?.includes("sheet") || ["xlsx", "xls", "csv"].includes(ext))
+    return "Excel";
+  if (mimeType?.includes("word") || ["docx", "doc"].includes(ext))
+    return "Word";
+  if (
+    mimeType?.includes("image") ||
+    ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)
+  )
+    return "Image";
   return "Other";
 }
 
@@ -93,7 +105,10 @@ const AVATAR_COLORS = [
 
 function hashStr(str = "") {
   let h = 0;
-  for (let i = 0; i < str.length; i++) { h = (h << 5) - h + str.charCodeAt(i); h |= 0; }
+  for (let i = 0; i < str.length; i++) {
+    h = (h << 5) - h + str.charCodeAt(i);
+    h |= 0;
+  }
   return Math.abs(h);
 }
 function getAvatarColor(name) {
@@ -101,7 +116,8 @@ function getAvatarColor(name) {
 }
 function getInitials(name = "") {
   const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  if (parts.length >= 2)
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   return name.slice(0, 2).toUpperCase();
 }
 
@@ -111,11 +127,22 @@ function formatRelativeDate(dateStr) {
   const d = new Date(dateStr);
   const now = new Date();
   const diffDays = Math.floor((now - d) / 86400000);
-  const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-  const fullStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  if (diffDays === 0) return { relative: "Today", time: timeStr, full: fullStr };
-  if (diffDays === 1) return { relative: "Yesterday", time: timeStr, full: fullStr };
-  if (diffDays < 7) return { relative: `${diffDays}d ago`, time: timeStr, full: fullStr };
+  const timeStr = d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+  const fullStr = d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  if (diffDays === 0)
+    return { relative: "Today", time: timeStr, full: fullStr };
+  if (diffDays === 1)
+    return { relative: "Yesterday", time: timeStr, full: fullStr };
+  if (diffDays < 7)
+    return { relative: `${diffDays}d ago`, time: timeStr, full: fullStr };
   return { relative: fullStr, time: timeStr, full: fullStr };
 }
 
@@ -124,7 +151,13 @@ function formatRelativeDate(dateStr) {
 // ─────────────────────────────────────────────────────────────────
 
 // Delete confirmation
-function DeleteFileConfirmModal({ isOpen, onClose, onConfirm, fileName, isDeleting }) {
+function DeleteFileConfirmModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  fileName,
+  isDeleting,
+}) {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
@@ -166,12 +199,27 @@ function DeleteFileConfirmModal({ isOpen, onClose, onConfirm, fileName, isDeleti
 }
 
 // Verify confirmation modal — matches the reference screenshot exactly
-function VerifyConfirmModal({ isOpen, onClose, onConfirm, file, userProfile, isVerifying }) {
+function VerifyConfirmModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  file,
+  userProfile,
+  isVerifying,
+}) {
   if (!isOpen || !file) return null;
   const { Icon, color, bg } = getFileIcon(file.type);
   const now = new Date();
-  const dateStr = now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-  const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  const dateStr = now.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+  const timeStr = now.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
   const avatarColor = getAvatarColor(userProfile?.full_name ?? "");
   const isVerified = file.status === "Verified";
 
@@ -202,13 +250,18 @@ function VerifyConfirmModal({ isOpen, onClose, onConfirm, file, userProfile, isV
         {/* File preview card */}
         <div className="px-6 pt-5">
           <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-            <div className={`w-9 h-9 ${bg} rounded-lg flex items-center justify-center shrink-0`}>
+            <div
+              className={`w-9 h-9 ${bg} rounded-lg flex items-center justify-center shrink-0`}
+            >
               <Icon size={18} className={color} />
             </div>
             <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-slate-800 truncate leading-tight">{file.name}</p>
+              <p className="text-[13px] font-semibold text-slate-800 truncate leading-tight">
+                {file.name}
+              </p>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                {file.type} · {file.size} · Uploaded {formatRelativeDate(file.rawCreatedAt).full}
+                {file.type} · {file.size} · Uploaded{" "}
+                {formatRelativeDate(file.rawCreatedAt).full}
               </p>
             </div>
           </div>
@@ -229,18 +282,32 @@ function VerifyConfirmModal({ isOpen, onClose, onConfirm, file, userProfile, isV
         <div className="px-6 pt-4 pb-5">
           <div className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-slate-50 border border-slate-100">
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-9 h-9 ${avatarColor.bg} rounded-full flex items-center justify-center shrink-0`}>
-                <span className="text-xs font-bold text-white">{getInitials(userProfile?.full_name ?? "")}</span>
+              <div
+                className={`w-9 h-9 ${avatarColor.bg} rounded-full flex items-center justify-center shrink-0`}
+              >
+                <span className="text-xs font-bold text-white">
+                  {getInitials(userProfile?.full_name ?? "")}
+                </span>
               </div>
               <div className="min-w-0">
-                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Recorded Under</p>
-                <p className="text-[12px] font-semibold text-slate-800 leading-tight">{userProfile?.full_name ?? "—"}</p>
-                <p className="text-[10px] text-slate-400">{getRoleDisplay(userProfile?.role)}</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                  Recorded Under
+                </p>
+                <p className="text-[12px] font-semibold text-slate-800 leading-tight">
+                  {userProfile?.full_name ?? "—"}
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  {getRoleDisplay(userProfile?.role)}
+                </p>
               </div>
             </div>
             <div className="text-right shrink-0">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Timestamp</p>
-              <p className="text-[12px] font-semibold text-slate-800 leading-tight">{dateStr}</p>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                Timestamp
+              </p>
+              <p className="text-[12px] font-semibold text-slate-800 leading-tight">
+                {dateStr}
+              </p>
               <p className="text-[10px] text-slate-400">{timeStr}</p>
             </div>
           </div>
@@ -261,7 +328,11 @@ function VerifyConfirmModal({ isOpen, onClose, onConfirm, file, userProfile, isV
             className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-colors disabled:opacity-50 shadow-sm"
           >
             <ShieldCheck size={15} />
-            {isVerifying ? "Saving…" : isVerified ? "Unverify" : "Confirm Verification"}
+            {isVerifying
+              ? "Saving…"
+              : isVerified
+                ? "Unverify"
+                : "Confirm Verification"}
           </button>
         </div>
       </div>
@@ -284,16 +355,26 @@ function FileInfoCard({ file, onPreview, onDownload, canEdit }) {
     <div className="w-64 rounded-2xl bg-white text-slate-800 shadow-[0_20px_60px_rgba(15,23,42,0.15)] border border-slate-200">
       {/* File header */}
       <div className="flex items-start gap-3 p-4 border-b border-slate-100">
-        <div className={`w-9 h-9 ${bg} rounded-xl flex items-center justify-center shrink-0`}>
+        <div
+          className={`w-9 h-9 ${bg} rounded-xl flex items-center justify-center shrink-0`}
+        >
           <Icon size={18} className={color} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[12px] font-bold text-slate-800 leading-tight line-clamp-2">{file.name}</p>
+          <p className="text-[12px] font-bold text-slate-800 leading-tight line-clamp-2">
+            {file.name}
+          </p>
           <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1.5 flex-wrap">
             <span className={`font-bold ${color}`}>{file.type}</span>
-            {file.status === "Verified"
-              ? <span className="inline-flex items-center gap-0.5 text-emerald-600"><CheckCircle2 size={9} /> Verified</span>
-              : <span className="inline-flex items-center gap-0.5 text-amber-500"><XCircle size={9} /> Not Verified</span>}
+            {file.status === "Verified" ? (
+              <span className="inline-flex items-center gap-0.5 text-emerald-600">
+                <CheckCircle2 size={9} /> Verified
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-0.5 text-amber-500">
+                <XCircle size={9} /> Unverified
+              </span>
+            )}
           </p>
         </div>
       </div>
@@ -307,7 +388,9 @@ function FileInfoCard({ file, onPreview, onDownload, canEdit }) {
           { label: "MODIFIED", value: modified.full },
         ].map(({ label, value }) => (
           <div key={label} className="bg-slate-50 px-3 py-2.5">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">{label}</p>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">
+              {label}
+            </p>
             <p className="text-[11px] font-semibold text-slate-700">{value}</p>
           </div>
         ))}
@@ -342,31 +425,49 @@ function UserInfoCard({ info }) {
   return (
     <div className="w-56 rounded-2xl bg-white text-slate-800 shadow-[0_20px_60px_rgba(15,23,42,0.15)] border border-slate-200">
       <div className="flex items-center gap-3 p-4 border-b border-slate-100">
-        <div className={`w-9 h-9 ${bg} rounded-full flex items-center justify-center shrink-0`}>
-          <span className="text-xs font-bold text-white">{getInitials(name)}</span>
+        <div
+          className={`w-9 h-9 ${bg} rounded-full flex items-center justify-center shrink-0`}
+        >
+          <span className="text-xs font-bold text-white">
+            {getInitials(name)}
+          </span>
         </div>
         <div className="min-w-0">
-          <p className="text-[12px] font-bold text-slate-800 leading-tight">{name}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">{getRoleDisplay(role)}</p>
+          <p className="text-[12px] font-bold text-slate-800 leading-tight">
+            {name}
+          </p>
+          <p className="text-[10px] text-slate-500 mt-0.5">
+            {getRoleDisplay(role)}
+          </p>
         </div>
       </div>
       <div className="p-4 space-y-3">
         {email && (
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">EMAIL</p>
-            <p className="text-[11px] text-slate-700 font-medium break-all">{email}</p>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">
+              EMAIL
+            </p>
+            <p className="text-[11px] text-slate-700 font-medium break-all">
+              {email}
+            </p>
           </div>
         )}
         {division && (
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">DIVISION</p>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">
+              DIVISION
+            </p>
             <p className="text-[11px] text-slate-700 font-medium">{division}</p>
           </div>
         )}
         {typeof uploadCount === "number" && (
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">UPLOADS</p>
-            <p className="text-[11px] text-slate-700 font-medium">{uploadCount} files</p>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">
+              UPLOADS
+            </p>
+            <p className="text-[11px] text-slate-700 font-medium">
+              {uploadCount} files
+            </p>
           </div>
         )}
       </div>
@@ -396,25 +497,39 @@ function LastModifiedInfoCard({ rawDate, uploaderInfo }) {
       {/* Header */}
       <div className="flex items-center gap-2 px-4 pt-4 pb-3 border-b border-slate-100">
         <Clock size={13} className="text-slate-400 shrink-0" />
-        <p className="text-[11px] font-bold text-slate-700 uppercase tracking-widest">Last Modified</p>
+        <p className="text-[11px] font-bold text-slate-700 uppercase tracking-widest">
+          Last Modified
+        </p>
       </div>
 
       {/* Full datetime */}
       <div className="px-4 py-3 border-b border-slate-100">
-        <p className="text-[12px] font-semibold text-slate-800 leading-snug">{fullDate}</p>
+        <p className="text-[12px] font-semibold text-slate-800 leading-snug">
+          {fullDate}
+        </p>
       </div>
 
       {/* Modified by */}
       {uploaderInfo && (
         <div className="px-4 py-3">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Modified By</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+            Modified By
+          </p>
           <div className="flex items-center gap-2.5">
-            <div className={`w-8 h-8 ${bg} rounded-full flex items-center justify-center shrink-0`}>
-              <span className="text-[10px] font-bold text-white">{getInitials(uploaderInfo.name)}</span>
+            <div
+              className={`w-8 h-8 ${bg} rounded-full flex items-center justify-center shrink-0`}
+            >
+              <span className="text-[10px] font-bold text-white">
+                {getInitials(uploaderInfo.name)}
+              </span>
             </div>
             <div className="min-w-0">
-              <p className="text-[12px] font-bold text-slate-800 leading-tight truncate">{uploaderInfo.name}</p>
-              <p className="text-[10px] text-blue-500 font-medium mt-0.5">{getRoleDisplay(uploaderInfo.role)}</p>
+              <p className="text-[12px] font-bold text-slate-800 leading-tight truncate">
+                {uploaderInfo.name}
+              </p>
+              <p className="text-[10px] text-blue-500 font-medium mt-0.5">
+                {getRoleDisplay(uploaderInfo.role)}
+              </p>
             </div>
           </div>
         </div>
@@ -476,7 +591,9 @@ export default function RepositoryFolderDetailPage() {
   useEffect(() => {
     if (!section || !userProfile) return;
     if (getSectionAccessLevel(userProfile, section) === "blocked") {
-      navigate(`/repository/restricted/${encodeURIComponent(section.name)}`, { replace: true });
+      navigate(`/repository/restricted/${encodeURIComponent(section.name)}`, {
+        replace: true,
+      });
     }
   }, [section, userProfile, navigate]);
 
@@ -491,17 +608,29 @@ export default function RepositoryFolderDetailPage() {
       .eq("name", decodedName)
       .single();
 
-    if (sectionError) { setError(sectionError.message); setLoading(false); return; }
+    if (sectionError) {
+      setError(sectionError.message);
+      setLoading(false);
+      return;
+    }
     setSection(sectionData);
 
     const { data: divisionData, error: divisionError } = await supabase
-      .from("divisions").select("id, name, managed_by").eq("id", sectionData.division_id).single();
+      .from("divisions")
+      .select("id, name, managed_by")
+      .eq("id", sectionData.division_id)
+      .single();
     if (!divisionError) setDivision(divisionData);
 
     const { data: filesData } = await supabase
-      .from("files").select("*").eq("section_id", sectionData.id).order("created_at", { ascending: false });
+      .from("files")
+      .select("*")
+      .eq("section_id", sectionData.id)
+      .order("created_at", { ascending: false });
 
-    const uploaderIds = [...new Set((filesData || []).map((f) => f.uploaded_by).filter(Boolean))];
+    const uploaderIds = [
+      ...new Set((filesData || []).map((f) => f.uploaded_by).filter(Boolean)),
+    ];
     let uploaderMap = {};
     let uploaderDetailMap = {};
 
@@ -530,17 +659,23 @@ export default function RepositoryFolderDetailPage() {
       }
     }
 
+    function formatFileSize(bytes) {
+      if (!bytes) return "—";
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    }
+
     const mapped = (filesData || []).map((f) => ({
       id: f.id,
       name: f.file_name,
       type: inferType(f.file_type, f.file_name),
-      size: f.file_size ? `${(f.file_size / 1024 / 1024).toFixed(1)} MB` : "—",
+      size: formatFileSize(f.file_size),
       rawSize: f.file_size || 0,
       rawCreatedAt: f.created_at,
       rawUpdatedAt: f.updated_at,
-      uploader: uploaderMap[f.uploaded_by] ?? "Unknown",
+      uploader: uploaderMap[f.uploaded_by] ?? f.uploaded_by_name ?? "Unknown",
       uploaderId: f.uploaded_by,
-      status: f.is_dashboard_source ? "Verified" : "For Review",
+      status: f.status ?? "Error",
       isDashboardSource: !!f.is_dashboard_source,
       path: f.file_path,
       data_category: f.data_category,
@@ -552,7 +687,9 @@ export default function RepositoryFolderDetailPage() {
     setLoading(false);
   }
 
-  useEffect(() => { if (decodedName) fetchData(); }, [decodedName]);
+  useEffect(() => {
+    if (decodedName) fetchData();
+  }, [decodedName]);
   useEffect(() => {
     if (!showDeleteToast) return;
     const t = setTimeout(() => setShowDeleteToast(false), 5000);
@@ -565,23 +702,37 @@ export default function RepositoryFolderDetailPage() {
     setDownloadingId(file.id);
     try {
       const bucket = getBucket(file.data_category);
-      const { data: blob, error } = await supabase.storage.from(bucket).download(file.path);
+      const { data: blob, error } = await supabase.storage
+        .from(bucket)
+        .download(file.path);
       if (error) throw new Error(error.message);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = file.name;
-      document.body.appendChild(a); a.click(); a.remove();
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
       URL.revokeObjectURL(url);
-      await logAudit("Download", file.name, `Downloaded from ${section?.name}`, "Success");
+      await logAudit(
+        "Download",
+        file.name,
+        `Downloaded from ${section?.name}`,
+        "Success",
+      );
     } catch (err) {
       console.error(err);
       await logAudit("Download", file.name, err.message, "Failed");
-    } finally { setDownloadingId(null); }
+    } finally {
+      setDownloadingId(null);
+    }
   }
 
   const logAudit = async (action, fileName, details, status = "Success") => {
     const { error } = await supabase.from("audit_logs").insert({
-      action, file_name: fileName, details,
+      action,
+      file_name: fileName,
+      details,
       performed_by: userProfile?.full_name ?? "Unknown",
       role: getRoleDisplay(userProfile?.role) ?? "Unknown",
       status,
@@ -600,21 +751,37 @@ export default function RepositoryFolderDetailPage() {
     setDeletingId(file.id);
     try {
       if (file.path) {
-        const { error: storageErr } = await supabase.storage.from("excel-files").remove([file.path]);
+        const { error: storageErr } = await supabase.storage
+          .from("excel-files")
+          .remove([file.path]);
         if (storageErr) throw new Error(storageErr.message);
       }
-      const { error: dbErr } = await supabase.from("files").delete().eq("id", file.id);
+      const { error: dbErr } = await supabase
+        .from("files")
+        .delete()
+        .eq("id", file.id);
       if (dbErr) throw new Error(dbErr.message);
       setAllFiles((prev) => prev.filter((f) => f.id !== file.id));
-      setSelectedIds((prev) => { const n = new Set(prev); n.delete(file.id); return n; });
-      await logAudit("Delete", file.name, `Deleted from ${section?.name}`, "Success");
+      setSelectedIds((prev) => {
+        const n = new Set(prev);
+        n.delete(file.id);
+        return n;
+      });
+      await logAudit(
+        "Delete",
+        file.name,
+        `Deleted from ${section?.name}`,
+        "Success",
+      );
       setFileToDelete(null);
       setShowDeleteToast(true);
     } catch (err) {
       console.error(err);
       alert(err.message);
       await logAudit("Delete", file.name, err.message, "Failed");
-    } finally { setDeletingId(null); }
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   // Verify/unverify toggle
@@ -623,30 +790,39 @@ export default function RepositoryFolderDetailPage() {
     if (!file) return;
     setIsVerifying(true);
     try {
-      const newValue = !file.isDashboardSource;
+      const isCurrentlyVerified = file.status === "Verified";
+      const newStatus = isCurrentlyVerified ? "Unverified" : "Verified";
+
       const { error } = await supabase
         .from("files")
-        .update({ is_dashboard_source: newValue })
+        .update({ status: newStatus })
         .eq("id", file.id);
       if (error) throw new Error(error.message);
+
       setAllFiles((prev) =>
-        prev.map((f) =>
-          f.id === file.id
-            ? { ...f, isDashboardSource: newValue, status: newValue ? "Verified" : "For Review" }
-            : f
-        )
+        prev.map((f) => (f.id === file.id ? { ...f, status: newStatus } : f)),
       );
-      const action = newValue ? "Verify" : "Unverify";
-      await logAudit(action, file.name, `${action}d in ${section?.name}`, "Success");
+
+      const action = newStatus === "Verified" ? "Verify" : "Unverify";
+      await logAudit(
+        action,
+        file.name,
+        `${action}d in ${section?.name}`,
+        "Success",
+      );
       setVerifyTarget(null);
     } catch (err) {
       console.error(err);
       alert(err.message);
-    } finally { setIsVerifying(false); }
+    } finally {
+      setIsVerifying(false);
+    }
   }
 
   // ── Selection helpers ──────────────────────────────────────────
-  const allFilteredSelected = filtered_local()?.length > 0 && filtered_local()?.every((f) => selectedIds.has(f.id));
+  const allFilteredSelected =
+    filtered_local()?.length > 0 &&
+    filtered_local()?.every((f) => selectedIds.has(f.id));
   const someSelected = selectedIds.size > 0;
   function toggleSelectAll() {
     const f = filtered_local() ?? [];
@@ -654,9 +830,15 @@ export default function RepositoryFolderDetailPage() {
     else setSelectedIds(new Set(f.map((x) => x.id)));
   }
   function toggleSelect(id) {
-    setSelectedIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
   }
-  function clearSelection() { setSelectedIds(new Set()); }
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
 
   // ── Filter + sort ──────────────────────────────────────────────
   function filtered_local() {
@@ -674,15 +856,25 @@ export default function RepositoryFolderDetailPage() {
         return new Date(b.rawCreatedAt) - new Date(a.rawCreatedAt);
       });
   }
-  const filtered = useMemo(filtered_local, [allFiles, activeType, searchQuery, sortBy]);
+  const filtered = useMemo(filtered_local, [
+    allFiles,
+    activeType,
+    searchQuery,
+    sortBy,
+  ]);
 
   const typeCounts = FILE_TYPE_TABS.reduce((acc, type) => {
-    acc[type] = type === "All" ? allFiles.length : allFiles.filter((f) => f.type === type).length;
+    acc[type] =
+      type === "All"
+        ? allFiles.length
+        : allFiles.filter((f) => f.type === type).length;
     return acc;
   }, {});
 
   const verifiedCount = allFiles.filter((f) => f.status === "Verified").length;
-  const backTarget = division ? `/repository/divisions/${division.id}` : "/repository";
+  const backTarget = division
+    ? `/repository/divisions/${division.id}`
+    : "/repository";
   const backLabel = division?.name ?? "Repository";
 
   // ── Popover helpers ────────────────────────────────────────────
@@ -696,7 +888,10 @@ export default function RepositoryFolderDetailPage() {
   }
   function handleUserMouseEnter(uploaderId) {
     clearTimeout(userHoverTimer.current);
-    userHoverTimer.current = setTimeout(() => setHoveredUploaderId(uploaderId), 400);
+    userHoverTimer.current = setTimeout(
+      () => setHoveredUploaderId(uploaderId),
+      400,
+    );
   }
   function handleUserMouseLeave() {
     clearTimeout(userHoverTimer.current);
@@ -704,7 +899,10 @@ export default function RepositoryFolderDetailPage() {
   }
   function handleModifiedMouseEnter(fileId) {
     clearTimeout(modifiedHoverTimer.current);
-    modifiedHoverTimer.current = setTimeout(() => setHoveredModifiedId(fileId), 400);
+    modifiedHoverTimer.current = setTimeout(
+      () => setHoveredModifiedId(fileId),
+      400,
+    );
   }
   function handleModifiedMouseLeave() {
     clearTimeout(modifiedHoverTimer.current);
@@ -717,22 +915,29 @@ export default function RepositoryFolderDetailPage() {
   return (
     <div className="min-h-screen bg-slate-50/40 pb-20">
       <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
-
         {/* ── Breadcrumb ─────────────────────────────────────── */}
         <nav className="flex items-center gap-1.5 text-[12px] text-slate-400 mb-5 font-medium">
-          <button onClick={() => navigate("/repository")} className="hover:text-slate-600 transition-colors">
+          <button
+            onClick={() => navigate("/repository")}
+            className="hover:text-slate-600 transition-colors"
+          >
             Repository
           </button>
           {division && (
             <>
               <ChevronRight size={12} />
-              <button onClick={() => navigate(backTarget)} className="hover:text-slate-600 transition-colors truncate max-w-[180px]">
+              <button
+                onClick={() => navigate(backTarget)}
+                className="hover:text-slate-600 transition-colors truncate max-w-[180px]"
+              >
                 {backLabel}
               </button>
             </>
           )}
           <ChevronRight size={12} />
-          <span className="text-slate-700 font-semibold truncate max-w-[220px]">{decodedName}</span>
+          <span className="text-slate-700 font-semibold truncate max-w-[220px]">
+            {decodedName}
+          </span>
         </nav>
 
         {/* ── Page Header ────────────────────────────────────── */}
@@ -742,7 +947,9 @@ export default function RepositoryFolderDetailPage() {
               {decodedName}
             </h1>
             <p className="text-[0.78rem] text-slate-400 font-medium mt-1">
-              {loading ? "Loading…" : `${allFiles.length} files · ${verifiedCount} verified`}
+              {loading
+                ? "Loading…"
+                : `${allFiles.length} files · ${verifiedCount} verified`}
             </p>
           </div>
           {canEdit && (
@@ -760,7 +967,8 @@ export default function RepositoryFolderDetailPage() {
         {accessLevel === "locked" && (
           <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
             <Lock size={14} className="shrink-0" />
-            You can view files in this section, but download, edit, and delete are limited to your assigned section.
+            You can view files in this section, but download, edit, and delete
+            are limited to your assigned section.
           </div>
         )}
 
@@ -769,7 +977,9 @@ export default function RepositoryFolderDetailPage() {
           <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-1.5">
               <User size={11} className="text-slate-400" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Managed By</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Managed By
+              </p>
             </div>
             <p className="text-[0.88rem] font-semibold text-slate-800">
               {loading ? "—" : (section?.managed_by ?? "—")}
@@ -778,7 +988,9 @@ export default function RepositoryFolderDetailPage() {
           <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-1.5">
               <Building2 size={11} className="text-slate-400" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Division</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Division
+              </p>
             </div>
             <p className="text-[0.88rem] font-semibold text-slate-800">
               {loading ? "—" : (division?.name ?? "—")}
@@ -791,7 +1003,10 @@ export default function RepositoryFolderDetailPage() {
           <div className="flex flex-col md:flex-row items-center gap-3 mb-4">
             {/* Search */}
             <div className="flex-1 w-full relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+              <Search
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                size={14}
+              />
               <input
                 type="text"
                 placeholder="Search files by name..."
@@ -804,7 +1019,10 @@ export default function RepositoryFolderDetailPage() {
             {/* Sort + view toggle */}
             <div className="flex items-center gap-2 shrink-0">
               <div className="flex items-center gap-1.5 border border-slate-200 rounded-xl px-3 py-2.5 bg-white">
-                <SlidersHorizontal className="text-slate-400 shrink-0" size={13} />
+                <SlidersHorizontal
+                  className="text-slate-400 shrink-0"
+                  size={13}
+                />
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
@@ -847,7 +1065,9 @@ export default function RepositoryFolderDetailPage() {
                   }`}
                 >
                   {tab}
-                  <span className={`ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"}`}>
+                  <span
+                    className={`ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"}`}
+                  >
                     {typeCounts[tab]}
                   </span>
                 </button>
@@ -859,10 +1079,16 @@ export default function RepositoryFolderDetailPage() {
         {/* ── File count + bulk bar ─────────────────────────── */}
         <div className="flex items-center justify-between mb-3">
           <p className="text-[13px] text-slate-500 font-medium">
-            Showing <span className="font-semibold text-slate-700">{filtered.length}</span> of {allFiles.length} files
+            Showing{" "}
+            <span className="font-semibold text-slate-700">
+              {filtered.length}
+            </span>{" "}
+            of {allFiles.length} files
           </p>
           {allFiles.length > 0 && (
-            <p className="text-[11px] text-slate-400">○ All actions are audit-logged</p>
+            <p className="text-[11px] text-slate-400">
+              ○ All actions are audit-logged
+            </p>
           )}
         </div>
 
@@ -875,15 +1101,24 @@ export default function RepositoryFolderDetailPage() {
             <div className="flex items-center gap-2 ml-1">
               {/* Determine if all selected are verified */}
               {(() => {
-                const selectedFiles = filtered.filter((f) => selectedIds.has(f.id));
-                const allVerified = selectedFiles.every((f) => f.status === "Verified");
-                const anyUnverified = selectedFiles.some((f) => f.status !== "Verified");
+                const selectedFiles = filtered.filter((f) =>
+                  selectedIds.has(f.id),
+                );
+                const allVerified = selectedFiles.every(
+                  (f) => f.status === "Verified",
+                );
+                const anyUnverified = selectedFiles.some(
+                  (f) => f.status !== "Verified",
+                );
                 return (
                   <>
                     {anyUnverified && (
                       <button
                         onClick={() => {
-                          const first = filtered.find((f) => selectedIds.has(f.id) && f.status !== "Verified");
+                          const first = filtered.find(
+                            (f) =>
+                              selectedIds.has(f.id) && f.status !== "Verified",
+                          );
                           if (first) setVerifyTarget(first);
                         }}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold transition-colors"
@@ -894,7 +1129,10 @@ export default function RepositoryFolderDetailPage() {
                     {allVerified && (
                       <button
                         onClick={() => {
-                          const first = filtered.find((f) => selectedIds.has(f.id) && f.status === "Verified");
+                          const first = filtered.find(
+                            (f) =>
+                              selectedIds.has(f.id) && f.status === "Verified",
+                          );
                           if (first) setVerifyTarget(first);
                         }}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-[11px] font-semibold transition-colors"
@@ -925,10 +1163,18 @@ export default function RepositoryFolderDetailPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
-            <FileText className="mx-auto text-slate-300 opacity-60 mb-3" size={40} strokeWidth={1.5} />
-            <h3 className="text-[0.95rem] font-bold text-slate-700 mb-1">No files found</h3>
+            <FileText
+              className="mx-auto text-slate-300 opacity-60 mb-3"
+              size={40}
+              strokeWidth={1.5}
+            />
+            <h3 className="text-[0.95rem] font-bold text-slate-700 mb-1">
+              No files found
+            </h3>
             <p className="text-[0.78rem] font-medium text-slate-400">
-              {searchQuery ? `No files matching "${searchQuery}"` : "No files have been uploaded to this section yet."}
+              {searchQuery
+                ? `No files matching "${searchQuery}"`
+                : "No files have been uploaded to this section yet."}
             </p>
           </div>
         ) : viewMode === "list" ? (
@@ -945,34 +1191,64 @@ export default function RepositoryFolderDetailPage() {
                       className="flex items-center justify-center w-5 h-5 rounded border border-slate-300 text-slate-400 hover:text-slate-600 hover:border-slate-400 transition-colors bg-white"
                     >
                       {allFilteredSelected ? (
-                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                          <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <svg
+                          width="11"
+                          height="11"
+                          viewBox="0 0 12 12"
+                          fill="none"
+                        >
+                          <path
+                            d="M2 6l3 3 5-5"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
                         </svg>
                       ) : null}
                     </button>
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 min-w-[220px]">File</th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-36">Status</th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-24">Size</th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-44">Uploaded By</th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-36">Date Uploaded</th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-36">Last Modified</th>
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 min-w-[220px]">
+                    File
+                  </th>
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-36">
+                    Status
+                  </th>
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-24">
+                    Size
+                  </th>
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-44">
+                    Uploaded By
+                  </th>
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-36">
+                    Date Uploaded
+                  </th>
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-36">
+                    Last Modified
+                  </th>
                   <th className="px-3 py-3 pr-4 w-28"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {filtered.map((file, index) => {
-                  const isNearBottom = index >= Math.ceil(filtered.length / 2) && filtered.length > 2;
-                  const verticalPos = isNearBottom ? "bottom-[-10px]" : "top-[-10px]";
+                  const isNearBottom =
+                    index >= Math.ceil(filtered.length / 2) &&
+                    filtered.length > 2;
+                  const verticalPos = isNearBottom
+                    ? "bottom-[-10px]"
+                    : "top-[-10px]";
                   const { Icon, color, bg } = getFileIcon(file.type);
                   const isSelected = selectedIds.has(file.id);
                   const isVerified = file.status === "Verified";
                   const uploaded = formatRelativeDate(file.rawCreatedAt);
-                  const modified = formatRelativeDate(file.rawUpdatedAt || file.rawCreatedAt);
+                  const modified = formatRelativeDate(
+                    file.rawUpdatedAt || file.rawCreatedAt,
+                  );
                   const uploaderInfo = uploaderDetails[file.uploaderId];
                   const { bg: avatarBg } = getAvatarColor(file.uploader);
                   const isFileHovered = hoveredFileId === file.id;
-                  const isUserHovered = hoveredUploaderId === file.uploaderId && file.uploaderId;
+                  const isUserHovered =
+                    hoveredUploaderId === file.uploaderId && file.uploaderId;
 
                   return (
                     <tr
@@ -993,8 +1269,19 @@ export default function RepositoryFolderDetailPage() {
                           }}
                         >
                           {isSelected && (
-                            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <svg
+                              width="11"
+                              height="11"
+                              viewBox="0 0 12 12"
+                              fill="none"
+                            >
+                              <path
+                                d="M2 6l3 3 5-5"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
                             </svg>
                           )}
                         </button>
@@ -1008,14 +1295,18 @@ export default function RepositoryFolderDetailPage() {
                           onMouseLeave={handleFileMouseLeave}
                         >
                           <div className="flex items-center gap-2.5">
-                            <div className={`w-8 h-8 ${bg} rounded-lg flex items-center justify-center shrink-0`}>
+                            <div
+                              className={`w-8 h-8 ${bg} rounded-lg flex items-center justify-center shrink-0`}
+                            >
                               <Icon size={14} className={color} />
                             </div>
                             <div className="min-w-0">
                               <p className="text-[13px] font-semibold text-slate-800 truncate max-w-[200px] leading-tight">
                                 {file.name}
                               </p>
-                              <p className={`text-[10px] font-semibold ${color} leading-none mt-0.5`}>
+                              <p
+                                className={`text-[10px] font-semibold ${color} leading-none mt-0.5`}
+                              >
                                 {file.type}
                               </p>
                             </div>
@@ -1031,8 +1322,14 @@ export default function RepositoryFolderDetailPage() {
                             <FileInfoCard
                               file={file}
                               canEdit={canEdit}
-                              onPreview={() => { setHoveredFileId(null); setEditingFile(file); }}
-                              onDownload={() => { setHoveredFileId(null); handleDownloadFile(file); }}
+                              onPreview={() => {
+                                setHoveredFileId(null);
+                                setEditingFile(file);
+                              }}
+                              onDownload={() => {
+                                setHoveredFileId(null);
+                                handleDownloadFile(file);
+                              }}
                             />
                           </div>
                         </div>
@@ -1043,37 +1340,61 @@ export default function RepositoryFolderDetailPage() {
                         <button
                           onClick={() => canEdit && setVerifyTarget(file)}
                           disabled={!canEdit}
-                          title={canEdit ? (isVerified ? "Click to unverify" : "Click to verify") : ""}
+                          title={
+                            canEdit
+                              ? isVerified
+                                ? "Click to unverify"
+                                : "Click to verify"
+                              : ""
+                          }
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all ${
                             isVerified
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                               : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
                           } ${canEdit ? "cursor-pointer" : "cursor-default"}`}
                         >
-                          {isVerified
-                            ? <><CheckCircle2 size={10} /> Verified ✓</>
-                            : <><XCircle size={10} className="opacity-60" /> Not Verified</>}
+                          {isVerified ? (
+                            <>
+                              <CheckCircle2 size={10} /> Verified ✓
+                            </>
+                          ) : (
+                            <>
+                              <XCircle size={10} className="opacity-60" />{" "}
+                              Unverified
+                            </>
+                          )}
                         </button>
                       </td>
 
                       {/* Size */}
                       <td className="px-3 py-3.5 w-24">
-                        <span className="text-[12px] text-slate-500 font-medium">{file.size}</span>
+                        <span className="text-[12px] text-slate-500 font-medium">
+                          {file.size}
+                        </span>
                       </td>
 
                       {/* Uploaded By — with user popover */}
                       <td className="px-3 py-3.5 w-44">
                         <div
                           className="relative inline-block"
-                          onMouseEnter={() => file.uploaderId && handleUserMouseEnter(file.uploaderId)}
+                          onMouseEnter={() =>
+                            file.uploaderId &&
+                            handleUserMouseEnter(file.uploaderId)
+                          }
                           onMouseLeave={handleUserMouseLeave}
                         >
                           <div className="flex items-center gap-2">
-                            <div className={`w-7 h-7 ${avatarBg} rounded-full flex items-center justify-center shrink-0`}>
-                              <span className="text-[9px] font-bold text-white">{getInitials(file.uploader)}</span>
+                            <div
+                              className={`w-7 h-7 ${avatarBg} rounded-full flex items-center justify-center shrink-0`}
+                            >
+                              <span className="text-[9px] font-bold text-white">
+                                {getInitials(file.uploader)}
+                              </span>
                             </div>
                             <div className="min-w-0">
-                              <p className="text-[12px] font-semibold text-slate-700 truncate max-w-[110px] leading-tight">{file.uploader}</p>
+                              <p className="text-[12px] font-semibold text-slate-700 truncate max-w-[110px] leading-tight">
+                                {file.uploader}
+                              </p>
                               {uploaderInfo?.role && (
                                 <p className="text-[10px] text-slate-400 leading-none mt-0.5 truncate max-w-[110px]">
                                   {getRoleDisplay(uploaderInfo.role)}
@@ -1098,8 +1419,12 @@ export default function RepositoryFolderDetailPage() {
 
                       {/* Date Uploaded */}
                       <td className="px-3 py-3.5 w-36">
-                        <p className="text-[12px] font-semibold text-slate-700 leading-tight">{uploaded.relative}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{uploaded.time}</p>
+                        <p className="text-[12px] font-semibold text-slate-700 leading-tight">
+                          {uploaded.relative}
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          {uploaded.time}
+                        </p>
                       </td>
 
                       {/* Last Modified — with hover popover */}
@@ -1110,8 +1435,12 @@ export default function RepositoryFolderDetailPage() {
                           onMouseLeave={handleModifiedMouseLeave}
                         >
                           <div>
-                            <p className="text-[12px] font-semibold text-slate-700 leading-tight">{modified.relative}</p>
-                            <p className="text-[10px] text-slate-400 mt-0.5">{modified.time}</p>
+                            <p className="text-[12px] font-semibold text-slate-700 leading-tight">
+                              {modified.relative}
+                            </p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              {modified.time}
+                            </p>
                           </div>
                           {/* Last Modified hover popover */}
                           <div
@@ -1179,9 +1508,12 @@ export default function RepositoryFolderDetailPage() {
             {/* Table footer */}
             <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
               <p className="text-[11px] text-slate-400">
-                {allFiles.length} file{allFiles.length !== 1 ? "s" : ""} · Click status badge to verify or unverify
+                {allFiles.length} file{allFiles.length !== 1 ? "s" : ""} · Click
+                status badge to verify or unverify
               </p>
-              <p className="text-[11px] text-slate-400">○ All actions are audit-logged</p>
+              <p className="text-[11px] text-slate-400">
+                ○ All actions are audit-logged
+              </p>
             </div>
           </div>
         ) : (
@@ -1212,8 +1544,19 @@ export default function RepositoryFolderDetailPage() {
                     }`}
                   >
                     {isSelected && (
-                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                        <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 12 12"
+                        fill="none"
+                      >
+                        <path
+                          d="M2 6l3 3 5-5"
+                          stroke="white"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
                       </svg>
                     )}
                   </button>
@@ -1229,33 +1572,56 @@ export default function RepositoryFolderDetailPage() {
                           : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
                       } ${canEdit ? "cursor-pointer" : "cursor-default"}`}
                     >
-                      {isVerified ? <><CheckCircle2 size={8} /> Verified</> : <><XCircle size={8} /> Not Verified</>}
+                      {isVerified ? (
+                        <>
+                          <CheckCircle2 size={8} /> Verified
+                        </>
+                      ) : (
+                        <>
+                          <XCircle size={8} /> Unverified
+                        </>
+                      )}
                     </button>
                   </div>
 
-                  <div className={`w-11 h-11 ${bg} rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-105`}>
+                  <div
+                    className={`w-11 h-11 ${bg} rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-105`}
+                  >
                     <Icon size={22} className={color} />
                   </div>
-                  <p className="text-[12px] font-semibold text-slate-800 leading-tight mb-1 line-clamp-2">{file.name}</p>
-                  <p className="text-[10px] text-slate-400 mb-3">{file.size} · {uploaded.relative}</p>
+                  <p className="text-[12px] font-semibold text-slate-800 leading-tight mb-1 line-clamp-2">
+                    {file.name}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mb-3">
+                    {file.size} · {uploaded.relative}
+                  </p>
 
                   {canEdit && (
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleDownloadFile(file); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadFile(file);
+                        }}
                         disabled={downloadingId === file.id}
                         className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
                       >
                         <Download size={11} /> Download
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); setEditingFile(file); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingFile(file);
+                        }}
                         className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
                       >
                         <Eye size={11} /> Preview
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleDeleteFile(file); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteFile(file);
+                        }}
                         disabled={deletingId === file.id}
                         className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors text-[10px] font-medium disabled:opacity-40"
                       >
@@ -1268,8 +1634,8 @@ export default function RepositoryFolderDetailPage() {
             })}
           </div>
         )}
-
-      </div>{/* end max-w container */}
+      </div>
+      {/* end max-w container */}
 
       {/* ── Modals ──────────────────────────────────────────── */}
       <FileEditModal
@@ -1277,7 +1643,10 @@ export default function RepositoryFolderDetailPage() {
         onClose={() => setEditingFile(null)}
         file={editingFile}
         uploaderName={editingFile?.uploader}
-        onSaved={() => { setEditingFile(null); if (decodedName) fetchData(); }}
+        onSaved={() => {
+          setEditingFile(null);
+          if (decodedName) fetchData();
+        }}
       />
 
       <DeleteFileConfirmModal
@@ -1301,18 +1670,84 @@ export default function RepositoryFolderDetailPage() {
       {showDeleteToast && (
         <div
           className="fixed top-6 right-6 z-50 flex bg-white overflow-hidden"
-          style={{ width: 360, height: 72, borderRadius: 12, boxShadow: "0 12px 30px rgba(0,0,0,0.12)", fontFamily: "Poppins, sans-serif" }}
+          style={{
+            width: 360,
+            height: 72,
+            borderRadius: 12,
+            boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
+            fontFamily: "Poppins, sans-serif",
+          }}
         >
-          <div style={{ width: 6, backgroundColor: "#43D45B", flexShrink: 0 }} />
-          <div className="flex items-center flex-1 relative" style={{ padding: "0 14px", gap: 12 }}>
-            <div style={{ width: 34, height: 34, borderRadius: "50%", backgroundColor: "#43D45B", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+          <div
+            style={{ width: 6, backgroundColor: "#43D45B", flexShrink: 0 }}
+          />
+          <div
+            className="flex items-center flex-1 relative"
+            style={{ padding: "0 14px", gap: 12 }}
+          >
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: "50%",
+                backgroundColor: "#43D45B",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
             </div>
             <div>
-              <p style={{ fontSize: 15, fontWeight: 700, color: "#1F1F2E", lineHeight: 1.2, margin: 0 }}>Success</p>
-              <p style={{ fontSize: 12.5, fontWeight: 500, color: "#666", marginTop: 2, margin: 0 }}>File deleted successfully.</p>
+              <p
+                style={{
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: "#1F1F2E",
+                  lineHeight: 1.2,
+                  margin: 0,
+                }}
+              >
+                Success
+              </p>
+              <p
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: 500,
+                  color: "#666",
+                  marginTop: 2,
+                  margin: 0,
+                }}
+              >
+                File deleted successfully.
+              </p>
             </div>
-            <button onClick={() => setShowDeleteToast(false)} className="absolute top-2 right-2.5" style={{ color: "#666", background: "none", border: "none", fontSize: 16, lineHeight: 1, cursor: "pointer" }}>×</button>
+            <button
+              onClick={() => setShowDeleteToast(false)}
+              className="absolute top-2 right-2.5"
+              style={{
+                color: "#666",
+                background: "none",
+                border: "none",
+                fontSize: 16,
+                lineHeight: 1,
+                cursor: "pointer",
+              }}
+            >
+              ×
+            </button>
           </div>
         </div>
       )}
