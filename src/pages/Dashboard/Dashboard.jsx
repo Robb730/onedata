@@ -359,7 +359,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50/40">
-      <div className="mx-auto max-w-[1100px] px-5 py-8">
+      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
 
         {/* ── Page header ─────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-7">

@@ -125,7 +125,7 @@ export default function Repository({ onFolderClick }) {
 
   return (
     <div className="min-h-screen bg-slate-50/40">
-      <div className="mx-auto max-w-[1100px] px-5 py-8">
+      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
         {/* ── Header ───────────────────────────────────── */}
         <RepositoryHeader />
 

@@ -27,6 +27,7 @@ import {
   ShieldCheck,
   Shield,
   X,
+  Clock,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import RepositoryBackButton from "../../components/RepositoryComponents/RepositoryBackButton";
@@ -373,6 +374,55 @@ function UserInfoCard({ info }) {
   );
 }
 
+// Last-modified hover card
+function LastModifiedInfoCard({ rawDate, uploaderInfo }) {
+  const { bg } = getAvatarColor(uploaderInfo?.name || "");
+
+  // Format full datetime string
+  const fullDate = rawDate
+    ? new Date(rawDate).toLocaleString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+    : "—";
+
+  return (
+    <div className="w-64 rounded-2xl bg-white text-slate-800 shadow-[0_20px_60px_rgba(15,23,42,0.15)] border border-slate-200">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-4 pt-4 pb-3 border-b border-slate-100">
+        <Clock size={13} className="text-slate-400 shrink-0" />
+        <p className="text-[11px] font-bold text-slate-700 uppercase tracking-widest">Last Modified</p>
+      </div>
+
+      {/* Full datetime */}
+      <div className="px-4 py-3 border-b border-slate-100">
+        <p className="text-[12px] font-semibold text-slate-800 leading-snug">{fullDate}</p>
+      </div>
+
+      {/* Modified by */}
+      {uploaderInfo && (
+        <div className="px-4 py-3">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Modified By</p>
+          <div className="flex items-center gap-2.5">
+            <div className={`w-8 h-8 ${bg} rounded-full flex items-center justify-center shrink-0`}>
+              <span className="text-[10px] font-bold text-white">{getInitials(uploaderInfo.name)}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[12px] font-bold text-slate-800 leading-tight truncate">{uploaderInfo.name}</p>
+              <p className="text-[10px] text-blue-500 font-medium mt-0.5">{getRoleDisplay(uploaderInfo.role)}</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────
 // ── MAIN PAGE COMPONENT ───────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────
@@ -411,8 +461,10 @@ export default function RepositoryFolderDetailPage() {
   // ── Hover popovers ─────────────────────────────────────────────
   const [hoveredFileId, setHoveredFileId] = useState(null);
   const [hoveredUploaderId, setHoveredUploaderId] = useState(null);
+  const [hoveredModifiedId, setHoveredModifiedId] = useState(null);
   const fileHoverTimer = useRef(null);
   const userHoverTimer = useRef(null);
+  const modifiedHoverTimer = useRef(null);
 
   // ── Access control ─────────────────────────────────────────────
   const accessLevel = useMemo(
@@ -650,13 +702,21 @@ export default function RepositoryFolderDetailPage() {
     clearTimeout(userHoverTimer.current);
     setHoveredUploaderId(null);
   }
+  function handleModifiedMouseEnter(fileId) {
+    clearTimeout(modifiedHoverTimer.current);
+    modifiedHoverTimer.current = setTimeout(() => setHoveredModifiedId(fileId), 400);
+  }
+  function handleModifiedMouseLeave() {
+    clearTimeout(modifiedHoverTimer.current);
+    setHoveredModifiedId(null);
+  }
 
   // ─────────────────────────────────────────────────────────────
   // ── RENDER ───────────────────────────────────────────────────
   // ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-50/40">
-      <div className="mx-auto max-w-[1200px] px-6 py-8">
+    <div className="min-h-screen bg-slate-50/40 pb-20">
+      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
 
         {/* ── Breadcrumb ─────────────────────────────────────── */}
         <nav className="flex items-center gap-1.5 text-[12px] text-slate-400 mb-5 font-medium">
@@ -1042,10 +1102,31 @@ export default function RepositoryFolderDetailPage() {
                         <p className="text-[10px] text-slate-400 mt-0.5">{uploaded.time}</p>
                       </td>
 
-                      {/* Last Modified */}
+                      {/* Last Modified — with hover popover */}
                       <td className="px-3 py-3.5 w-36">
-                        <p className="text-[12px] font-semibold text-slate-700 leading-tight">{modified.relative}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{modified.time}</p>
+                        <div
+                          className="relative inline-block"
+                          onMouseEnter={() => handleModifiedMouseEnter(file.id)}
+                          onMouseLeave={handleModifiedMouseLeave}
+                        >
+                          <div>
+                            <p className="text-[12px] font-semibold text-slate-700 leading-tight">{modified.relative}</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">{modified.time}</p>
+                          </div>
+                          {/* Last Modified hover popover */}
+                          <div
+                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
+                              hoveredModifiedId === file.id
+                                ? "opacity-100 visible scale-100 pointer-events-auto"
+                                : "opacity-0 invisible scale-95 pointer-events-none"
+                            }`}
+                          >
+                            <LastModifiedInfoCard
+                              rawDate={file.rawUpdatedAt || file.rawCreatedAt}
+                              uploaderInfo={uploaderInfo}
+                            />
+                          </div>
+                        </div>
                       </td>
 
                       {/* Actions */}

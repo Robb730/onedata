@@ -339,7 +339,7 @@ export default function ManageUsers() {
 
   return (
     <div className="min-h-screen bg-slate-50/40">
-      <div className="mx-auto max-w-[1100px] px-5 py-8">
+      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
       {showToast && (
         <div
           className="fixed top-6 right-6 z-50 flex bg-white overflow-hidden animate-toast-in"
