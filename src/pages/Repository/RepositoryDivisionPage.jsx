@@ -94,7 +94,7 @@ export default function RepositoryDivisionPage() {
             const { data: managersData, error: managersError } = await supabase
               .from("users")
               .select("full_name, section_id")
-              .in("role", ["section_focal", "section_personnel"])
+              .in("role", ["section_focal"])
               .eq("is_active", true)
               .in("section_id", sectionIds);
 
