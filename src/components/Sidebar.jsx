@@ -12,11 +12,11 @@ import {
 import iconSvg from "../assets/one_data-icon-v3.svg";
 
 const navItems = [
-  { label: "Dashboard",    path: "/dashboard",    icon: LayoutDashboard },
-  { label: "Repository",   path: "/repository",   icon: Database        },
-  { label: "Manage Users", path: "/manage-user",  icon: Users           },
-  { label: "Upload Files", path: "/upload-files", icon: Upload          },
-  { label: "Audit Logs",   path: "/audit-logs",   icon: ClipboardList   },
+  { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+  { label: "Repository", path: "/repository", icon: Database },
+  { label: "Manage Users", path: "/manage-user", icon: Users },
+  { label: "Upload Files", path: "/upload-files", icon: Upload },
+  { label: "Audit Logs", path: "/audit-logs", icon: ClipboardList },
 ];
 
 /**
@@ -51,9 +51,8 @@ export function Sidebar({ collapsed = false, onToggle }) {
       >
         {/* ── Brand ──────────────────────────────────────────── */}
         <div
-          className={`flex items-center gap-3 pt-6 pb-6 ${
-            collapsed ? "justify-center px-0" : "px-5"
-          }`}
+          className={`flex items-center gap-3 pt-6 pb-6 ${collapsed ? "justify-center px-0" : "px-5"
+            }`}
         >
           {/* SVG icon — no container, no background */}
           <img
@@ -103,10 +102,9 @@ export function Sidebar({ collapsed = false, onToggle }) {
                   group relative flex items-center rounded-[10px]
                   transition-all duration-200
                   ${collapsed ? "justify-center py-3" : "gap-3 px-3 py-2.5"}
-                  ${
-                    isActive
-                      ? "bg-blue-50 shadow-[0_1px_4px_rgba(59,130,246,0.12)]"
-                      : "hover:bg-slate-50"
+                  ${isActive
+                    ? "bg-blue-50 shadow-[0_1px_4px_rgba(59,130,246,0.12)]"
+                    : "hover:bg-slate-50"
                   }
                 `}
               >
@@ -117,35 +115,31 @@ export function Sidebar({ collapsed = false, onToggle }) {
 
                 {/* Icon */}
                 <div
-                  className={`flex shrink-0 items-center justify-center transition-all duration-200 ${
-                    collapsed ? "h-9 w-9 rounded-[10px]" : ""
-                  } ${
-                    isActive && collapsed
+                  className={`flex shrink-0 items-center justify-center transition-all duration-200 ${collapsed ? "h-9 w-9 rounded-[10px]" : ""
+                    } ${isActive && collapsed
                       ? "bg-blue-100"
                       : collapsed
-                      ? "group-hover:bg-slate-100"
-                      : ""
-                  }`}
+                        ? "group-hover:bg-slate-100"
+                        : ""
+                    }`}
                 >
                   <item.icon
                     size={17}
                     strokeWidth={isActive ? 2.1 : 1.6}
-                    className={`transition-colors duration-200 ${
-                      isActive
-                        ? "text-blue-500"
-                        : "text-slate-400 group-hover:text-slate-600"
-                    }`}
+                    className={`transition-colors duration-200 ${isActive
+                      ? "text-blue-500"
+                      : "text-slate-400 group-hover:text-slate-600"
+                      }`}
                   />
                 </div>
 
                 {/* Label */}
                 {!collapsed && (
                   <span
-                    className={`flex-1 text-[0.82rem] transition-colors duration-200 ${
-                      isActive
-                        ? "font-semibold text-blue-600"
-                        : "font-medium text-slate-500 group-hover:text-slate-700"
-                    }`}
+                    className={`flex-1 text-[0.82rem] transition-colors duration-200 ${isActive
+                      ? "font-semibold text-blue-600"
+                      : "font-medium text-slate-500 group-hover:text-slate-700"
+                      }`}
                   >
                     {item.label}
                   </span>

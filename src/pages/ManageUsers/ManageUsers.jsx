@@ -34,7 +34,7 @@ export default function ManageUsers() {
   const [successEmail, setSuccessEmail] = useState("");
   const [deactivatingUser, setDeactivatingUser] = useState(null);
   const [activatingUser, setActivatingUser] = useState(null);
-  const { userProfile } = useUser();
+  const { userProfile, refreshProfile } = useUser();
   const [showToast, setShowToast] = useState(false);
 
   // ─── Fetch users from Supabase ───────────────────────────────
@@ -146,6 +146,10 @@ export default function ManageUsers() {
       alert("Error updating user: " + error.message);
       return;
     }
+
+    if (userId === userProfile?.id) {
+    await refreshProfile();
+  }
     fetchUsers(); // refresh from DB
   };
 
@@ -334,7 +338,8 @@ export default function ManageUsers() {
   }
 
   return (
-    <div className="p-8">
+    <div className="min-h-screen bg-slate-50/40">
+      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
       {showToast && (
         <div
           className="fixed top-6 right-6 z-50 flex bg-white overflow-hidden animate-toast-in"
@@ -699,6 +704,7 @@ export default function ManageUsers() {
             userName={activatingUser.name}
           />
         )}
+      </div>
       </div>
     </div>
   );

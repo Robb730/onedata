@@ -269,7 +269,8 @@ export default function AuditLogs() {
   };
 
   return (
-    <div className="p-6 sm:p-8">
+    <div className="min-h-screen bg-slate-50/40">
+      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
       <AuditLogsHeader onExport={handleExport} />
 
       <AuditLogsStats actionCounts={actionCounts} />
@@ -298,6 +299,7 @@ export default function AuditLogs() {
         shownCount={filteredLogs.length}
         totalCount={auditLogs.length}
       />
+      </div>
     </div>
   );
 }

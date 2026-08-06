@@ -1,3 +1,4 @@
+
 import { FileText, ClipboardList, ChevronLeft, ChevronRight } from "lucide-react";
 import ActionBadge from "./ActionBadge";
 import StatusBadge from "./StatusBadge";
@@ -88,12 +89,12 @@ export default function AuditLogsTable({
 
       <table className="w-full table-fixed">
         <colgroup>
-          <col className="w-[12%]" />
-          <col className="w-[28%]" />
+          <col className="w-[11%]" />
+          <col className="w-[29%]" />
           <col className="w-[20%]" />
-          <col className="w-[12%]" />
-          <col className="w-[16%]" />
-          <col className="w-[12%]" />
+          <col className="w-[15%]" />
+          <col className="w-[14%]" />
+          <col className="w-[11%]" />
         </colgroup>
         <thead>
           <tr className="border-b border-slate-100 bg-slate-50/70">
@@ -104,10 +105,10 @@ export default function AuditLogsTable({
               "Role",
               "Date & Time",
               "Status",
-            ].map((heading) => (
+            ].map((heading, i) => (
               <th
-                key={heading}
-                className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400"
+                key={i}
+                className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400"
               >
                 {heading}
               </th>

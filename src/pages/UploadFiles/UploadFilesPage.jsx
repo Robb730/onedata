@@ -292,7 +292,9 @@ export default function UploadFilesPage({
           school_year: schoolYear,
           section_id: sectionId,
           division_id: divisionId,
-          uploaded_by: userProfile?.id ?? null,
+          uploaded_by: userProfile?.uuid ?? null,
+          uploaded_by_name: userProfile?.full_name ?? null,
+          status: "Unverified",
           is_dashboard_source: uploadType !== "general",
         })
         .select()
@@ -745,10 +747,10 @@ export default function UploadFilesPage({
 
   // ── Upload Area ───────────────────────────────────────────────────────────
   const renderUploadArea = () => (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <div className="rounded-[16px] border border-slate-100/80 bg-white p-6 shadow-[0_1px_4px_rgba(15,23,42,0.03)]">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <h2 className="font-bold text-gray-900">Upload Documents</h2>
+          <h2 className="text-[1.1rem] font-bold text-slate-900 tracking-tight">Upload Documents</h2>
           <div className="flex items-center gap-2">
             <span className="px-2 py-1 bg-orange-50 text-orange-700 rounded text-xs font-semibold">
               ● {pendingCount} Pending
@@ -804,7 +806,7 @@ export default function UploadFilesPage({
           >
             <Upload size={16} /> Browse Files
           </button>
-          <p className="text-xs text-gray-400 mt-3">
+          <p className="text-xs text-slate-400 mt-3">
             PDF, DOCX, XLS, XLSX, JPG, JPEG, PNG, PPTX (max 1GB)
           </p>
         </div>
@@ -814,10 +816,10 @@ export default function UploadFilesPage({
 
   // ── File Requests Panel ───────────────────────────────────────────────────
   const renderFileRequestsPanel = () => (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 h-full">
+    <div className="rounded-[16px] border border-slate-100/80 bg-white p-6 shadow-[0_1px_4px_rgba(15,23,42,0.03)] h-full">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-gray-900">File Requests</h3>
-        <div className="flex items-center gap-1 text-xs flex-wrap justify-end">
+        <h3 className="text-[1.1rem] font-bold text-slate-900 tracking-tight">File Requests</h3>
+        <div className="flex items-center gap-1 text-[0.75rem] flex-wrap justify-end">
           {["All", "Pending", "Overdue", "Completed"].map((f) => (
             <button
               key={f}
@@ -902,10 +904,10 @@ export default function UploadFilesPage({
 
   // ── Recent Uploads ────────────────────────────────────────────────────────
   const renderRecentUploads = () => (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <h3 className="font-bold text-gray-900 mb-4">Recent Uploads</h3>
+    <div className="rounded-[16px] border border-slate-100/80 bg-white p-6 shadow-[0_1px_4px_rgba(15,23,42,0.03)]">
+      <h3 className="text-[1.1rem] font-bold text-slate-900 tracking-tight mb-4">Recent Uploads</h3>
       {uploadedFiles.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-6">
+        <p className="text-sm text-slate-400 text-center py-6 font-medium">
           No uploads yet this session.
         </p>
       ) : (
@@ -982,10 +984,11 @@ export default function UploadFilesPage({
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="p-8">
+    <div className="min-h-screen bg-slate-50/40">
+      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Upload Files</h1>
-        <p className="text-gray-500 mt-1">
+        <h1 className="text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">Upload Files</h1>
+        <p className="text-[0.78rem] text-slate-400 font-medium mt-1">
           {selectedFolderName
             ? `Uploading to: ${selectedFolderName}`
             : showFolderPanel
@@ -1004,9 +1007,9 @@ export default function UploadFilesPage({
 
         <div className="lg:col-span-1">
           {showFolderPanel && (
-            <div className="bg-white rounded-xl border border-gray-200 p-6 sticky top-8">
-              <h3 className="font-bold text-gray-900 mb-1">Selected Section</h3>
-              <p className="text-xs text-gray-400 mb-4">
+            <div className="rounded-[16px] border border-slate-100/80 bg-white p-6 shadow-[0_1px_4px_rgba(15,23,42,0.03)] sticky top-8">
+              <h3 className="text-[1.05rem] font-bold text-slate-900 mb-1 tracking-tight">Selected Section</h3>
+              <p className="text-[0.75rem] text-slate-400 font-medium mb-4">
                 Click to change the destination folder
               </p>
 
@@ -1134,6 +1137,7 @@ export default function UploadFilesPage({
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

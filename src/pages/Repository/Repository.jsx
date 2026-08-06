@@ -20,31 +20,54 @@ export default function Repository({ onFolderClick }) {
   const [activeTab, setActiveTab] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // ── Supabase state ────────────────────────────────────────────
   const [divisions, setDivisions] = useState([]);
+  const [managersByDivision, setManagersByDivision] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // ── Folder color state (keyed by division id) ─────────────────
   const [folderColors, setFolderColors] = useState({});
 
-  // ── Fetch divisions from Supabase ─────────────────────────────
+  
+
   useEffect(() => {
     async function fetchDivisions() {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
+      const { data: divisionsData, error: divisionsError } = await supabase
         .from("divisions")
-        .select("id, name, managed_by")
+        .select("id, name")
         .order("name", { ascending: true });
 
-      if (error) {
-        setError(error.message);
-      } else {
-        setDivisions(data || []);
+      if (divisionsError) {
+        setError(divisionsError.message);
+        setLoading(false);
+        return;
       }
 
+      // Anyone actively assigned as division_focal, grouped by division_id.
+      // Multiple people can manage the same division — this is a 1:many join.
+      const { data: managersData, error: managersError } = await supabase
+        .from("users")
+        .select("full_name, division_id")
+        .eq("role", "division_focal")
+        .eq("is_active", true)
+        .not("division_id", "is", null);
+
+      if (managersError) {
+        setError(managersError.message);
+        setLoading(false);
+        return;
+      }
+
+      const grouped = {};
+      (managersData || []).forEach(({ division_id, full_name }) => {
+        if (!grouped[division_id]) grouped[division_id] = [];
+        grouped[division_id].push(full_name);
+      });
+
+      setDivisions(divisionsData || []);
+      setManagersByDivision(grouped);
       setLoading(false);
     }
 
@@ -55,21 +78,25 @@ export default function Repository({ onFolderClick }) {
     setFolderColors((prev) => ({ ...prev, [divisionId]: newColorId }));
   };
 
-  // ── Map divisions → folder shape expected by FolderGrid ───────
   const folders = divisions.map((division, index) => {
     const colorId =
       folderColors[division.id] || COLOR_PRESETS[index % COLOR_PRESETS.length].id;
     const preset = getColorPreset(colorId);
+    const managers = managersByDivision[division.id] || [];
+
     return {
       id: division.id,
       name: division.name,
-      owner: division.managed_by,
+      managers,                                   // full list, for FolderCard
+      owner: managers.length ? managers.join(", ") : "Unassigned", // fallback string
       colorId,
       iconColor: preset.text,
       iconBgColor: preset.bg,
       route: `/repository/divisions/${division.id}`,
     };
   });
+
+  // ...rest unchanged
 
   const tabs = ["All", "Active", "Review", "Archived"];
 
@@ -97,12 +124,13 @@ export default function Repository({ onFolderClick }) {
   };
 
   return (
-    <div className="p-8">
-      {/* ── Header ───────────────────────────────────── */}
-      <RepositoryHeader />
+    <div className="min-h-screen bg-slate-50/40">
+      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
+        {/* ── Header ───────────────────────────────────── */}
+        <RepositoryHeader />
 
       {/* ── Search / Sort / View Toggle ────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+      <div className="bg-white rounded-[16px] border border-slate-100/80 p-4 mb-6" style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.03)" }}>
         <RepositorySearchBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -143,6 +171,7 @@ export default function Repository({ onFolderClick }) {
           }
         />
       )}
+      </div>
     </div>
   );
 }
