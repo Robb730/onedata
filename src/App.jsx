@@ -15,6 +15,7 @@ import Repository from './pages/Repository/Repository.jsx'
 import RepositoryFolderDetailPage from './pages/Repository/RepositoryFolderDetailPage.jsx'
 import RepositoryDivisionPage from './pages/Repository/RepositoryDivisionPage.jsx'
 import AccessRestrictedPage from './pages/Repository/AccessRestrictedPage.jsx'
+import SchoolYearPage from './pages/SchoolYear/SchoolYearPage.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 
 function App() {
@@ -89,6 +90,11 @@ function App() {
       <Route path="/repository/restricted/:folderName" element={
         <ProtectedRoute session={session}>
           <AppLayout><AccessRestrictedPage /></AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/school-year" element={
+        <ProtectedRoute session={session}>
+          <AppLayout><SchoolYearPage /></AppLayout>
         </ProtectedRoute>
       } />
     </Routes>
