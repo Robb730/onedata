@@ -30,11 +30,14 @@ function ReminderChip({ label }) {
 
 /**
  * ScheduledSchoolYearCard — Displays the next scheduled school year with countdown.
- * Static presentational component; no backend logic.
+ * Static presentational component; no backend logic. "Edit Schedule" and
+ * "Cancel Transition" are both delegated to the parent via callbacks.
  *
- * @param {{ label, activationDate, countdown, reminders }} year
+ * @param {{ id, label, activationDate, countdown, reminders }} year
+ * @param {function} onCancel — called with no args when the user cancels the transition
+ * @param {function} onEdit   — called with the full `year` object when the user wants to edit it
  */
-export default function ScheduledSchoolYearCard({ year }) {
+export default function ScheduledSchoolYearCard({ year, onCancel, onEdit }) {
   if (!year) {
     return (
       <div
@@ -88,25 +91,22 @@ export default function ScheduledSchoolYearCard({ year }) {
           <CountdownUnit value={countdown.minutes} label="Minutes" />
         </div>
 
-        {/* ── Reminders ─────────────────────────────────── */}
-        <div className="flex items-center gap-2 flex-wrap mb-5">
-          <div className="flex items-center gap-1.5 text-[0.72rem] text-slate-400 font-medium">
-            <Bell size={12} className="text-slate-300" />
-            Reminders:
-          </div>
-          {reminders.map((r) => (
-            <ReminderChip key={r} label={r} />
-          ))}
-        </div>
+        
       </div>
 
       {/* ── Action Footer ─────────────────────────────────── */}
       <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-100 bg-slate-50/60">
-        <button className="inline-flex items-center gap-1.5 text-[0.78rem] font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer border border-blue-200 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-[8px]">
+        <button
+          onClick={() => onEdit?.(year)}
+          className="inline-flex items-center gap-1.5 text-[0.78rem] font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer border border-blue-200 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-[8px]"
+        >
           <Edit3 size={12} />
           Edit Schedule
         </button>
-        <button className="inline-flex items-center gap-1.5 text-[0.78rem] font-semibold text-slate-400 hover:text-red-500 transition-colors cursor-pointer">
+        <button
+          onClick={onCancel}
+          className="inline-flex items-center gap-1.5 text-[0.78rem] font-semibold text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+        >
           <X size={13} />
           Cancel Transition
         </button>
