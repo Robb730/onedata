@@ -60,18 +60,20 @@ export default function FileAccessRequestModal({
     [files, availableFiles],
   );
 
-  const candidateKey = allCandidates.map((f) => f.id).join(",");
+  const triggerKey = files.map((f) => f.id).join(",");
 
-  // Auto-check every file shown in the modal whenever it opens (or the
-  // candidate list changes while open) — this component doesn't unmount
-  // between opens, so we re-sync selection instead of relying on useState's
+  // Pre-check only the file(s) that triggered the modal (e.g. the single
+  // file you clicked View/Download on). Files pulled in from
+  // `availableFiles` are shown so the user *can* add them to the request,
+  // but they start unchecked — this component doesn't unmount between
+  // opens, so we re-sync selection instead of relying on useState's
   // one-time initializer.
   useEffect(() => {
     if (isOpen) {
-      setSelectedIds(new Set(allCandidates.map((f) => f.id)));
+      setSelectedIds(new Set(files.map((f) => f.id)));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, candidateKey]);
+  }, [isOpen, triggerKey]);
 
   if (!isOpen) return null;
 

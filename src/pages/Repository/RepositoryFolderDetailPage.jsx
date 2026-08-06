@@ -678,6 +678,13 @@ export default function RepositoryFolderDetailPage() {
     [userProfile, section],
   );
   const canEdit = accessLevel === "full";
+  // Verification is a separate permission from general edit access — only
+  // these three roles may verify/unverify a file, regardless of whether the
+  // user otherwise has "full" edit access to this section (e.g. section
+  // personnel can have full edit access but still shouldn't be able to verify).
+  const canVerify = ["admin", "division_focal", "section_focal"].includes(
+    userProfile?.role,
+  );
 
   useEffect(() => {
     if (!section || !userProfile) return;
@@ -827,35 +834,35 @@ export default function RepositoryFolderDetailPage() {
 
   // ── Handlers ────────────────────────────────────────────────────
   async function handleDownloadFile(file) {
-    if (!canEdit || !file.path) return;
-    setDownloadingId(file.id);
-    try {
-      const bucket = getBucket(file.data_category);
-      const { data: blob, error } = await supabase.storage
-        .from(bucket)
-        .download(file.path);
-      if (error) throw new Error(error.message);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      await logAudit(
-        "Download",
-        file.name,
-        `Downloaded from ${section?.name}`,
-        "Success",
-      );
-    } catch (err) {
-      console.error(err);
-      await logAudit("Download", file.name, err.message, "Failed");
-    } finally {
-      setDownloadingId(null);
-    }
+  if (!hasFileAccess(file) || !file.path) return;
+  setDownloadingId(file.id);
+  try {
+    const bucket = getBucket(file.data_category);
+    const { data: blob, error } = await supabase.storage
+      .from(bucket)
+      .download(file.path);
+    if (error) throw new Error(error.message);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    await logAudit(
+      "Download",
+      file.name,
+      `Downloaded from ${section?.name}`,
+      "Success",
+    );
+  } catch (err) {
+    console.error(err);
+    await logAudit("Download", file.name, err.message, "Failed");
+  } finally {
+    setDownloadingId(null);
   }
+}
 
   const logAudit = async (action, fileName, details, status = "Success") => {
     const { error } = await supabase.from("audit_logs").insert({
@@ -1237,7 +1244,7 @@ export default function RepositoryFolderDetailPage() {
         </div>
 
         {/* ── Bulk action bar (Verify/Unverify only) ─────────── */}
-        {someSelected && canEdit && (
+        {someSelected && canVerify && (
           <div className="mb-3 flex items-center gap-3 px-4 py-3 rounded-2xl border border-blue-200 bg-blue-50">
             <span className="text-[13px] font-semibold text-blue-700">
               {selectedIds.size} file{selectedIds.size > 1 ? "s" : ""} selected
@@ -1511,13 +1518,13 @@ export default function RepositoryFolderDetailPage() {
                         </div>
                       </td>
 
-                      {/* Status badge — clickable to open verify modal */}
+                      {/* Status badge — clickable to open verify modal (verify-eligible roles only) */}
                       <td className="px-3 py-3.5 w-36">
                         <button
-                          onClick={() => canEdit && setVerifyTarget(file)}
-                          disabled={!canEdit}
+                          onClick={() => canVerify && setVerifyTarget(file)}
+                          disabled={!canVerify}
                           title={
-                            canEdit
+                            canVerify
                               ? isVerified
                                 ? "Click to unverify"
                                 : "Click to verify"
@@ -1527,7 +1534,7 @@ export default function RepositoryFolderDetailPage() {
                             isVerified
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                               : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
-                          } ${canEdit ? "cursor-pointer" : "cursor-default"}`}
+                          } ${canVerify ? "cursor-pointer" : "cursor-default"}`}
                         >
                           {isVerified ? (
                             <>
@@ -1767,16 +1774,16 @@ export default function RepositoryFolderDetailPage() {
                     )}
                   </button>
 
-                  {/* Status + verify */}
+                  {/* Status + verify (verify-eligible roles only) */}
                   <div className="flex justify-end mb-3">
                     <button
-                      onClick={() => canEdit && setVerifyTarget(file)}
-                      disabled={!canEdit}
+                      onClick={() => canVerify && setVerifyTarget(file)}
+                      disabled={!canVerify}
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border transition-all ${
                         isVerified
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                           : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
-                      } ${canEdit ? "cursor-pointer" : "cursor-default"}`}
+                      } ${canVerify ? "cursor-pointer" : "cursor-default"}`}
                     >
                       {isVerified ? (
                         <>

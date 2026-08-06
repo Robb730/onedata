@@ -4,6 +4,11 @@
 // division_focal, and admin — scope is enforced server-side in
 // accessRequestsApi.fetchScopedRequests, this component just renders
 // whatever comes back.
+//
+// UI note: when the same person has requested access to several files,
+// their requests are grouped under a single "requester" card instead of
+// repeating the avatar/name/role block once per file. This keeps the list
+// scannable when one user requests a batch of files at once.
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -12,7 +17,6 @@ import {
   ShieldCheck,
   Check,
   Ban,
-  Download,
   Eye,
   Clock,
   Lock,
@@ -20,6 +24,8 @@ import {
   ChevronDown,
   ChevronUp,
   AlertCircle,
+  Building2,
+  Layers,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import {
@@ -91,6 +97,33 @@ const STATUS_LABEL = {
   denied: "Denied",
   revoked: "Revoked",
 };
+// Order requests within a requester's group so the things that need
+// attention (pending) surface first, then most-recently-created.
+const STATUS_ORDER = { pending: 0, approved: 1, denied: 2, revoked: 3 };
+function sortRequests(list) {
+  return [...list].sort((a, b) => {
+    const s = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9);
+    if (s !== 0) return s;
+    return new Date(b.created_at ?? 0) - new Date(a.created_at ?? 0);
+  });
+}
+
+// Group requests by the person who made them (by requester id when we have
+// one, falling back to their display name). Order of first appearance is
+// preserved so the list doesn't jump around between renders.
+function groupByRequester(list) {
+  const order = [];
+  const map = new Map();
+  for (const r of list) {
+    const key = r.requester_id ?? r.requester?.id ?? r.requested_by_name ?? r.id;
+    if (!map.has(key)) {
+      map.set(key, []);
+      order.push(key);
+    }
+    map.get(key).push(r);
+  }
+  return order.map((key) => sortRequests(map.get(key)));
+}
 
 // ── Confirmation modal (Approve / Deny / Revoke) ───────────────────────
 function ActionConfirmModal({ open, kind, request, onClose, onConfirm, isWorking }) {
@@ -129,10 +162,26 @@ function ActionConfirmModal({ open, kind, request, onClose, onConfirm, isWorking
   }[kind];
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-[0_32px_80px_rgba(15,23,42,0.22)] border border-slate-200 overflow-hidden">
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 backdrop-blur-[2px] p-4"
+      style={{ animation: "arSidebarBackdropIn 180ms ease-out" }}
+    >
+      <style>{`
+        @keyframes arSidebarBackdropIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes arSidebarModalIn {
+          from { opacity: 0; transform: scale(0.96) translateY(6px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
+      <div
+        className="w-full max-w-sm bg-white rounded-2xl shadow-[0_32px_80px_rgba(15,23,42,0.25)] border border-slate-200 overflow-hidden"
+        style={{ animation: "arSidebarModalIn 200ms cubic-bezier(0.16, 1, 0.3, 1)" }}
+      >
         <div className="flex items-start gap-4 px-6 pt-6 pb-5 border-b border-slate-100">
-          <div className={`w-11 h-11 rounded-xl ${copy.iconBg} flex items-center justify-center shrink-0`}>
+          <div className={`w-11 h-11 rounded-xl ${copy.iconBg} flex items-center justify-center shrink-0 shadow-sm`}>
             {copy.icon}
           </div>
           <div className="flex-1 min-w-0">
@@ -143,7 +192,7 @@ function ActionConfirmModal({ open, kind, request, onClose, onConfirm, isWorking
               This action will be audit-logged
             </p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 shrink-0">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 shrink-0 transition-colors">
             <X size={16} />
           </button>
         </div>
@@ -189,21 +238,52 @@ function ActionConfirmModal({ open, kind, request, onClose, onConfirm, isWorking
   );
 }
 
-// ── One request card ────────────────────────────────────────────────
-function RequestCard({ request, onApprove, onDeny, onRevoke }) {
+// ── Requester identity block (avatar, name, role, home section) ───────
+// Shared between the single-request card and the grouped card so both
+// look consistent. `trailing` renders on the right (status badge for a
+// single request, a file-count chip for a group).
+function RequesterIdentity({ name, role, section, division, trailing }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start gap-3 min-w-0">
+        <div className={`w-9 h-9 ${avatarColor(name)} rounded-full flex items-center justify-center shrink-0 shadow-sm ring-2 ring-white`}>
+          <span className="text-xs font-bold text-white">{initials(name)}</span>
+        </div>
+        <div className="min-w-0">
+          <p className="text-[13px] font-bold text-slate-800 leading-tight">{name}</p>
+          <p className="text-[11px] text-slate-500 leading-snug mt-0.5">{getRoleDisplay(role)}</p>
+          {(section || division) && (
+            <p className="inline-flex items-start gap-1 text-[11px] text-slate-400 leading-snug mt-0.5">
+              <Building2 size={11} className="shrink-0 mt-[1.5px]" />
+              <span>
+                {section}
+                {section && division ? " · " : ""}
+                {division}
+              </span>
+            </p>
+          )}
+        </div>
+      </div>
+      {trailing && <div className="shrink-0">{trailing}</div>}
+    </div>
+  );
+}
+
+// ── One file's request details + actions (used standalone or nested in
+// a requester group) ────────────────────────────────────────────────
+function FileEntry({ request, onApprove, onDeny, onRevoke, nested }) {
   const [reasonOpen, setReasonOpen] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const [opening, setOpening] = useState(false);
 
   const file = request.files;
-  const requester = request.requester;
   const sectionName = request.sections?.name;
   const divisionName = request.sections?.divisions?.name;
   const status = request.status;
   const previewable = isPreviewableType(file?.type);
 
   async function handlePreview() {
-    if (!file?.file_path) return;
-    setDownloading(true);
+    if (!file?.file_path || !previewable) return;
+    setOpening(true);
     try {
       const bucket = getBucket(file.data_category);
       const { data: blob, error } = await supabase.storage
@@ -211,44 +291,48 @@ function RequestCard({ request, onApprove, onDeny, onRevoke }) {
         .download(file.file_path);
       if (error) throw new Error(error.message);
       const url = URL.createObjectURL(blob);
-      if (previewable) {
-        window.open(url, "_blank", "noopener,noreferrer");
-      } else {
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = file.file_name;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }
+      window.open(url, "_blank", "noopener,noreferrer");
       setTimeout(() => URL.revokeObjectURL(url), 30000);
     } catch (err) {
       console.error(err);
       alert("Couldn't open the file: " + err.message);
     } finally {
-      setDownloading(false);
+      setOpening(false);
     }
   }
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-      {/* Requester */}
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={`w-9 h-9 ${avatarColor(request.requested_by_name)} rounded-full flex items-center justify-center shrink-0`}>
-            <span className="text-xs font-bold text-white">{initials(request.requested_by_name)}</span>
+    <div className={nested ? "py-3 first:pt-0 last:pb-0" : ""}>
+      {/* File + status */}
+      <div className="flex items-center gap-2">
+        {previewable ? (
+          <button
+            onClick={handlePreview}
+            disabled={opening}
+            className="flex-1 min-w-0 flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-100 transition-colors text-left disabled:opacity-60"
+          >
+            <FileText size={14} className="text-slate-400 shrink-0" />
+            <span className="flex-1 min-w-0 text-[12px] font-semibold text-slate-700 truncate">
+              {file?.file_name ?? "Unknown file"}
+            </span>
+            <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600">
+              <Eye size={12} />
+              {opening ? "Opening…" : "Preview"}
+            </span>
+          </button>
+        ) : (
+          <div className="flex-1 min-w-0 flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-slate-100 bg-slate-50">
+            <FileText size={14} className="text-slate-400 shrink-0" />
+            <span className="flex-1 min-w-0 text-[12px] font-semibold text-slate-700 truncate">
+              {file?.file_name ?? "Unknown file"}
+            </span>
+            {file?.type && (
+              <span className="shrink-0 text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                {file.type}
+              </span>
+            )}
           </div>
-          <div className="min-w-0">
-            <p className="text-[13px] font-bold text-slate-800 leading-tight truncate">
-              {request.requested_by_name}
-            </p>
-            <p className="text-[11px] text-slate-400 truncate">
-              {getRoleDisplay(requester?.role)}
-              {requester?.sections?.name ? ` · ${requester.sections.name}` : ""}
-              {requester?.divisions?.name ? ` · ${requester.divisions.name}` : ""}
-            </p>
-          </div>
-        </div>
+        )}
         <span
           className={`shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${STATUS_STYLES[status] ?? STATUS_STYLES.pending}`}
         >
@@ -256,31 +340,15 @@ function RequestCard({ request, onApprove, onDeny, onRevoke }) {
         </span>
       </div>
 
-      {/* File + requesting-for context (which section/division folder this lives in) */}
-      <button
-        onClick={handlePreview}
-        disabled={downloading}
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 transition-colors text-left disabled:opacity-60"
-      >
-        <FileText size={14} className="text-slate-400 shrink-0" />
-        <span className="flex-1 min-w-0 text-[12px] font-semibold text-slate-700 truncate">
-          {file?.file_name ?? "Unknown file"}
-        </span>
-        <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600">
-          {previewable ? <Eye size={12} /> : <Download size={12} />}
-          {downloading ? "Opening…" : previewable ? "View Request" : "Download Request"}
-        </span>
-      </button>
-
       {(sectionName || divisionName) && (
         <p className="text-[10px] text-slate-400 mt-2">
-          From {sectionName ?? "—"}
+          Requesting access under {sectionName ?? "—"}
           {divisionName ? ` · ${divisionName}` : ""}
         </p>
       )}
 
       {/* Reason */}
-      <div className="flex items-center justify-between mt-3">
+      <div className="flex items-center justify-between mt-2">
         <span className="text-[10px] text-slate-400">{formatDate(request.created_at)}</span>
         {request.message && (
           <button
@@ -309,7 +377,7 @@ function RequestCard({ request, onApprove, onDeny, onRevoke }) {
         <div className="flex gap-2 mt-3">
           <button
             onClick={() => onApprove(request)}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-bold transition-colors"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-bold transition-colors shadow-sm"
           >
             <Check size={13} /> Approve
           </button>
@@ -324,7 +392,7 @@ function RequestCard({ request, onApprove, onDeny, onRevoke }) {
       {status === "approved" && (
         <button
           onClick={() => onRevoke(request)}
-          className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-[12px] font-bold transition-colors"
+          className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 text-[12px] font-bold transition-colors"
         >
           <Lock size={13} /> Revoke Access
         </button>
@@ -333,13 +401,113 @@ function RequestCard({ request, onApprove, onDeny, onRevoke }) {
   );
 }
 
+// ── Single-file requester card (no grouping needed) ────────────────
+function RequestCard({ request, onApprove, onDeny, onRevoke }) {
+  const requester = request.requester;
+  return (
+    <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)] hover:border-slate-300/80 transition-all duration-150">
+      <div className="mb-3">
+        <RequesterIdentity
+          name={request.requested_by_name}
+          role={requester?.role}
+          section={requester?.sections?.name}
+          division={requester?.divisions?.name}
+        />
+      </div>
+      <FileEntry request={request} onApprove={onApprove} onDeny={onDeny} onRevoke={onRevoke} />
+    </div>
+  );
+}
+
+// ── Grouped card: one requester, multiple file requests ────────────
+// Collapsed by default once nothing in the group is pending, so a batch
+// that's already been fully reviewed doesn't eat up scroll space; groups
+// with anything awaiting review start open. The whole header toggles it.
+function RequesterGroupCard({ requests, onApprove, onDeny, onRevoke }) {
+  const first = requests[0];
+  const requester = first.requester;
+  const pendingCount = requests.filter((r) => r.status === "pending").length;
+  const [collapsed, setCollapsed] = useState(pendingCount === 0);
+
+  return (
+    <div className="group rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)] hover:border-slate-300/80 transition-all duration-150 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setCollapsed((c) => !c)}
+        aria-expanded={!collapsed}
+        className="w-full text-left p-4 pb-3 hover:bg-slate-50/70 transition-colors"
+      >
+        <RequesterIdentity
+          name={first.requested_by_name}
+          role={requester?.role}
+          section={requester?.sections?.name}
+          division={requester?.divisions?.name}
+          trailing={
+            <div className="flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                <Layers size={11} />
+                {requests.length} files
+              </span>
+              {collapsed ? (
+                <ChevronDown size={15} className="text-slate-400" />
+              ) : (
+                <ChevronUp size={15} className="text-slate-400" />
+              )}
+            </div>
+          }
+        />
+        {pendingCount > 0 && (
+          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-amber-600 mt-2">
+            <Clock size={9} /> {pendingCount} awaiting review
+          </span>
+        )}
+      </button>
+      {!collapsed && (
+        <div className="px-4 pb-4 divide-y divide-slate-100 border-t border-slate-100">
+          {requests.map((r) => (
+            <FileEntry key={r.id} request={r} onApprove={onApprove} onDeny={onDeny} onRevoke={onRevoke} nested />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main sidebar ────────────────────────────────────────────────────
+const SIDEBAR_TRANSITION_MS = 280;
+
 export default function AccessRequestsSidebar({ isOpen, onClose, userProfile }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("pending"); // pending | all | granted
   const [confirmState, setConfirmState] = useState(null); // { kind, request }
   const [isWorking, setIsWorking] = useState(false);
+
+  // Keep the sidebar mounted for the duration of the closing animation, and
+  // flip `entered` a tick after mount so the initial (off-screen) styles are
+  // committed before we transition to the open state.
+  const [shouldRender, setShouldRender] = useState(isOpen);
+  const [entered, setEntered] = useState(false);
+
+  useEffect(() => {
+    let timeout;
+    if (isOpen) {
+      setShouldRender(true);
+      setEntered(true);
+    } else {
+      setEntered(false);
+      timeout = setTimeout(() => setShouldRender(false), SIDEBAR_TRANSITION_MS);
+    }
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [isOpen]);
+
+  function handleClose() {
+    // Let the caller flip isOpen false; the effect above handles the
+    // animated unmount. Guard against double-invocation while animating.
+    onClose();
+  }
 
   async function load() {
     setLoading(true);
@@ -369,6 +537,7 @@ export default function AccessRequestsSidebar({ isOpen, onClose, userProfile }) 
     : 0;
 
   const visible = tab === "pending" ? pending : tab === "granted" ? granted : requests;
+  const groups = useMemo(() => groupByRequester(visible), [visible]);
 
   async function handleConfirm(reason) {
     if (!confirmState) return;
@@ -388,37 +557,69 @@ export default function AccessRequestsSidebar({ isOpen, onClose, userProfile }) 
     }
   }
 
-  if (!isOpen) return null;
+  if (!shouldRender) return null;
 
   return (
     <>
-      {/* Backdrop (click to close, doesn't dim the page like a modal would) */}
-      <div className="fixed inset-0 z-40 bg-slate-950/10" onClick={onClose} />
+      <style>{`
+        @keyframes arSidebarBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes arSidebarBackdropOut { from { opacity: 1; } to { opacity: 0; } }
+        @keyframes arSidebarSlideIn {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+        @keyframes arSidebarSlideOut {
+          from { transform: translateX(0); }
+          to { transform: translateX(100%); }
+        }
+      `}</style>
 
-      <aside className="fixed top-0 right-0 z-50 h-screen w-full max-w-[420px] bg-white border-l border-slate-200 shadow-[0_0_60px_rgba(15,23,42,0.15)] flex flex-col">
+      {/* Backdrop (click to close, doesn't dim the page like a modal would) */}
+      <div
+        className="fixed inset-0 z-40 bg-slate-950/10 backdrop-blur-[1px]"
+        style={{
+          animation: entered
+            ? "arSidebarBackdropIn 280ms ease-out forwards"
+            : `arSidebarBackdropOut ${SIDEBAR_TRANSITION_MS}ms ease-in forwards`,
+        }}
+        onClick={handleClose}
+      />
+
+      <aside
+        className="fixed top-0 right-0 z-50 h-screen w-full max-w-[440px] bg-white border-l border-slate-200 shadow-[0_0_60px_rgba(15,23,42,0.15)] flex flex-col will-change-transform"
+        style={{
+          animation: entered
+            ? "arSidebarSlideIn 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards"
+            : `arSidebarSlideOut ${SIDEBAR_TRANSITION_MS}ms cubic-bezier(0.4, 0, 1, 1) forwards`,
+        }}
+      >
         {/* Top accent bar */}
         <div className="h-1 w-full bg-gradient-to-r from-blue-500 to-violet-500 shrink-0" />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-100 shrink-0">
-          <div className="flex items-center gap-2">
-            <FileText size={16} className="text-slate-700" />
-            <h2 className="text-[0.95rem] font-black text-slate-800 tracking-[-0.01em]">
-              Access Requests
-            </h2>
-            {pending.length > 0 && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 text-[10px] font-bold border border-amber-200">
-                <Clock size={9} /> {pending.length} pending
-              </span>
-            )}
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
+              <FileText size={14} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-[0.95rem] font-black text-slate-800 tracking-[-0.01em] leading-tight">
+                Access Requests
+              </h2>
+              {pending.length > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-amber-600 mt-0.5">
+                  <Clock size={9} /> {pending.length} awaiting review
+                </span>
+              )}
+            </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+          <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
             <X size={16} />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-5 px-5 pt-3 border-b border-slate-100 shrink-0">
+        <div className="flex items-center gap-1 px-4 pt-3 shrink-0">
           {[
             { key: "pending", label: "Pending", count: pending.length },
             { key: "all", label: "All", count: requests.length },
@@ -427,20 +628,28 @@ export default function AccessRequestsSidebar({ isOpen, onClose, userProfile }) 
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`pb-3 text-[13px] font-bold border-b-2 transition-colors ${
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12.5px] font-bold transition-colors ${
                 tab === t.key
-                  ? "text-blue-600 border-blue-600"
-                  : "text-slate-400 border-transparent hover:text-slate-600"
+                  ? "bg-blue-50 text-blue-600"
+                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
               }`}
             >
-              {t.label} <span className="text-[11px] font-semibold">{t.count}</span>
+              {t.label}
+              <span
+                className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ${
+                  tab === t.key ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {t.count}
+              </span>
             </button>
           ))}
         </div>
+        <div className="h-px bg-slate-100 mx-5 mt-3 shrink-0" />
 
         {/* Info banner */}
         <div className="px-5 pt-3 shrink-0">
-          <div className="flex items-start gap-2 rounded-xl bg-blue-50 border border-blue-100 px-3.5 py-2.5">
+          <div className="flex items-start gap-2 rounded-xl bg-blue-50/70 border border-blue-100 px-3.5 py-2.5">
             <ShieldCheck size={13} className="text-blue-500 shrink-0 mt-0.5" />
             <p className="text-[11px] text-blue-700 leading-relaxed">
               Approving grants the requester permanent view &amp; download access.
@@ -476,28 +685,38 @@ export default function AccessRequestsSidebar({ isOpen, onClose, userProfile }) 
               </p>
             </div>
           ) : (
-            visible.map((r) => (
-              <RequestCard
-                key={r.id}
-                request={r}
-                onApprove={(req) => setConfirmState({ kind: "approve", request: req })}
-                onDeny={(req) => setConfirmState({ kind: "deny", request: req })}
-                onRevoke={(req) => setConfirmState({ kind: "revoke", request: req })}
-              />
-            ))
+            groups.map((group) =>
+              group.length > 1 ? (
+                <RequesterGroupCard
+                  key={group[0].requester_id ?? group[0].requester?.id ?? group[0].requested_by_name}
+                  requests={group}
+                  onApprove={(req) => setConfirmState({ kind: "approve", request: req })}
+                  onDeny={(req) => setConfirmState({ kind: "deny", request: req })}
+                  onRevoke={(req) => setConfirmState({ kind: "revoke", request: req })}
+                />
+              ) : (
+                <RequestCard
+                  key={group[0].id}
+                  request={group[0]}
+                  onApprove={(req) => setConfirmState({ kind: "approve", request: req })}
+                  onDeny={(req) => setConfirmState({ kind: "deny", request: req })}
+                  onRevoke={(req) => setConfirmState({ kind: "revoke", request: req })}
+                />
+              ),
+            )
           )}
         </div>
 
         {/* Footer progress */}
         {requests.length > 0 && (
-          <div className="px-5 py-3 border-t border-slate-100 shrink-0">
+          <div className="px-5 py-3.5 border-t border-slate-100 shrink-0">
             <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 mb-1.5">
               <span>{reviewedCount} of {requests.length} reviewed</span>
               <span>{reviewedPct}%</span>
             </div>
             <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all"
+                className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-300"
                 style={{ width: `${reviewedPct}%` }}
               />
             </div>
