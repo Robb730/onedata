@@ -93,7 +93,9 @@ export function Sidebar({ collapsed = false, onToggle }) {
           className={`flex-1 py-2 space-y-0.5 ${collapsed ? "px-2" : "px-3"}`}
         >
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive =
+              location.pathname === item.path ||
+              location.pathname.startsWith(`${item.path}/`);
 
             return (
               <NavLink
