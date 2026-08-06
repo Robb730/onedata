@@ -65,37 +65,53 @@ export function UserProvider({ children }) {
 
   // ── Realtime: react the moment an admin edits this user's row ──
   useEffect(() => {
-    let channel;
+  let cancelled = false;
+  let channel = null;
 
-    async function subscribe() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  async function subscribe() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || cancelled) return;
 
-      channel = supabase
-        .channel(`users-row-${user.id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "users",
-            filter: `id=eq.${user.id}`,
-          },
-          (payload) => {
-            // payload.new already has the updated row — no extra fetch needed.
-            setUserProfile(payload.new);
-            localStorage.setItem("userProfile", JSON.stringify(payload.new));
-          }
-        )
-        .subscribe();
+    const topic = `users-row-${user.id}`;
+
+    // Defensive: if a channel with this topic is already registered
+    // (e.g. from a StrictMode double-invoke or HMR reload), tear it
+    // down first so .on() below never lands on an already-subscribed
+    // channel instance.
+    const existing = supabase
+      .getChannels()
+      .find((c) => c.topic === `realtime:${topic}`);
+    if (existing) {
+      await supabase.removeChannel(existing);
     }
 
-    subscribe();
+    if (cancelled) return;
 
-    return () => {
-      if (channel) supabase.removeChannel(channel);
-    };
-  }, []);
+    channel = supabase
+      .channel(topic)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "users",
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          setUserProfile(payload.new);
+          localStorage.setItem("userProfile", JSON.stringify(payload.new));
+        },
+      )
+      .subscribe();
+  }
+
+  subscribe();
+
+  return () => {
+    cancelled = true;
+    if (channel) supabase.removeChannel(channel);
+  };
+}, []);
 
   // ── Safety net: refetch on tab refocus in case Realtime dropped ──
   useEffect(() => {
