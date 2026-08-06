@@ -2,44 +2,33 @@ import { useState, useEffect } from "react";
 import { X, CalendarClock, Info } from "lucide-react";
 
 /**
- * ScheduleSchoolYearDialog — Modal for scheduling a new school year transition,
- * or editing an existing scheduled transition.
+ * EditScheduledYearDialog — Modal dedicated to editing an already-scheduled
+ * school year transition. Visually identical to ScheduleSchoolYearDialog,
+ * but kept separate so "create" and "edit" flows can diverge later
+ * (different copy, validation, endpoints, etc.) without one component
+ * branching on an `editingYear` prop.
  *
  * @param {boolean}  open              — whether modal is visible
  * @param {function} onClose           — close handler
- * @param {function} onSubmit          — called with { label, startYear, endYear, activationDate } on confirm
- * @param {number}   defaultStartYear  — pre-filled starting year, e.g. 2026
- * @param {string}   defaultDate       — "YYYY-MM-DD"
- * @param {string}   defaultTime       — "HH:MM"
+ * @param {function} onSubmit          — called with { id, label, startYear, endYear, activationDate } on confirm
+ * @param {object}   year              — the scheduled year being edited (must include `id`)
  */
-export default function ScheduleSchoolYearDialog({
-  open,
-  onClose,
-  onSubmit,
-  defaultStartYear = new Date().getFullYear(),
-  defaultDate = "",
-  defaultTime = "",
-}) {
-  const [startYear, setStartYear] = useState(String(defaultStartYear));
-  const [date, setDate] = useState(defaultDate);
-  const [time, setTime] = useState(defaultTime);
+export default function EditScheduledYearDialog({ open, onClose, onSubmit, year }) {
+  const [startYear, setStartYear] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
 
-  // The dialog component stays mounted the whole time the page is open (it
-  // just renders `null` while closed), so useState's initial value only
-  // fires once, on first mount. Without this effect, opening the dialog to
-  // edit an existing scheduled year would keep showing whatever was there
-  // the very first time the dialog was ever opened (usually blank), instead
-  // of that year's actual values. Re-sync every time it transitions to open.
+  // Re-sync fields from `year` every time the dialog opens, since it stays
+  // mounted (rendering null while closed) and `year` can change between opens.
   useEffect(() => {
-    if (open) {
-      setStartYear(String(defaultStartYear));
-      setDate(defaultDate);
-      setTime(defaultTime);
+    if (open && year) {
+      setStartYear(String(year.startYear ?? ""));
+      setDate(year.rawActivationDate?.slice(0, 10) ?? "");
+      setTime(year.rawActivationDate?.slice(11, 16) ?? "");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, defaultStartYear, defaultDate, defaultTime]);
+  }, [open, year]);
 
-  if (!open) return null;
+  if (!open || !year) return null;
 
   // A valid start year is a plain 4-digit number.
   const isValidYear = /^\d{4}$/.test(startYear);
@@ -57,6 +46,7 @@ export default function ScheduleSchoolYearDialog({
   const handleConfirm = () => {
     if (!canSubmit) return;
     onSubmit({
+      id: year.id,
       label,
       startYear: Number(startYear),
       endYear,
@@ -83,10 +73,10 @@ export default function ScheduleSchoolYearDialog({
             </div>
             <div>
               <h2 className="text-[1rem] font-bold text-slate-800 leading-tight">
-                Schedule School Year Transition
+                Edit Scheduled Transition
               </h2>
               <p className="text-[0.73rem] text-slate-400 font-medium mt-0.5">
-                Set the upcoming school year and its activation date
+                Update the upcoming school year or its activation date
               </p>
             </div>
           </div>
@@ -170,8 +160,8 @@ export default function ScheduleSchoolYearDialog({
           <div className="flex items-start gap-2.5 rounded-[10px] bg-blue-50 border border-blue-100 px-4 py-3">
             <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />
             <p className="text-[0.78rem] text-blue-700 leading-relaxed">
-              At the scheduled date and time, the current school year will be
-              automatically archived and the new year will become active.
+              Updating the date or year will re-schedule this transition. The
+              current school year stays active until the new activation time.
             </p>
           </div>
         </div>
@@ -190,7 +180,7 @@ export default function ScheduleSchoolYearDialog({
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-blue-500 text-[0.82rem] font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
           >
             <CalendarClock size={14} />
-            Confirm Schedule
+            Save Changes
           </button>
         </div>
       </div>

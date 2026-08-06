@@ -6,7 +6,7 @@ import { Eye, Zap, Clock } from "lucide-react";
  *
  * @param {{ label, dateRange, totalFiles, archiveDays, archiveDate }} year
  */
-export default function ActiveSchoolYearCard({ year }) {
+export default function ActiveSchoolYearCard({ year, onForceTransition }) {
   if (!year) {
     return (
       <div
@@ -82,7 +82,10 @@ export default function ActiveSchoolYearCard({ year }) {
           <Eye size={13} />
           View Repository
         </button>
-        <button className="inline-flex items-center gap-1.5 text-[0.78rem] font-semibold text-slate-400 hover:text-orange-500 transition-colors cursor-pointer">
+        <button
+          onClick={onForceTransition}
+          className="inline-flex items-center gap-1.5 text-[0.78rem] font-semibold text-slate-400 hover:text-orange-500 transition-colors cursor-pointer"
+        >
           <Zap size={13} />
           Force Transition
         </button>
