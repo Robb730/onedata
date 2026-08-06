@@ -1,223 +1,416 @@
 ﻿# OneData System Capabilities
 
 ## Overview
-This document describes the current capabilities implemented in the OneData app at `c:\Users\Robb\Documents\projects\onedata`.
-It covers authentication, repository file upload and management, file verification, access control, user administration, audit logging, backend APIs, and core navigation flows.
+This document describes the currently implemented capabilities in OneData at `c:\Users\Robb\Documents\projects\onedata`.
+It covers active features for authentication, repository and file workflows, access control, user administration, audit logging, structured data ingestion, analytics, and core backend integration.
 
 ---
 
 ## 1. Architecture & Core Stack
 
 ### Frontend
-- Built with React 19, Vite, and Tailwind CSS.
-- Uses React Router v7 for page navigation.
-- Uses Supabase JavaScript SDK (`@supabase/supabase-js`) for auth, database, storage, and realtime.
-- Uses `lucide-react` for iconography.
-- Uses `recharts`, `xlsx`, and `exceljs` for visualization and Excel handling.
+- React 19 with Vite.
+- React Router v7 for navigation.
+- Tailwind CSS for styling.
+- `lucide-react` iconography.
+- `recharts` for dashboard charts.
+- `xlsx` and `exceljs` for Excel file handling and import.
+- Supabase JavaScript SDK (`@supabase/supabase-js`) for auth, database, realtime, and storage.
 
 ### Backend / API
-- A minimal Express server lives in `server/index.js`.
-- It exposes two admin-facing API routes:
-  - `POST /api/create-user` for creating a new Supabase auth user and inserting a row in the `users` table.
-  - `POST /api/delete-user` for deleting a user row and the corresponding Supabase auth account.
-- The server sends onboarding email content using Brevo (formerly Sendinblue).
+- Express server in `server/index.js`.
+- Uses Supabase service-role client.
+- Provides admin-only endpoints:
+  - `POST /api/create-user`
+  - `POST /api/delete-user`
+- Sends onboarding emails through Brevo.
 
-### Data and database assumptions
-- Supabase is the primary backend for auth, database, and storage.
-- The app depends on tables such as:
-  - `users`
-  - `divisions`
-  - `sections`
-  - `files`
-  - `audit_logs`
-  - structured tables like `enrollment_data`, `classrooms_school_db`, `teachers`, `textbooks`, etc.
+### Data and storage
+- Supabase is the backend for authentication, database, realtime, and storage.
+- Key tables referenced in code:
+  - `users`, `divisions`, `sections`, `files`, `audit_logs`
+  - `file_access_request`, `division_access_request`
+  - structured import tables such as `enrollment_data`, `classrooms_*`, `seats_*`, `teachers_*`, `textbooks_*`, `cespes_*`
+- Storage buckets:
+  - `repository-files`
+  - `excel-files`
 
 ---
 
-## 2. Authentication & User Profile
+## 2. Authentication and Profile Management
 
 ### Login and route protection
-- `src/pages/Login/LoginPage.jsx` handles login and redirect flows.
-- `src/components/ProtectedRoute.jsx` blocks unauthenticated access and redirects to `/login`.
-- `src/App.jsx` defines routes and wraps protected pages with `ProtectedRoute`.
+- Login handled in `src/pages/Login/LoginPage.jsx`.
+- `src/components/ProtectedRoute.jsx` protects authenticated screens.
+- `src/App.jsx` wraps protected routes with `ProtectedRoute`.
 
-### UserContext and realtime profile updates
-- `src/contexts/UserContext.jsx` provides `userProfile`, `setUserProfile`, `loading`, and `refreshProfile`.
-- It loads the current Supabase auth user and then fetches the profile from `users`:
-  - `id, email, full_name, role, division_id, section_id, must_change_password`
-- It subscribes to realtime database changes on the current user row and updates the profile automatically.
-- It also refetches on browser tab focus to recover from dropped realtime subscriptions.
+### User context
+- `src/contexts/UserContext.jsx` provides:
+  - `userProfile`,
+  - `setUserProfile`,
+  - `loading`,
+  - `refreshProfile()`.
+- It loads the authenticated user and then queries the `users` table for profile details.
+- Realtime updates on the current user row are subscribed and applied automatically.
+- Tab focus triggers a profile refresh if needed.
 
-### Sample profile loader snippet
-```js
-const { data, error } = await supabase
-  .from("users")
-  .select(PROFILE_SELECT)
-  .eq("id", user.id)
-  .single();
-```
+### Profile fields
+- Fetched profile fields include:
+  - `id`, `email`, `full_name`, `role`,
+  - `division_id`, `section_id`,
+  - `must_change_password`,
+  - `division.name` and `section.name` via embedded joins.
 
 ---
 
 ## 3. Routing and Navigation
 
-### App routes in `src/App.jsx`
-- `/` → `LandingPage`
-- `/login` → `LoginPage`
-- `/dashboard` → `Dashboard`
-- `/manage-user` → `ManageUsers`
-- `/upload-files` → `UploadFilesPage`
-- `/audit-logs` → `AuditLogs`
-- `/repository` → `Repository`
-- `/repository/folder/:folderName` → `RepositoryFolderDetailPage`
-- `/repository/divisions/:divisionSlug` → `RepositoryDivisionPage`
-- `/repository/restricted/:folderName` → `AccessRestrictedPage`
+### Active routes
+- `/` — Landing page.
+- `/login` — Login page.
+- `/dashboard` — Dashboard.
+- `/manage-user` — Manage Users.
+- `/upload-files` — Upload Files.
+- `/audit-logs` — Audit Logs.
+- `/repository` — Repository overview.
+- `/repository/divisions/:divisionSlug` — Division detail.
+- `/repository/folder/:folderName` — Section folder detail.
+- `/repository/restricted/:folderName` — Restricted access page.
+- `/school-year` — School Year UI.
 
-### Route protection
-- `ProtectedRoute` checks `session` and redirects to `/login` when missing.
-- This is currently the only gatekeeper for page access in the React app.
+### View modes and local storage
+- Repository view mode is persisted in local storage.
+- Folder colors on the repository page are also stored in component state.
 
 ---
 
-## 4. Access Control
+## 4. Role-Based Access Control
 
-### Role-based access utility
-- `src/utils/accessControl.js` defines access rules and normalized role constants.
-- It resolves a user's effective division by using `division_id` first, then falling back to `section_id` if needed.
+### Roles supported
+- `administrator`
+- `division_focal`
+- `section_focal`
+- `section_personnel`
 
-### Division access logic
-- `canAccessDivision(userProfile, divisionId, resolvedDivisionId)` allows:
-  - `administrator` to access every division
-  - `division_focal`, `section_focal`, and `section_personnel` only to their own division
+### Permission model
+- `administrator` has global access.
+- `division_focal` can access their own division and all associated sections.
+- `section_focal` and `section_personnel` are section-scoped.
 
-### Section file access levels
+### Access functions
+- `canAccessDivision(userProfile, divisionId, resolvedDivisionId)` controls division access.
 - `getSectionAccessLevel(userProfile, section)` returns:
-  - `full` for full access
-  - `locked` for read-only access
-  - `blocked` for redirecting to restricted access
-- Section-scoped roles compare `section_id` first and fall back to `division_id` only if `section_id` is missing.
+  - `full` for full edit/download/delete rights,
+  - `locked` for view-only rights,
+  - `blocked` for redirect to restricted access.
 
-### Example access snippet
-```js
-if (role === ROLES.SECTION_FOCAL || role === ROLES.PERSONNEL) {
-  if (section_id != null) {
-    return sameId(section_id, section.id) ? "full" : "locked";
-  }
-  if (!sameId(division_id, section.division_id)) return "blocked";
-  return "locked";
-}
-```
+### Access flow
+- If a user’s section access resolves to `blocked`, they are redirected to the restricted access page.
+- Locked users can view files but may need to request download access.
 
 ---
 
-## 5. Repository Module
+## 5. Repository and Folder Workflows
 
-### Division overview page
-- `src/pages/Repository/Repository.jsx` fetches all divisions and division focal managers.
-- It shows division cards with:
-  - division name
-  - active manager list
-  - navigation to `/repository/divisions/:division.id`
-
-### Division manager lookup
-- The division overview page queries `users` with:
-  - `role = division_focal`
-  - `is_active = true`
-  - non-null `division_id`
-- It groups managers by `division_id` and passes the names to the folder card.
-
-### Folder card component
-- `src/components/RepositoryComponents/FolderCard.jsx` renders a division card.
-- It displays:
-  - folder icon
-  - division name
-  - section count badge
-  - `Managed by` block with full manager names
+### Division repository overview
+- `src/pages/Repository/Repository.jsx` fetches divisions and active division focal managers.
+- Displays division folders with manager names, icon colors, search, and view modes.
+- Supports tabs for `All`, `Active`, `Review`, and `Archived`.
 
 ### Division detail page
-- `src/pages/Repository/RepositoryDivisionPage.jsx` renders the section list inside one division.
-- It fetches:
-  - `division` row by `divisionSlug`
-  - `sections` rows filtered by `division_id`
-  - `divisionManagers` from `users` where `division_id = divisionSlug` and user is division-level (based on `section_id` being 0, "0", or null)
+- `src/pages/Repository/RepositoryDivisionPage.jsx` lists all sections in a selected division.
+- Fetches: division metadata, section rows, and managers for the division.
+- Shows section cards and section manager names.
 
-### Division manager rendering
-- A dedicated stats card renders manager names in the division page.
-- Example render block:
-```jsx
-<p className="mt-1 text-sm font-semibold text-gray-900">
-  {loading
-    ? "—"
-    : divisionManagers.length
-      ? divisionManagers.join(", ")
-      : "—"}
-</p>
-```
+### Section folder detail page
+- `src/pages/Repository/RepositoryFolderDetailPage.jsx` is the main file management screen.
+- Loads section and division data, section manager names, files, and uploader details.
+- Supports:
+  - search by file name or uploader,
+  - sorting by date/name/size,
+  - file type tabs (`All`, `PDF`, `Excel`, `Word`, `Image`),
+  - list and grid displays,
+  - hover previews and tooltip cards,
+  - bulk selection and actions.
 
-### Section folder grid
-- Section entries map sections into UI cards.
-- Each section card shows section name, section manager, and file counts.
-
----
-
-## 6. File Detail & Verification
-
-### Repository folder detail page
-- `src/pages/Repository/RepositoryFolderDetailPage.jsx` renders the file list for a selected section.
-- It queries:
-  - `sections` by name
-  - `files` by `section_id`
-  - `users` for uploader details using `uploaded_by`
-
-### Uploader lookup
-- The page builds a lookup of uploader IDs from the `files` rows.
-- Then it queries the `users` table for those IDs and maps `full_name` and role.
-- Each row displays uploader name, role, and initials.
-
-### File status and verify logic
-- Status is derived from `files.is_dashboard_source`.
-- The display mapping is:
-```js
-status: f.is_dashboard_source ? "Verified" : "For Review",
-```
-- Verify/unverify toggles are handled by updating `is_dashboard_source`.
-
-### Verification update example
-```js
-await supabase
-  .from("files")
-  .update({ is_dashboard_source: newValue })
-  .eq("id", file.id);
-```
-
-### File table features
-- Search by file name or uploader.
-- Sort by name, size, or date.
-- Tabbed file type filtering.
-- Bulk verify/unverify actions.
-- Download and delete actions when permitted.
+### File list and UI
+- Files are represented with:
+  - type icons,
+  - file name,
+  - status badge,
+  - size,
+  - uploader,
+  - upload date,
+  - modified date,
+  - actions.
+- The UI supports preview cards and uploader detail popovers.
 
 ---
 
-## 7. Upload Files Page & User Interactions
+## 6. File Actions and Verification
 
-### Upload page layout
-- `src/pages/UploadFiles/UploadFilesPage.jsx` contains upload UI and the upload processing workflow.
-- It supports:
-  - drag-and-drop file upload
-  - file browsing
-  - folder selection for eligible users
-  - request upload workflows for non-admin users
+### Download
+- Files are downloaded via Supabase storage.
+- Downloads use the bucket selected by file category:
+  - `repository-files` for `general`
+  - `excel-files` otherwise.
+- Download events are audit-logged.
 
-### Folder selection logic
-- The page uses a folder selection step when the uploading user may choose a target section.
-- Personnel users are often assigned to their own section and skip manual folder assignment.
+### Delete
+- Delete removes the file from storage and deletes the `files` row.
+- Delete actions are permitted only for users with `full` access.
+- Deletions are audit-logged.
 
-### Upload callbacks
-- `triggerUpload(fileName)` opens the upload modal.
-- `handleFolderSelect(folder)` moves the user to upload detail entry.
-- `handleFinalUpload()` in `FileUploadModal.jsx` calls the parent `onUpload(...)` callback.
-- The parent callback `addToUploads(...)` performs storage upload, metadata insert, and audit logging.
+### Verify / Unverify
+- File verification is controlled by `files.status`.
+- Eligible roles:
+  - `admin`,
+  - `division_focal` within their own division,
+  - `section_focal` for their own section.
+- `section_personnel` cannot verify even with `full` access.
+- Verification toggles are audit-logged as `Verify` or `Unverify`.
+
+### Bulk verification actions
+- Selected files can be batch verified or unverified when permitted.
+- The bulk bar appears when one or more files are selected.
+
+---
+
+## 7. File Access Requests
+
+### File-level requests
+- Blocked users can request access to a file or multiple selected files.
+- Requests are recorded in `file_access_request` with status `pending`.
+- The request includes:
+  - `file_id`,
+  - `section_id`,
+  - `requested_by`,
+  - `requested_by_name`,
+  - `message`,
+  - `status`.
+- Pending files are labeled `Requested`.
+
+### Approver workflow
+- `src/components/RepositoryComponents/AccessRequestsSidebar.jsx` renders requests for approvers.
+- Approvers can:
+  - approve,
+  - deny with optional reason,
+  - revoke previously approved access.
+- Approver scope:
+  - `section_focal` sees only their section requests,
+  - `division_focal` sees requests across their division,
+  - `admin` sees all requests.
+
+### Division access request workflow
+- Restricted folder access is handled in `src/pages/Repository/AccessRestrictedPage.jsx`.
+- Users can request access to a restricted division or section.
+- The page resolves folder/division details and displays assigned division officers.
+- It also checks for existing requests using `fetchOwnDivisionRequest()`.
+
+### Request utilities
+- `src/utils/accessRequestsApi.js` implements file request operations.
+- `src/utils/divisionAccessRequestsApi.js` implements division request operations and approvals.
+
+---
+
+## 8. Uploads and Structured Data Ingestion
+
+### Upload page capabilities
+- `src/pages/UploadFiles/UploadFilesPage.jsx` supports:
+  - drag-and-drop file upload,
+  - browsing files,
+  - folder selection,
+  - section auto-assignment for personnel,
+  - upload state tracking,
+  - recent upload history from audit logs.
+
+### Structured upload categories
+- Supported categories:
+  - `general`,
+  - `enrollment`,
+  - `classrooms`,
+  - `seats`,
+  - `teachers_inventory`,
+  - `textbook_inventory`,
+  - `cespes`.
+- Structured uploads are parsed and stored into domain-specific tables.
+
+### Upload processing steps
+- Uploads are stored in Supabase Storage.
+- Metadata is inserted into `files`.
+- Structured uploads trigger `parseAndSyncStructuredData()`.
+- Audit logs record upload success or failure.
+
+### Metadata fields
+- Stored metadata includes:
+  - `file_name`,
+  - `file_path`,
+  - `file_size`,
+  - `file_type`,
+  - `data_category`,
+  - `school_year`,
+  - `section_id`,
+  - `division_id`,
+  - `uploaded_by`,
+  - `uploaded_by_name`,
+  - `status`,
+  - `is_dashboard_source`.
+
+---
+
+## 9. Structured Data Sync
+
+### Tables by import category
+- `enrollment` → `enrollment_data`
+- `classrooms` → `classrooms_school_db`, `classrooms_kes`, `classrooms_jhs`, `classrooms_shs`, `classrooms_status`
+- `seats` → `seats_kes`, `seats_jhs`, `seats_shs`, `seats_status`
+- `teachers_inventory` → `teachers_kes`, `teachers_jhs`, `teachers_shs`, `teachers_status`
+- `textbook_inventory` → `textbooks_kes`, `textbooks_jhs`, `textbooks_shs`, `textbooks_status`
+- `cespes` → `cespes_operations`, `cespes_support_operations`, `cespes_general_admin`, `cespes_individual_performance`, `cespes_innovation`
+
+### Import behavior
+- `src/utils/structuredDataSync.js` parses and inserts rows for structured uploads.
+- It supports multi-sheet parsing and sharded inserts in chunks.
+- It can delete previously parsed rows for a file to support replacement.
+- Enrollment uploads insert records into `enrollment_data`.
+- CESPES uploads insert into five dedicated CESPES tables.
+
+---
+
+## 10. User Administration
+
+### Manage Users page
+- `src/pages/ManageUsers/ManageUsers.jsx` loads users and related division/section names.
+- Supports:
+  - user search,
+  - division filter,
+  - grouping by division,
+  - user edit,
+  - user activation/deactivation,
+  - user deletion,
+  - logs viewing via modals.
+
+### User editing
+- Admins can update:
+  - role,
+  - division assignment,
+  - section assignment.
+- Updates refresh the current signed-in profile if it affects the current user.
+- User edits are audit-logged.
+
+### User creation
+- `POST /api/create-user` creates a Supabase auth user and a `users` row.
+- Generates a temporary password.
+- Sends onboarding email through Brevo.
+- Supports role mapping from display labels to internal role keys.
+
+### User deletion
+- `POST /api/delete-user` deletes the `users` row and the Supabase auth account.
+- Returns JSON success or error.
+- Audit logs are generated for deletion operations.
+
+---
+
+## 11. Audit Logging
+
+### Audit log page
+- `src/pages/AuditLogs/AuditLogs.jsx` fetches audit log data from Supabase.
+- Supports search, action filtering, and status filtering.
+- Displays logs with action, file name, performer, role, timestamp, and status.
+
+### Realtime updates
+- Subscribes to `audit_logs` inserts via Supabase realtime channels.
+- New logs appear live in the view.
+
+### Export
+- Provides export to a print-friendly HTML report in a new browser tab.
+- Export includes all visible log rows and status-colored labels.
+
+---
+
+## 12. Dashboard and Analytics
+
+### Dashboard data sources
+- `src/pages/Dashboard/Dashboard.jsx` loads data for the selected school year from Supabase:
+  - `enrollment_data`,
+  - `cespes_operations`,
+  - `cespes_support_operations`,
+  - `cespes_general_admin`,
+  - `cespes_individual_performance`,
+  - `cespes_innovation`.
+
+### Visualizations
+- Dashboard components include:
+  - enrollment summaries,
+  - dropout charts,
+  - promotion charts,
+  - cohort survival charts,
+  - resource inventory charts,
+  - textbook inventory charts,
+  - gender and level breakdown cards.
+- Some overview data is still presented as sample values for key metrics.
+
+---
+
+## 13. School Year UI
+
+### School Year page
+- `src/pages/SchoolYear/SchoolYearPage.jsx` renders school year management UI.
+- Components include:
+  - `SchoolYearHeader`,
+  - `ActiveSchoolYearCard`,
+  - `ScheduledSchoolYearCard`,
+  - `TransitionReadinessCard`,
+  - `PreviousSchoolYearsTable`,
+  - `ScheduleSchoolYearDialog`.
+- The page currently expects props for active and scheduled year data rather than fetching state internally.
+
+---
+
+## 14. Backend Integration
+
+### Server APIs
+- Express server in `server/index.js`.
+- Uses Supabase admin credentials from environment variables.
+- Enables secure user create/delete operations.
+
+### Email onboarding
+- Sends new-user welcome emails via Brevo.
+- Includes temporary password and login URL.
+- Requires `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, and `SITE_URL`.
+
+---
+
+## 15. Storage and File Handling
+
+### Buckets
+- `repository-files` for general attachments.
+- `excel-files` for structured or Excel uploads.
+
+### Download flow
+- Downloads use Supabase Storage and browser blob links.
+- Bucket selection is based on `files.data_category`.
+- Download operations are audit-logged.
+
+---
+
+## 16. Summary of Active Features
+
+The current OneData app supports:
+- authenticated access and role-based route protection,
+- realtime user profile sync,
+- repository browsing by division and section,
+- section-level file lists with search, filter, sort, and preview,
+- file download, delete, verify/unverify,
+- file-level access requests and approval workflows,
+- division-level restricted access requests,
+- upload page with drag/drop, folder selection, and upload progress,
+- structured Excel import into enrollment, classrooms, seats, teachers, textbooks, and CESPES tables,
+- user administration with create/edit/activate/deactivate/delete,
+- audit logging with realtime feed and export,
+- dashboard analytics with Supabase-backed metrics,
+- school year management UI scaffolding.
+
 
 ### Storage & metadata insertion
 - Files upload to:

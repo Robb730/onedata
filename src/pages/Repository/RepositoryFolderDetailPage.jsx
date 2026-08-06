@@ -673,18 +673,48 @@ export default function RepositoryFolderDetailPage() {
   }
 
   // ── Access control ─────────────────────────────────────────────
-  const accessLevel = useMemo(
-    () => getSectionAccessLevel(userProfile, section),
-    [userProfile, section],
-  );
+  const [accessLevel, setAccessLevel] = useState("blocked");
+
+  useEffect(() => {
+    if (!section || !userProfile) return;
+    let cancelled = false;
+
+    (async () => {
+      const level = await getSectionAccessLevel(userProfile, section);
+      if (cancelled) return;
+      setAccessLevel(level);
+      if (level === "blocked") {
+        navigate(`/repository/restricted/${encodeURIComponent(section.name)}`, {
+          replace: true,
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [section, userProfile, navigate]);
+
   const canEdit = accessLevel === "full";
   // Verification is a separate permission from general edit access — only
-  // these three roles may verify/unverify a file, regardless of whether the
-  // user otherwise has "full" edit access to this section (e.g. section
-  // personnel can have full edit access but still shouldn't be able to verify).
-  const canVerify = ["admin", "division_focal", "section_focal"].includes(
-    userProfile?.role,
-  );
+  // these three roles may verify/unverify a file, and even then only within
+  // the scope they actually own:
+  //   - admin: any section, anywhere
+  //   - division_focal: any section that belongs to their own division
+  //     (section.division_id === their division_id) — this covers every
+  //     section folder under the divisions they handle, not just one
+  //   - section_focal: only their own assigned section
+  //     (section.id === their section_id)
+  // Section personnel can never verify, even if they have "full" edit
+  // access to this section.
+  const canVerify =
+    userProfile?.role === "admin" ||
+    (userProfile?.role === "division_focal" &&
+      !!section &&
+      userProfile?.division_id === section.division_id) ||
+    (userProfile?.role === "section_focal" &&
+      !!section &&
+      userProfile?.section_id === section.id);
 
   useEffect(() => {
     if (!section || !userProfile) return;
