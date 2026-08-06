@@ -8,9 +8,15 @@ import {
   Shield,
   CheckCircle,
   Users,
+  Clock,
+  Building2,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
+import {
+  createDivisionAccessRequest,
+  fetchOwnDivisionRequest,
+} from "../../utils/divisionAccessRequestsApi";
 
 const roleDisplayMap = {
   administrator: "Administrator",
@@ -29,8 +35,81 @@ export default function AccessRestrictedPage() {
   const [managers, setManagers] = useState([]); // all division_focal users for this division
   const [loading, setLoading] = useState(true);
 
+  // the current user's own division/section names (for the "Your Role" card)
+  const [ownContext, setOwnContext] = useState({
+    divisionName: null,
+    sectionName: null,
+  });
+
+  // track the resolved division id + a small request modal
+  const [resolvedDivisionId, setResolvedDivisionId] = useState(null);
+  const [requestOpen, setRequestOpen] = useState(false);
+  const [requestMessage, setRequestMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const [existingRequest, setExistingRequest] = useState(null); // { id, status, deny_reason, created_at } | null
+  const [checkingExisting, setCheckingExisting] = useState(false);
+
   const roleLabel =
     roleDisplayMap[userProfile?.role] || userProfile?.role || "Unknown Role";
+
+  // ── Resolve the current user's own division / section name ──────
+  useEffect(() => {
+    if (!userProfile) return;
+
+    let cancelled = false;
+
+    async function resolveOwnContext() {
+      let divisionName = null;
+      let sectionName = null;
+
+      if (userProfile.section_id != null) {
+        const { data, error } = await supabase
+          .from("sections")
+          .select("name, division_id, divisions(name)")
+          .eq("id", userProfile.section_id)
+          .single();
+        if (!error && data) {
+          sectionName = data.name;
+          divisionName = data.divisions?.name ?? divisionName;
+        }
+      }
+
+      if (!divisionName && userProfile.division_id != null) {
+        const { data, error } = await supabase
+          .from("divisions")
+          .select("name")
+          .eq("id", userProfile.division_id)
+          .single();
+        if (!error && data) divisionName = data.name;
+      }
+
+      if (!cancelled) setOwnContext({ divisionName, sectionName });
+    }
+
+    resolveOwnContext();
+    return () => {
+      cancelled = true;
+    };
+  }, [userProfile?.section_id, userProfile?.division_id]);
+
+  useEffect(() => {
+    if (resolvedDivisionId == null || !userProfile?.id) return;
+
+    let cancelled = false;
+    setCheckingExisting(true);
+    fetchOwnDivisionRequest(userProfile.id, resolvedDivisionId)
+      .then((req) => {
+        if (!cancelled) setExistingRequest(req);
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingExisting(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedDivisionId, userProfile?.id]);
 
   useEffect(() => {
     if (!decodedName) return;
@@ -93,6 +172,7 @@ export default function AccessRestrictedPage() {
       }
 
       setFolderInfo({ name, fileCount, modifiedAt });
+      setResolvedDivisionId(divisionId);
 
       if (divisionId != null) {
         const { data: focals, error: focalsError } = await supabase
@@ -116,10 +196,7 @@ export default function AccessRestrictedPage() {
     ? "Loading…"
     : folderInfo?.name || decodedName || "Restricted Folder";
 
-  const managedByLabel =
-    managers.length === 0
-      ? "Unassigned"
-      : managers.map((m) => m.full_name || m.email).join(", ");
+  const managerNames = managers.map((m) => m.full_name || m.email);
 
   const modifiedLabel = folderInfo?.modifiedAt
     ? new Date(folderInfo.modifiedAt).toLocaleDateString("en-US", {
@@ -128,6 +205,31 @@ export default function AccessRestrictedPage() {
         year: "numeric",
       })
     : "—";
+
+  // "Division Officer — IT Division" / "Section Personnel — Records Section"
+  const ownContextLabel = ownContext.sectionName
+    ? ownContext.sectionName
+    : ownContext.divisionName
+      ? ownContext.divisionName
+      : null;
+
+  async function handleSubmitRequest() {
+    if (!resolvedDivisionId) return;
+    setSubmitting(true);
+    try {
+      const req = await createDivisionAccessRequest({
+        divisionId: resolvedDivisionId,
+        userProfile,
+        message: requestMessage,
+      });
+      setExistingRequest(req);
+      setRequestOpen(false);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -159,18 +261,24 @@ export default function AccessRestrictedPage() {
             <Lock size={9} className="text-white" />
           </div>
         </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-1">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 mb-1 flex-wrap">
             <h1 className="text-lg font-bold text-gray-900">{displayName}</h1>
             <span className="flex items-center gap-1 text-[11px] font-semibold text-red-500 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
               <Lock size={9} />
               Restricted Access
             </span>
           </div>
-          <div className="flex items-center gap-4 text-xs text-gray-400">
+          <div className="flex items-center gap-4 text-xs text-gray-400 flex-wrap">
             <span className="flex items-center gap-1">
               <User size={11} />
-              {loading ? "…" : managedByLabel}
+              {loading
+                ? "…"
+                : managerNames.length === 0
+                  ? "Unassigned"
+                  : managerNames.length === 1
+                    ? managerNames[0]
+                    : `${managerNames[0]} +${managerNames.length - 1} more`}
             </span>
             <span className="flex items-center gap-1">
               <span>Modified {loading ? "…" : modifiedLabel}</span>
@@ -199,23 +307,37 @@ export default function AccessRestrictedPage() {
           You don't have permission to view the contents of this folder.
         </p>
         <p className="text-xs text-gray-400 max-w-sm mb-8">
-          Your current role ({roleLabel}) does not have access to this folder in
-          the repository flow.
+          Your current role ({roleLabel}
+          {ownContextLabel ? ` · ${ownContextLabel}` : ""}) does not have
+          access to this folder in the repository flow.
         </p>
 
-        <div className="flex items-center gap-3 mb-8 flex-wrap justify-center">
-          <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50">
-            <Users size={13} className="text-gray-400" />
+        <div className="flex items-stretch gap-3 mb-8 flex-wrap justify-center">
+          {/* Managed By — full list, wraps instead of truncating */}
+          <div className="flex items-start gap-2 border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50 max-w-xs">
+            <Users size={13} className="text-gray-400 mt-0.5 shrink-0" />
             <div className="text-left">
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-1">
                 Managed By
               </p>
-              <p
-                className="text-sm font-semibold text-gray-800 max-w-[220px] truncate"
-                title={managedByLabel}
-              >
-                {loading ? "—" : managedByLabel}
-              </p>
+              {loading ? (
+                <p className="text-sm font-semibold text-gray-800">—</p>
+              ) : managerNames.length === 0 ? (
+                <p className="text-sm font-semibold text-gray-800">
+                  Unassigned
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {managerNames.map((name, i) => (
+                    <span
+                      key={`${name}-${i}`}
+                      className="inline-flex items-center px-2 py-0.5 rounded-full bg-white border border-gray-200 text-[11px] font-semibold text-gray-800"
+                    >
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -229,8 +351,9 @@ export default function AccessRestrictedPage() {
             </div>
           </div>
 
+          {/* Your Role — now also shows the user's own section/division */}
           <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50">
-            <Shield size={13} className="text-gray-400" />
+            <Shield size={13} className="text-gray-400 shrink-0" />
             <div className="text-left">
               <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">
                 Your Role
@@ -238,6 +361,23 @@ export default function AccessRestrictedPage() {
               <p className="text-sm font-semibold text-gray-800">{roleLabel}</p>
             </div>
           </div>
+
+          {ownContextLabel && (
+            <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50">
+              <Building2 size={13} className="text-gray-400 shrink-0" />
+              <div className="text-left">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">
+                  {ownContext.sectionName ? "Your Section" : "Your Division"}
+                </p>
+                <p
+                  className="text-sm font-semibold text-gray-800 max-w-[180px] truncate"
+                  title={ownContextLabel}
+                >
+                  {ownContextLabel}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -248,15 +388,85 @@ export default function AccessRestrictedPage() {
             <ArrowLeft size={15} />
             Go Back
           </button>
-          <button
-            onClick={() => navigate("/repository")}
-            className="flex items-center gap-2 px-6 py-2.5 bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold rounded-lg transition-all active:scale-95 shadow-sm"
-          >
-            <CheckCircle size={15} />
-            Request Access
-          </button>
+          {(() => {
+            const status = existingRequest?.status;
+            if (status === "pending") {
+              return (
+                <button
+                  disabled
+                  className="flex items-center gap-2 px-6 py-2.5 bg-amber-100 text-amber-700 text-sm font-semibold rounded-lg cursor-not-allowed"
+                >
+                  <Clock size={15} />
+                  Request Pending
+                </button>
+              );
+            }
+            if (status === "approved") {
+              return (
+                <button
+                  disabled
+                  className="flex items-center gap-2 px-6 py-2.5 bg-emerald-100 text-emerald-700 text-sm font-semibold rounded-lg cursor-not-allowed"
+                >
+                  <CheckCircle size={15} />
+                  Access Approved
+                </button>
+              );
+            }
+            return (
+              <button
+                onClick={() =>
+                  resolvedDivisionId
+                    ? setRequestOpen(true)
+                    : navigate("/repository")
+                }
+                disabled={checkingExisting}
+                className="flex items-center gap-2 px-6 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-all active:scale-95 shadow-sm"
+              >
+                <CheckCircle size={15} />
+                {status === "denied" ? "Request Again" : "Request Access"}
+              </button>
+            );
+          })()}
         </div>
       </div>
+
+      {requestOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-[2px] p-4">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+            <h3 className="text-base font-bold text-slate-800 mb-1">
+              Request access to {displayName}
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Sent to the division focal person(s) for review. You'll be able to
+              open this folder once approved.
+            </p>
+            <textarea
+              value={requestMessage}
+              onChange={(e) => setRequestMessage(e.target.value.slice(0, 200))}
+              rows={3}
+              maxLength={200}
+              placeholder="Add a note (optional) — why do you need access?"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:border-teal-400 resize-none"
+            />
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => setRequestOpen(false)}
+                disabled={submitting}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitRequest}
+                disabled={submitting}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-sm font-bold disabled:opacity-50"
+              >
+                {submitting ? "Sending…" : "Send Request"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,8 +3,16 @@ import { supabase } from "../lib/supabaseClient";
 
 const UserContext = createContext(null);
 
+// division_id/section_id are foreign keys — `division:divisions(name)` and
+// `section:sections(name)` pull in the related row's name via PostgREST's
+// embedded-resource syntax, so userProfile.division?.name /
+// userProfile.section?.name are available without a second round trip.
+// Only one of the two will ever be populated for a given user (division
+// focals have a division_id but no section_id, and vice versa for
+// section-scoped roles), which TopHeader's getScopeLabel already accounts
+// for by picking the right one based on role.
 const PROFILE_SELECT =
-  "id, email, full_name, role, division_id, section_id, must_change_password";
+  "id, email, full_name, role, division_id, section_id, must_change_password, division:divisions(name), section:sections(name)";
 
 export function UserProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null);
@@ -97,9 +105,13 @@ export function UserProvider({ children }) {
           table: "users",
           filter: `id=eq.${user.id}`,
         },
-        (payload) => {
-          setUserProfile(payload.new);
-          localStorage.setItem("userProfile", JSON.stringify(payload.new));
+        () => {
+          // payload.new is the raw `users` row only — it can't contain the
+          // embedded divisions/sections name, so re-fetch through the same
+          // joined query instead of setting state from the payload
+          // directly. Otherwise a realtime-triggered update would wipe
+          // out division/section names until the next full reload.
+          loadProfile(false);
         },
       )
       .subscribe();
@@ -111,7 +123,7 @@ export function UserProvider({ children }) {
     cancelled = true;
     if (channel) supabase.removeChannel(channel);
   };
-}, []);
+}, [loadProfile]);
 
   // ── Safety net: refetch on tab refocus in case Realtime dropped ──
   useEffect(() => {
