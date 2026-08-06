@@ -74,6 +74,10 @@ export default function EditUserModal({ isOpen, onClose, user, onSave }) {
   if (!isOpen) return null;
 
   const handleSave = () => {
+    if (loadingOptions) {
+      alert("Please wait, loading options...");
+      return;
+    }
     if (isDivisionRole && !divisionId) {
       alert("Please select a division for this role.");
       return;
@@ -83,10 +87,19 @@ export default function EditUserModal({ isOpen, onClose, user, onSave }) {
       return;
     }
 
+    const divisionName = isDivisionRole
+      ? divisions.find((d) => String(d.id) === String(divisionId))?.name ?? null
+      : null;
+    const sectionName = isSectionRole
+      ? sections.find((s) => String(s.id) === String(sectionId))?.name ?? null
+      : null;
+    console.log({ role, divisionId, sectionId, divisions, sections, isDivisionRole, isSectionRole });
     onSave(user.id, {
       role: ROLE_LABEL_TO_SLUG[role] ?? role,
       divisionId: isDivisionRole ? divisionId : null,
       sectionId: isSectionRole ? sectionId : null,
+      divisionName,
+      sectionName,
     });
     onClose();
   };

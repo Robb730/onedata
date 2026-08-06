@@ -17,7 +17,7 @@ export function RepositoryTabs({
   counts = {},
 }) {
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex flex-wrap items-center gap-2 rounded-[22px] bg-slate-100/70 p-2">
       {tabs.map((tab) => {
         const isActive = activeTab === tab;
         const count = counts[tab];
@@ -26,10 +26,10 @@ export function RepositoryTabs({
           <button
             key={tab}
             onClick={() => onTabChange(tab)}
-            className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all border ${
+            className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-full transition-all border ${
               isActive
-                ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                : "text-gray-600 hover:bg-gray-50 border-gray-200 bg-white"
+                ? "bg-white text-slate-950 border-white shadow-[0_8px_28px_rgba(15,23,42,0.10)]"
+                : "text-slate-500 hover:bg-white/80 border-transparent bg-transparent hover:text-slate-800"
             }`}
           >
             {tab}
@@ -37,8 +37,8 @@ export function RepositoryTabs({
               <span
                 className={`ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                   isActive
-                    ? "bg-white/20 text-white"
-                    : "bg-gray-100 text-gray-500"
+                    ? "bg-slate-100 text-slate-700"
+                    : "bg-white/70 text-slate-500"
                 }`}
               >
                 {count}

@@ -19,32 +19,32 @@ export function RepositorySearchBar({
   onViewModeChange,
 }) {
   return (
-    <div className="flex flex-col md:flex-row items-center gap-4 mb-4">
-      <div className="flex-1 w-full relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto_auto] xl:items-center">
+      <div className="relative w-full">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
         <input
           type="text"
           placeholder="Search folders by name, owner, or date..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+          className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/80 py-3 pl-11 pr-4 text-sm text-slate-700 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-4 focus:ring-sky-100"
         />
       </div>
-      <div className="flex items-center gap-2">
-        <SlidersHorizontal className="text-gray-400" size={18} />
-        <select className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <div className="flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
+        <SlidersHorizontal className="text-slate-400" size={18} />
+        <select className="bg-transparent text-sm font-medium text-slate-700 outline-none">
           <option>Name</option>
           <option>Date</option>
           <option>Size</option>
         </select>
       </div>
-      <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-1">
+      <div className="inline-flex items-center gap-1 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-1 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
         <button
           onClick={() => onViewModeChange("grid")}
           className={`p-2 rounded-md transition-all ${
             viewMode === "grid"
-              ? "bg-blue-600 text-white shadow-sm"
-              : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+              ? "bg-slate-950 text-white shadow-md"
+              : "text-slate-400 hover:text-slate-600 hover:bg-white"
           }`}
         >
           <Grid3x3 size={16} />
@@ -53,8 +53,8 @@ export function RepositorySearchBar({
           onClick={() => onViewModeChange("list")}
           className={`p-2 rounded-md transition-all ${
             viewMode === "list"
-              ? "bg-blue-600 text-white shadow-sm"
-              : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+              ? "bg-slate-950 text-white shadow-md"
+              : "text-slate-400 hover:text-slate-600 hover:bg-white"
           }`}
         >
           <List size={16} />

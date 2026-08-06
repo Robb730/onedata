@@ -21,12 +21,17 @@ function AuditLogRow({ log }) {
             <FileText size={13} />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-800">
+            <p className="text-sm font-semibold text-slate-800 whitespace-normal break-words">
               {hasFile ? log.fileName : "—"}
             </p>
             {log.details && (
-              <p className="mt-0.5 truncate text-xs text-slate-400">
-                {log.details}
+              <p
+                className="mt-0.5 truncate text-xs text-slate-400 cursor-help"
+                title={log.details}
+              >
+                {log.action === "Other" && log.details.includes("changed")
+                  ? "Role Change"
+                  : log.details}
               </p>
             )}
           </div>
