@@ -37,6 +37,7 @@ import { parseSeatsFile }       from "../parsers/seatsParser";
 import { parseTeachersInventoryFile } from "../parsers/teachersInventoryParser";
 import { parseTextbooksInventoryFile } from "../parsers/textbooksInventoryParser";
 import { parseCespesFile } from "../parsers/cespesParser";
+import { parseKpiFile } from "../parsers/kpiParser";
 
 // ── Supported import types ────────────────────────────────────────────────────
 //
@@ -79,6 +80,11 @@ export const IMPORT_TYPES = {
     label:     "CESPES",
     strategy:  "file",
     parseFile: parseCespesFile,
+  },
+  performance_indicators: {
+    label:     "Performance Indicators",
+    strategy:  "file",
+    parseFile: parseKpiFile,
   },
   schools: {
     label:    "Number of Schools",
