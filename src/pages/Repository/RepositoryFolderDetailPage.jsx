@@ -38,6 +38,7 @@ import { getSectionAccessLevel } from "../../utils/accessControl";
 import FileAccessRequestModal from "../../components/RepositoryComponents/FileAccessRequestModal";
 import AccessRequestsSidebar from "../../components/RepositoryComponents/AccessRequestsSidebar";
 import FloatingAccessRequestsButton from "../../components/RepositoryComponents/FloatingAccessRequestsButton";
+import { RepositorySearchBar } from "../../components/RepositoryComponents";
 
 // ── Role map ────────────────────────────────────────────────────
 const roleDisplayMap = {
@@ -1179,81 +1180,43 @@ export default function RepositoryFolderDetailPage() {
           </div>
         </div>
 
-        {/* ── Search + Filter bar ───────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-4 mb-4 shadow-sm">
-          <div className="flex flex-col md:flex-row items-center gap-3 mb-4">
-            {/* Search */}
-            <div className="flex-1 w-full relative">
-              <Search
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                size={14}
-              />
-              <input
-                type="text"
-                placeholder="Search files by name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-[13px] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 transition-colors"
-              />
-            </div>
-
-            {/* Sort + view toggle */}
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="flex items-center gap-1.5 border border-slate-200 rounded-xl px-3 py-2.5 bg-white">
-                <SlidersHorizontal
-                  className="text-slate-400 shrink-0"
-                  size={13}
-                />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="text-[13px] text-slate-600 bg-transparent focus:outline-none cursor-pointer"
-                >
-                  <option value="date">Sort: Date</option>
-                  <option value="name">Sort: Name</option>
-                  <option value="size">Sort: Size</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-0.5 border border-slate-200 rounded-xl p-1">
-                <button
-                  onClick={() => setViewMode("list")}
-                  className={`p-2 rounded-lg transition-all ${viewMode === "list" ? "bg-blue-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
-                >
-                  <List size={14} />
-                </button>
-                <button
-                  onClick={() => setViewMode("grid")}
-                  className={`p-2 rounded-lg transition-all ${viewMode === "grid" ? "bg-blue-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
-                >
-                  <Grid3x3 size={14} />
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* ── Search / Sort / View Toggle ────────────────── */}
+        <div className="mb-6 rounded-[28px] border border-white/70 bg-white/85 p-4 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-5">
+          <RepositorySearchBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            placeholder="Search files by name or uploader..."
+          />
 
           {/* Type filter pills */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {FILE_TYPE_TABS.map((tab) => {
-              const isActive = activeType === tab;
-              return (
-                <button
-                  key={tab}
-                  onClick={() => setActiveType(tab)}
-                  className={`px-3.5 py-1.5 text-[11px] font-semibold rounded-full transition-all border ${
-                    isActive
-                      ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                      : "text-slate-500 hover:bg-slate-50 border-slate-200 bg-white"
-                  }`}
-                >
-                  {tab}
-                  <span
-                    className={`ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"}`}
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              {FILE_TYPE_TABS.map((tab) => {
+                const isActive = activeType === tab;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveType(tab)}
+                    className={`px-3.5 py-1.5 text-[11px] font-semibold rounded-full transition-all border ${
+                      isActive
+                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                        : "text-slate-500 hover:bg-slate-50 border-slate-200 bg-white"
+                    }`}
                   >
-                    {typeCounts[tab]}
-                  </span>
-                </button>
-              );
-            })}
+                    {tab}
+                    <span
+                      className={`ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"}`}
+                    >
+                      {typeCounts[tab]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -1392,54 +1355,30 @@ export default function RepositoryFolderDetailPage() {
           </div>
         ) : viewMode === "list" ? (
           /* ── LIST VIEW ───────────────────────────────────── */
-          <div className="bg-white rounded-2xl border border-slate-100 overflow-visible shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
             {/* TABLE using real <table> for perfect alignment */}
-            <table className="w-full border-collapse">
+            <table className="w-full border-collapse table-fixed">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80">
-                  {/* Checkbox */}
-                  <th className="w-10 pl-4 pr-2 py-3 text-left">
-                    <button
-                      onClick={toggleSelectAll}
-                      className="flex items-center justify-center w-5 h-5 rounded border border-slate-300 text-slate-400 hover:text-slate-600 hover:border-slate-400 transition-colors bg-white"
-                    >
-                      {allFilteredSelected ? (
-                        <svg
-                          width="11"
-                          height="11"
-                          viewBox="0 0 12 12"
-                          fill="none"
-                        >
-                          <path
-                            d="M2 6l3 3 5-5"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      ) : null}
-                    </button>
-                  </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 min-w-[220px]">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">
                     File
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-36">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-32">
                     Status
                   </th>
                   <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-24">
                     Size
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-44">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-44 hidden md:table-cell">
                     Uploaded By
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-36">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-32 hidden sm:table-cell">
                     Date Uploaded
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-36">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-32 hidden xl:table-cell">
                     Last Modified
                   </th>
-                  <th className="px-3 py-3 pr-4 w-28"></th>
+                  <th className="px-3 py-3 pr-4 w-12"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -1470,35 +1409,7 @@ export default function RepositoryFolderDetailPage() {
                         isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
                       }`}
                     >
-                      {/* Checkbox */}
-                      <td className="pl-4 pr-2 py-3.5 w-10">
-                        <button
-                          onClick={() => toggleSelect(file.id)}
-                          className="flex items-center justify-center w-5 h-5 rounded border text-slate-400 hover:border-blue-400 transition-colors bg-white"
-                          style={{
-                            borderColor: isSelected ? "#3b82f6" : undefined,
-                            backgroundColor: isSelected ? "#3b82f6" : undefined,
-                            color: isSelected ? "#fff" : undefined,
-                          }}
-                        >
-                          {isSelected && (
-                            <svg
-                              width="11"
-                              height="11"
-                              viewBox="0 0 12 12"
-                              fill="none"
-                            >
-                              <path
-                                d="M2 6l3 3 5-5"
-                                stroke="currentColor"
-                                strokeWidth="2.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          )}
-                        </button>
-                      </td>
+
 
                       {/* File cell — with hover popover */}
                       <td className="px-3 py-3.5 min-w-[220px]">
@@ -1508,13 +1419,53 @@ export default function RepositoryFolderDetailPage() {
                           onMouseLeave={handleFileMouseLeave}
                         >
                           <div className="flex items-center gap-2.5">
-                            <div
-                              className={`w-8 h-8 ${bg} rounded-lg flex items-center justify-center shrink-0`}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSelect(file.id);
+                              }}
+                              className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                                isSelected
+                                  ? "bg-blue-50 border border-blue-200 text-blue-600"
+                                  : `border border-transparent group-hover:bg-slate-100 group-hover:border-slate-200 group-hover:text-slate-400 ${bg}`
+                              }`}
                             >
-                              <Icon size={14} className={color} />
-                            </div>
+                              {isSelected ? (
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                  <path
+                                    d="M2 6l3 3 5-5"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              ) : (
+                                <div className="relative flex items-center justify-center w-full h-full">
+                                  <Icon
+                                    size={14}
+                                    className={`absolute transition-opacity duration-200 ${color} group-hover:opacity-0`}
+                                  />
+                                  <svg
+                                    width="12"
+                                    height="12"
+                                    viewBox="0 0 12 12"
+                                    fill="none"
+                                    className="absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                  >
+                                    <path
+                                      d="M2 6l3 3 5-5"
+                                      stroke="currentColor"
+                                      strokeWidth="2.5"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                </div>
+                              )}
+                            </button>
                             <div className="min-w-0">
-                              <p className="text-[13px] font-semibold text-slate-800 truncate max-w-[200px] leading-tight">
+                              <p className="text-[13px] font-semibold text-slate-800 truncate leading-tight">
                                 {file.name}
                               </p>
                               <p
@@ -1549,22 +1500,13 @@ export default function RepositoryFolderDetailPage() {
                       </td>
 
                       {/* Status badge — clickable to open verify modal (verify-eligible roles only) */}
-                      <td className="px-3 py-3.5 w-36">
-                        <button
-                          onClick={() => canVerify && setVerifyTarget(file)}
-                          disabled={!canVerify}
-                          title={
-                            canVerify
-                              ? isVerified
-                                ? "Click to unverify"
-                                : "Click to verify"
-                              : ""
-                          }
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all ${
+                      <td className="px-3 py-3.5 w-32">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
                             isVerified
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                              : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
-                          } ${canVerify ? "cursor-pointer" : "cursor-default"}`}
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-slate-100 text-slate-500 border-slate-200"
+                          } cursor-default`}
                         >
                           {isVerified ? (
                             <>
@@ -1576,7 +1518,7 @@ export default function RepositoryFolderDetailPage() {
                               Unverified
                             </>
                           )}
-                        </button>
+                        </span>
                       </td>
 
                       {/* Size */}
@@ -1587,7 +1529,7 @@ export default function RepositoryFolderDetailPage() {
                       </td>
 
                       {/* Uploaded By — with user popover */}
-                      <td className="px-3 py-3.5 w-44">
+                      <td className="px-3 py-3.5 w-44 hidden md:table-cell">
                         <div
                           className="relative inline-block"
                           onMouseEnter={() =>
@@ -1631,7 +1573,7 @@ export default function RepositoryFolderDetailPage() {
                       </td>
 
                       {/* Date Uploaded */}
-                      <td className="px-3 py-3.5 w-36">
+                      <td className="px-3 py-3.5 w-32 hidden sm:table-cell">
                         <p className="text-[12px] font-semibold text-slate-700 leading-tight">
                           {uploaded.relative}
                         </p>
@@ -1641,7 +1583,7 @@ export default function RepositoryFolderDetailPage() {
                       </td>
 
                       {/* Last Modified — with hover popover */}
-                      <td className="px-3 py-3.5 w-36">
+                      <td className="px-3 py-3.5 w-32 hidden xl:table-cell">
                         <div
                           className="relative inline-block"
                           onMouseEnter={() => handleModifiedMouseEnter(file.id)}
@@ -1672,7 +1614,7 @@ export default function RepositoryFolderDetailPage() {
                       </td>
 
                       {/* Actions */}
-                      <td className="px-3 py-3.5 pr-4 w-28">
+                      <td className="px-3 py-3.5 pr-4 w-12">
                         {canEdit ? (
                           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-150">
                             <button
@@ -1751,8 +1693,7 @@ export default function RepositoryFolderDetailPage() {
             {/* Table footer */}
             <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
               <p className="text-[11px] text-slate-400">
-                {allFiles.length} file{allFiles.length !== 1 ? "s" : ""} · Click
-                status badge to verify or unverify
+                {allFiles.length} file{allFiles.length !== 1 ? "s" : ""}
               </p>
               <p className="text-[11px] text-slate-400">
                 ○ All actions are audit-logged
@@ -1806,14 +1747,12 @@ export default function RepositoryFolderDetailPage() {
 
                   {/* Status + verify (verify-eligible roles only) */}
                   <div className="flex justify-end mb-3">
-                    <button
-                      onClick={() => canVerify && setVerifyTarget(file)}
-                      disabled={!canVerify}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border transition-all ${
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${
                         isVerified
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                          : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
-                      } ${canVerify ? "cursor-pointer" : "cursor-default"}`}
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-slate-100 text-slate-500 border-slate-200"
+                      } cursor-default`}
                     >
                       {isVerified ? (
                         <>
@@ -1824,7 +1763,7 @@ export default function RepositoryFolderDetailPage() {
                           <XCircle size={8} /> Unverified
                         </>
                       )}
-                    </button>
+                    </span>
                   </div>
 
                   <div

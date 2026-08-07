@@ -38,7 +38,7 @@ const gradeData = [
   { grade: "G12", public: 95, private: 42 },
 ];
 
-/* ── Shared dark tooltip ──────────────────────────── */
+/* ── Shared dark tooltip (unchanged) ─────────────── */
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -63,31 +63,30 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
-/* ── Shared chart card wrapper ────────────────────── */
+/* ── Improved chart card wrapper ──────────────────── */
 function ChartCard({ children, className = "" }) {
   return (
     <div
-      className={`rounded-[16px] border border-slate-200/60 bg-white p-5 transition-all duration-300 hover:shadow-[0_8px_28px_rgba(15,23,42,0.07)] hover:border-slate-200 ${className}`}
-      style={{ boxShadow: "0 1px 6px rgba(15,23,42,0.04)" }}
+      className={`rounded-2xl border border-slate-200/70 bg-white p-6 transition-all duration-300 hover:shadow-[0_12px_40px_rgba(15,23,42,0.09)] hover:-translate-y-[2px] hover:border-slate-200 ${className}`}
+      style={{ boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
     >
       {children}
     </div>
   );
 }
 
-/* ── Chart title bar ──────────────────────────────── */
+/* ── Improved chart title bar ─────────────────────── */
 function ChartTitle({ title, legends = [] }) {
   return (
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center gap-2">
-        <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
-        <h4 className="text-[0.78rem] font-bold text-slate-700">{title}</h4>
+    <div className="flex items-center justify-between mb-5">
+      <div>
+        <h4 className="text-[0.88rem] font-bold text-slate-800 leading-tight">{title}</h4>
       </div>
       {legends.length > 0 && (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           {legends.map((l) => (
-            <span key={l.label} className="flex items-center gap-1.5 text-[0.6rem] font-medium text-slate-400">
-              <span className="h-[6px] w-[6px] rounded-full" style={{ background: l.color }} />
+            <span key={l.label} className="flex items-center gap-1.5 text-[0.68rem] font-semibold text-slate-400">
+              <span className="h-2 w-2 rounded-full shrink-0" style={{ background: l.color }} />
               {l.label}
             </span>
           ))}
@@ -97,23 +96,22 @@ function ChartTitle({ title, legends = [] }) {
   );
 }
 
-/* ── Donut card ───────────────────────────────────── */
+/* ── Improved Donut card ──────────────────────────── */
 function DonutCard({ title, data, centerLabel, centerValue }) {
   return (
     <ChartCard>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="h-[6px] w-[6px] rounded-full" style={{ background: data[0]?.color }} />
-        <h4 className="text-[0.78rem] font-bold text-slate-700">{title}</h4>
+      <div className="mb-4">
+        <h4 className="text-[0.88rem] font-bold text-slate-800 leading-tight mb-2.5">{title}</h4>
+        <div className="flex items-center gap-4">
+          {data.map((d) => (
+            <span key={d.name} className="flex items-center gap-1.5 text-[0.68rem] font-semibold text-slate-400">
+              <span className="h-2 w-2 rounded-full shrink-0" style={{ background: d.color }} />
+              {d.name} ({d.value}%)
+            </span>
+          ))}
+        </div>
       </div>
-      <div className="flex items-center gap-3 mb-1">
-        {data.map((d) => (
-          <span key={d.name} className="flex items-center gap-1.5 text-[0.6rem] font-medium text-slate-400">
-            <span className="h-[6px] w-[6px] rounded-full" style={{ background: d.color }} />
-            {d.name} ({d.value}%)
-          </span>
-        ))}
-      </div>
-      <div className="relative h-[180px]">
+      <div className="relative h-[190px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -133,11 +131,24 @@ function DonutCard({ title, data, centerLabel, centerValue }) {
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-[1.4rem] font-black text-slate-800">{centerValue}</span>
-          <span className="text-[0.58rem] font-medium text-slate-400">{centerLabel}</span>
+          <span className="text-[1.6rem] font-black text-slate-800 leading-none">{centerValue}</span>
+          <span className="text-[0.62rem] font-semibold text-slate-400 mt-1 uppercase tracking-wide">{centerLabel}</span>
         </div>
       </div>
     </ChartCard>
+  );
+}
+
+/* ── Sub-section label ────────────────────────────── */
+function SubSectionLabel({ title, description }) {
+  return (
+    <div className="mb-6">
+      <div className="flex items-center gap-3 mb-1.5">
+        <span className="h-5 w-[3px] rounded-full bg-blue-500 shrink-0" />
+        <h3 className="text-[1.15rem] font-bold text-slate-800 tracking-tight">{title}</h3>
+      </div>
+      <p className="text-[0.78rem] text-slate-400 font-medium pl-[15px]">{description}</p>
+    </div>
   );
 }
 
@@ -146,21 +157,32 @@ export function AnalyticsPreview() {
   return (
     <section
       id="analytics"
-      className="relative pt-20 pb-24"
-      style={{ background: "#eef2f7" }}
+      className="relative pt-24 pb-28"
+      style={{ background: "linear-gradient(180deg, #f1f5f9 0%, #eef2f7 100%)" }}
     >
-
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
+
+        {/* Section Header */}
         <SectionHeader
           label="Dashboard Overview"
           title="Learners"
-          subtitle="Demographic distribution and division breakdown"
+          subtitle="Demographic distribution and division breakdown across the SDO Baliwag division"
         />
 
         {/* ── Top row: donuts + division bar ─────── */}
-        <div className="grid md:grid-cols-3 gap-4 mb-10">
-          <DonutCard title="Education Type" data={educTypeData} centerValue="98%" centerLabel="Formal" />
-          <DonutCard title="Gender Split" data={genderData} centerValue="51%" centerLabel="Male" />
+        <div className="grid md:grid-cols-3 gap-5 mb-14">
+          <DonutCard
+            title="Education Type"
+            data={educTypeData}
+            centerValue="98%"
+            centerLabel="Formal"
+          />
+          <DonutCard
+            title="Gender Split"
+            data={genderData}
+            centerValue="51%"
+            centerLabel="Male"
+          />
 
           <ChartCard>
             <ChartTitle
@@ -186,22 +208,21 @@ export function AnalyticsPreview() {
         </div>
 
         {/* ── Section divider ───────────────────── */}
-        <div className="flex items-center gap-4 mb-6">
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300/40 to-transparent" />
+        <div className="flex items-center gap-6 mb-12">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300/60 to-transparent" />
+          <span className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-400 shrink-0">
+            Breakdown
+          </span>
+          <div className="h-px flex-1 bg-gradient-to-l from-transparent via-slate-300/60 to-transparent" />
         </div>
 
         {/* ── Education Breakdown ────────────────── */}
-        <div className="mb-5">
-          <h3 className="text-[1.1rem] font-bold text-slate-800 mb-1 flex items-center gap-2.5">
-            <span className="h-5 w-[3px] rounded-full bg-blue-500" />
-            Education Breakdown
-          </h3>
-          <p className="text-[0.75rem] text-slate-400 font-medium ml-[15px]">
-            By level of education, sector, and grade level
-          </p>
-        </div>
+        <SubSectionLabel
+          title="Education Breakdown"
+          description="By level of education, sector, and grade level"
+        />
 
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-2 gap-5">
           {/* By Level — horizontal */}
           <ChartCard>
             <ChartTitle
@@ -248,6 +269,11 @@ export function AnalyticsPreview() {
             </div>
           </ChartCard>
         </div>
+
+        {/* ── Bottom note ───────────────────────── */}
+        <p className="text-center text-[0.72rem] text-slate-400 font-medium mt-10">
+          All figures shown are sample data for demonstration purposes only.
+        </p>
       </div>
     </section>
   );

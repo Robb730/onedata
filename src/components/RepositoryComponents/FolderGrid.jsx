@@ -48,7 +48,7 @@ export function FolderGrid({
               viewMode={viewMode}
               onColorChange={
                 onFolderColorChange
-                  ? (preset) => onFolderColorChange(folder.name, preset)
+                  ? (preset) => onFolderColorChange(folder, preset)
                   : undefined
               }
               onClick={() => onFolderClick && onFolderClick(folder)}

@@ -1,5 +1,4 @@
-// SECTION FOLDER CARD COMPONENT
-import { useState } from "react";
+import { useState, useId } from "react";
 import { User, FolderOpen, Plus, ChevronDown } from "lucide-react";
 
 /**
@@ -60,6 +59,38 @@ function ManagerRow({ identifier }) {
   );
 }
 
+function ManagerNameList({ managerList }) {
+  const visible = managerList.slice(0, 3);
+  const hiddenCount = managerList.length - 3;
+  return (
+    <div className="group/mlist relative min-w-0 flex-1">
+      <div className="flex items-center gap-0.5">
+        <span className="truncate text-xs font-medium text-slate-800">
+          {visible.join(", ")}
+        </span>
+        {hiddenCount > 0 && (
+          <span className="shrink-0 text-[10px] font-bold text-slate-400">
+            +{hiddenCount}
+          </span>
+        )}
+      </div>
+
+      {managerList.length > 1 && (
+        <div className="absolute left-0 bottom-full mb-1 z-20 hidden w-48 flex-col rounded-xl border border-slate-200/60 bg-white/95 p-1.5 shadow-[0_8px_30px_rgba(15,23,42,0.12)] backdrop-blur-sm group-hover/mlist:flex">
+          <p className="px-1.5 py-1 text-[9px] font-bold uppercase tracking-widest text-slate-400">
+            Section Managers
+          </p>
+          <div className="flex max-h-32 flex-col overflow-y-auto">
+            {managerList.map((m) => (
+              <ManagerRow key={m} identifier={m} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const VISIBLE_ROW_LIMIT = 4;
 
 export function SectionFolderCard({
@@ -68,8 +99,11 @@ export function SectionFolderCard({
   managers,
   onClick,
   variant = "folder",
+  viewMode = "grid",
 }) {
   const [expanded, setExpanded] = useState(false);
+  const rawId = useId();
+  const cardId = `section-card-${rawId.replace(/:/g, "")}`;
 
   const managerList = managers?.length ? managers : owner ? [owner] : [];
   const isOverflowing = managerList.length > VISIBLE_ROW_LIMIT;
@@ -77,6 +111,24 @@ export function SectionFolderCard({
   const hiddenCount = managerList.length - VISIBLE_ROW_LIMIT;
 
   if (variant === "create") {
+    if (viewMode === "list") {
+      return (
+        <button
+          type="button"
+          onClick={onClick}
+          className="group flex items-center gap-4 rounded-2xl border border-dashed border-slate-200 bg-white/85 px-4 py-3 text-left transition-all duration-300 hover:border-emerald-300 hover:bg-emerald-50/40 hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)]"
+        >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-50 transition-colors group-hover:bg-emerald-100/70">
+            <Plus size={18} className="text-slate-400 transition-colors group-hover:text-emerald-600" />
+          </div>
+          <div className="flex flex-col">
+            <p className="text-sm font-semibold text-slate-700">Create section</p>
+            <p className="text-[11px] text-slate-400">Add a new folder to this division</p>
+          </div>
+        </button>
+      );
+    }
+    
     return (
       <button
         type="button"
@@ -92,15 +144,91 @@ export function SectionFolderCard({
     );
   }
 
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    e.currentTarget.style.setProperty('--x', `${x}px`);
+    e.currentTarget.style.setProperty('--y', `${y}px`);
+  };
+
+  if (viewMode === "list") {
+    return (
+      <div
+        id={cardId}
+        onClick={onClick}
+        onMouseMove={handleMouseMove}
+        className="group relative flex cursor-pointer rounded-2xl p-[1.5px] transition-all duration-300 hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)]"
+        role="button"
+        tabIndex={0}
+      >
+        {/* Default static border background */}
+        <div className="absolute inset-0 rounded-2xl bg-slate-100/80 transition-opacity duration-300 group-hover:opacity-0" />
+
+        {/* Hover pointer glow background */}
+        <div 
+          className="absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" 
+          style={{ background: 'radial-gradient(circle 350px at var(--x, 50%) var(--y, 50%), #3EBA8F, #4B86EC, transparent 60%)' }}
+        />
+
+        {/* Inner White Card */}
+        <div className="relative flex items-center gap-4 w-full overflow-hidden rounded-[15px] bg-white px-4 py-3">
+          {/* Icon */}
+          <div className="w-11 h-11 bg-emerald-50 rounded-xl flex items-center justify-center shrink-0 ml-1 transition-all duration-300 group-hover:scale-[1.04]">
+            <lord-icon
+              src="/folder-outline.json"
+              trigger="hover"
+              target={`#${cardId}`}
+              colors="primary:#047857"
+              style={{ width: "24px", height: "24px" }}
+            ></lord-icon>
+          </div>
+
+          {/* Name */}
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-sm font-semibold text-slate-900">{name}</h3>
+          </div>
+
+          {/* Managers */}
+          <div className="hidden min-w-0 shrink items-center gap-2 md:flex">
+            <User size={12} className="text-slate-400 shrink-0" />
+            {managerList.length === 0 ? (
+              <span className="text-xs italic text-slate-400">Unassigned</span>
+            ) : (
+              <ManagerNameList managerList={managerList} />
+            )}
+          </div>
+
+          {/* Status badge */}
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+            ● Active
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
+      id={cardId}
       onClick={onClick}
       onKeyDown={(e) => e.key === "Enter" && onClick?.()}
-      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-[22px] border border-slate-100/80 bg-white p-5 transition-all duration-300 hover:-translate-y-[3px] hover:border-slate-200 hover:shadow-[0_18px_42px_rgba(15,23,42,0.10)]"
+      onMouseMove={handleMouseMove}
+      className="group relative flex cursor-pointer flex-col rounded-[22px] p-[1.5px] transition-all duration-300 hover:-translate-y-[3px] hover:shadow-[0_18px_42px_rgba(15,23,42,0.10)]"
       role="button"
       tabIndex={0}
     >
-      <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-sky-400 via-emerald-400 to-indigo-400" />
+      {/* Default static border background */}
+      <div className="absolute inset-0 rounded-[22px] bg-slate-100/80 transition-opacity duration-300 group-hover:opacity-0" />
+
+      {/* Hover pointer glow background */}
+      <div 
+        className="absolute inset-0 rounded-[22px] opacity-0 transition-opacity duration-300 group-hover:opacity-100" 
+        style={{ background: 'radial-gradient(circle 350px at var(--x, 50%) var(--y, 50%), #3EBA8F, #4B86EC, transparent 60%)' }}
+      />
+
+      {/* Inner White Card */}
+      <div className="relative flex w-full h-full flex-col overflow-hidden rounded-[21px] bg-white p-5">
 
       {/* Top bar — Active badge */}
       <div className="mb-4 flex items-center justify-end">
@@ -112,7 +240,13 @@ export function SectionFolderCard({
       {/* Icon + name */}
       <div className="mb-4 flex flex-col items-center gap-3 text-center">
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 transition-all duration-300 group-hover:scale-[1.04] group-hover:shadow-md">
-          <FolderOpen size={24} className="text-emerald-700" />
+          <lord-icon
+            src="/folder-outline.json"
+            trigger="hover"
+            target={`#${cardId}`}
+            colors="primary:#047857"
+            style={{ width: "28px", height: "28px" }}
+          ></lord-icon>
         </div>
 
         <h3 className="w-full break-words text-center text-sm font-semibold leading-snug text-slate-900">
@@ -159,5 +293,6 @@ export function SectionFolderCard({
         </div>
       </div>
     </div>
+  </div>
   );
 }

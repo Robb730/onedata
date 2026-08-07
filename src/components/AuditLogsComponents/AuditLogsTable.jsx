@@ -80,7 +80,7 @@ export default function AuditLogsTable({
 
   return (
     <div
-      className="overflow-hidden rounded-2xl border border-slate-100 bg-white transition-shadow duration-300 hover:shadow-[0_6px_20px_rgba(15,23,42,0.05)]"
+      className="overflow-x-auto rounded-2xl border border-slate-100 bg-white transition-shadow duration-300 hover:shadow-[0_6px_20px_rgba(15,23,42,0.05)]"
       style={{ boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }}
     >
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
@@ -92,14 +92,14 @@ export default function AuditLogsTable({
         </p>
       </div>
 
-      <table className="w-full table-fixed">
+      <table className="w-full table-fixed min-w-[1000px]">
         <colgroup>
-          <col className="w-[11%]" />
-          <col className="w-[29%]" />
-          <col className="w-[20%]" />
-          <col className="w-[15%]" />
-          <col className="w-[14%]" />
-          <col className="w-[11%]" />
+          <col className="w-48 lg:w-56" />
+          <col className="w-auto" />
+          <col className="w-44 lg:w-52" />
+          <col className="w-36 lg:w-44" />
+          <col className="w-32 lg:w-36" />
+          <col className="w-28 lg:w-32" />
         </colgroup>
         <thead>
           <tr className="border-b border-slate-100 bg-slate-50/70">
