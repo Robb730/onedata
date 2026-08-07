@@ -11,6 +11,10 @@ import {
   FolderOpen,
   Shield,
   Briefcase,
+  Mail,
+  Building2,
+  Hash,
+  User,
 } from "lucide-react";
 import EditUserModal from "../../components/ManageUsersComponents/EditUserModal";
 import DeleteConfirmationModal from "../../components/ManageUsersComponents/DeleteConfirmationModal";
@@ -549,117 +553,130 @@ export default function ManageUsers() {
                   </div>
 
                   {/* User Cards Grid for this Division */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                     {divisionUsers.map((user) => (
                       <div
                         key={user.id}
                         onClick={() => setViewingLogsUser(user)}
-                        className="group relative flex flex-col justify-between rounded-[16px] border border-slate-100/80 bg-white p-5 transition-all duration-300 hover:shadow-[0_8px_28px_rgba(15,23,42,0.08)] hover:-translate-y-[2px] cursor-pointer"
+                        className="group relative flex flex-col justify-between rounded-[24px] border border-slate-100 bg-white p-5 transition-all duration-300 hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)] hover:-translate-y-[2px] cursor-pointer"
                         style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
                       >
-                        <div>
-                          {/* Status badge */}
-                          <div className="flex items-center justify-end mb-3">
-                            <span
-                              className={`inline-flex items-center gap-1.5 text-[0.68rem] font-bold px-2.5 py-0.5 rounded-full ${user.status === "Active"
-                                ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                                : "bg-slate-100 text-slate-500 border border-slate-200/80"
-                                }`}
-                            >
-                              <span
-                                className={`h-1.5 w-1.5 rounded-full ${user.status === "Active"
-                                  ? "bg-emerald-500"
-                                  : "bg-slate-400"
-                                  }`}
-                              />
-                              {user.status}
-                            </span>
-                          </div>
-
-                          {/* Avatar & User Details */}
-                          <div className="flex flex-col items-center mb-4">
-                            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-black text-[1.1rem] shadow-sm mb-2.5 transition-transform duration-300 group-hover:scale-105">
+                        {/* Avatar & User Details (Row) */}
+                        <div className="flex gap-4 mb-5 items-start">
+                          <div className="relative shrink-0">
+                            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-black text-[1.1rem] shadow-sm">
                               {user.avatar}
                             </div>
-                            <h3 className="font-bold text-slate-800 text-center text-[0.92rem] tracking-tight leading-tight truncate max-w-full">
+                            {/* Active dot */}
+                            <span
+                              className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-[2.5px] border-white ${
+                                user.status === "Active" ? "bg-emerald-500" : "bg-slate-400"
+                              }`}
+                            />
+                          </div>
+                          <div className="flex flex-col pt-1 min-w-0">
+                            <h3 className="font-bold text-slate-800 text-[1rem] tracking-tight leading-tight truncate">
                               {user.name}
                             </h3>
-                            <p className="text-[0.72rem] font-medium text-slate-400 text-center mt-1">
-                              ID: {user.idNumber ?? "—"}
-                            </p>
-                          </div>
-
-                          {/* Division & Section Details Box */}
-                          <div className="rounded-[12px] bg-slate-50/80 border border-slate-100 p-3.5 mb-4 space-y-2">
-                            <div className="flex items-center gap-1.5">
-                              <FolderOpen size={13} className="text-blue-500 shrink-0" />
-                              <p className="text-[0.78rem] font-bold text-slate-800 leading-snug truncate">
-                                {user.division}
-                              </p>
-                            </div>
-                            {user.role !== "division_focal" && user.section && user.section !== "—" && (
-                              <div className="flex items-center gap-1.5 pt-0.5">
-                                <span className="h-1 w-1 rounded-full bg-blue-400" />
-                                <span className="inline-block text-[0.68rem] font-semibold text-blue-600 bg-white px-2.5 py-0.5 rounded-full border border-blue-200/80">
-                                  {user.section}
-                                </span>
-                              </div>
-                            )}
-                            <div className="pt-2 flex items-center justify-center">
+                            <div className="mt-1.5 flex items-center">
                               <span
-                                className={`inline-block px-2.5 py-0.5 rounded-full text-[0.68rem] font-bold ${getRoleBadgeColor(
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[0.7rem] font-bold ${getRoleBadgeColor(
                                   user.role,
                                 )}`}
                               >
+                                {user.role === "division_focal" ? (
+                                  <Shield size={10} className="shrink-0" />
+                                ) : (
+                                  <UsersIcon size={10} className="shrink-0" />
+                                )}
                                 {getRoleDisplay(user.role)}
                               </span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="space-y-2 pt-1">
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingUser(user);
-                              }}
-                              className="flex items-center justify-center gap-1.5 rounded-[10px] border border-slate-200/80 bg-white py-2 text-[0.75rem] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-all cursor-pointer"
-                            >
-                              <Edit2 size={12} /> Edit
-                            </button>
-                            {user.status === "Inactive" ? (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActivatingUser(user);
-                                }}
-                                className="flex items-center justify-center gap-1.5 rounded-[10px] border border-emerald-200/80 bg-emerald-50/80 py-2 text-[0.75rem] font-semibold text-emerald-700 hover:bg-emerald-100 transition-all cursor-pointer"
-                              >
-                                <UserCheck size={12} /> Activate
-                              </button>
-                            ) : (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeactivatingUser(user);
-                                }}
-                                className="flex items-center justify-center gap-1.5 rounded-[10px] border border-amber-200/80 bg-amber-50/80 py-2 text-[0.75rem] font-semibold text-amber-700 hover:bg-amber-100 transition-all cursor-pointer"
-                              >
-                                <UserX size={12} /> Deactivate
-                              </button>
-                            )}
+                        {/* List details */}
+                        <div className="flex flex-col rounded-[12px] border border-slate-100 divide-y divide-slate-100 bg-slate-50/50">
+                          {/* Email */}
+                          <div className="flex items-center gap-3 px-3 py-2">
+                            <Mail size={14} className="text-slate-400 shrink-0" />
+                            <p className="text-[0.78rem] font-medium text-slate-600 truncate">
+                              {user.email || "No email provided"}
+                            </p>
                           </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeletingUser(user);
-                            }}
-                            className="w-full flex items-center justify-center gap-1.5 rounded-[10px] border border-rose-200/80 bg-rose-50/70 py-2 text-[0.75rem] font-semibold text-rose-600 hover:bg-rose-100 transition-all cursor-pointer"
-                          >
-                            <Trash2 size={12} /> Delete User
-                          </button>
+                          {/* Division / Section */}
+                          <div className="flex items-center gap-3 px-3 py-2">
+                            <Building2 size={14} className="text-slate-400 shrink-0" />
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <p className="text-[0.78rem] font-medium text-slate-600 truncate">
+                                {user.division}
+                              </p>
+                              {user.role !== "division_focal" && user.section && user.section !== "—" && (
+                                <>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="text-[0.78rem] font-medium text-slate-600 truncate">
+                                    {user.section}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          {/* User ID */}
+                          <div className="flex items-center gap-3 px-3 py-2">
+                            <Hash size={14} className="text-slate-400 shrink-0" />
+                            <p className="text-[0.78rem] font-medium text-slate-600 truncate">
+                              User ID: {user.idNumber ?? "—"}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons (visible on hover) */}
+                        <div className="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-out">
+                          <div className="overflow-hidden">
+                            <div className="pt-4 flex items-center justify-between gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingUser(user);
+                                }}
+                                className="flex-1 flex items-center justify-center gap-1.5 rounded-[10px] border border-blue-200 bg-blue-50 py-2 text-[0.75rem] font-bold text-blue-600 hover:bg-blue-100 transition-colors cursor-pointer"
+                              >
+                                <Edit2 size={12} /> Edit
+                              </button>
+                              
+                              {user.status === "Inactive" ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActivatingUser(user);
+                                  }}
+                                  className="flex-1 flex items-center justify-center gap-1.5 rounded-[10px] border border-emerald-200 bg-emerald-50 py-2 text-[0.75rem] font-bold text-emerald-600 hover:bg-emerald-100 transition-colors cursor-pointer"
+                                >
+                                  <UserCheck size={12} /> Activate
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeactivatingUser(user);
+                                  }}
+                                  className="flex-1 flex items-center justify-center gap-1.5 rounded-[10px] border border-amber-200 bg-amber-50 py-2 text-[0.75rem] font-bold text-amber-600 hover:bg-amber-100 transition-colors cursor-pointer"
+                                >
+                                  <UserX size={12} /> Deactivate
+                                </button>
+                              )}
+
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeletingUser(user);
+                                }}
+                                className="w-9 h-9 shrink-0 flex items-center justify-center rounded-[10px] border border-rose-200 bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors cursor-pointer"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))}
