@@ -23,6 +23,7 @@ export { parseSeatsFile, SEATS_SHEETS } from "./parsers/seatsParser";
 export { parseTeachersInventoryFile, TEACHERS_SHEETS } from "./parsers/teachersInventoryParser";
 export { parseTextbooksInventoryFile, TEXTBOOKS_SHEETS } from "./parsers/textbooksInventoryParser";
 export { parseCespesFile, CESPES_SHEETS } from "./parsers/cespesParser";
+export { parseKpiFile } from "./parsers/kpiParser";
 
 // ── Shared validation utilities ────────────────────────────────
 export { checkRequiredHeaders, buildHeaderErrorMessage } from "./validations/validateHeaders";

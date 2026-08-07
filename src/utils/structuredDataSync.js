@@ -8,6 +8,7 @@ export const TABLES_BY_CATEGORY = {
   teachers_inventory: ["teachers_kes", "teachers_jhs", "teachers_shs", "teachers_status"],
   textbook_inventory: ["textbooks_kes", "textbooks_jhs", "textbooks_shs", "textbooks_status"],
   cespes: ["cespes_operations", "cespes_support_operations", "cespes_general_admin", "cespes_individual_performance", "cespes_innovation"],
+  performance_indicators: ["performance_indicators_data"],
 };
 
 export async function deleteParsedDataForFile(category, fileId) {
@@ -172,11 +173,36 @@ async function processMultiSheet(prefix, data, schoolYear, uploaderName, fileId)
  * Parses a file per its category and inserts rows tagged with file_id.
  * Pass { replace: true } to first wipe existing rows for that file (resync/edit flow).
  */
-export async function parseAndSyncStructuredData(category, file, schoolYear, uploaderName, fileId, { replace = false } = {}) {
+export async function parseAndSyncStructuredData(category, file, schoolYear, uploaderName, fileId, { replace = false, uploaderId = null } = {}) {
   if (category === "general") return;
 
   if (replace) {
     await deleteParsedDataForFile(category, fileId);
+  }
+
+  if (category === "performance_indicators") {
+    const { records, errors } = await runImport(file, "performance_indicators");
+    if (errors?.length) console.warn("Performance Indicators parsing errors:", errors);
+    
+    if (records?.length) {
+      const dbRecords = records.map((r) => ({
+        file_id: fileId,
+        school_year: schoolYear,
+        sheet_name: r.sheetName,
+        headers_main: r.headersMain,
+        headers_sub: r.headersSub,
+        total_row: r.totalRow,
+        male_row: r.maleRow,
+        female_row: r.femaleRow,
+        uploaded_by: uploaderId,
+      }));
+
+      const { error } = await supabase
+        .from("performance_indicators_data")
+        .upsert(dbRecords, { onConflict: "file_id, sheet_name" });
+      if (error) throw error;
+    }
+    return;
   }
 
   if (category === "enrollment") {

@@ -310,6 +310,7 @@ export default function UploadFilesPage({
           schoolYear,
           userProfile?.full_name,
           fileRow.id,
+          { uploaderId: userProfile?.uuid ?? userProfile?.id }
         );
       }
 

@@ -28,89 +28,12 @@ import { DEFAULT_CESPES_DATA } from "../../data/cespesTemplateData";
 // ─── Sample data ────────────────────────────────────────────
 // In production this would come from Supabase or context/store.
 
-const overviewData = {
-  totalEnrollment: 41215,
-  overallDropout: "1.22%",
-  elemPromotion: "99.22%",
-  jhsDropout: "2.26%",
-  enrollmentTrend: "+3.1%",
-  dropoutTrend: "0.15%",
-  promotionTrend: "0.4%",
-  jhsDropoutTrend: "0.12%",
-};
-
-const enrollmentSummary = {
-  public: 27646,
-  private: 13569,
-  total: 41215,
-};
-
-const dropoutByLevel = [
-  {
-    label: "Overall",
-    display: "1.22%",
-    value: 12.2,
-    count: "320",
-    color: "bg-rose-500",
-  },
-  {
-    label: "Kinder",
-    display: "—",
-    value: 0,
-    note: "Grouped with Elem K-G6 · See Elementary",
-    color: "bg-gray-300",
-  },
-  {
-    label: "Elementary",
-    display: "0.82%",
-    value: 8.2,
-    count: "150",
-    color: "bg-amber-500",
-  },
-  {
-    label: "JHS",
-    display: "2.26%",
-    value: 22.6,
-    count: "167",
-    color: "bg-violet-500",
-  },
-  {
-    label: "SHS",
-    display: "0.47%",
-    value: 4.7,
-    count: "3",
-    color: "bg-emerald-500",
-  },
-];
-
-const promotionByLevel = [
-  { level: "Kinder", rate: 99.8 },
-  { level: "Elementary", rate: 99.22 },
-  { level: "JHS", rate: 98.5 },
-  { level: "SHS", rate: 97.9 },
-];
-
-const enrollmentTrend = [
+const enrollmentTrendStatic = [
   { year: "22-2023", public: 25200, private: 12100 },
   { year: "23-2024", public: 26800, private: 12900 },
   { year: "24-2025", public: 27646, private: 13569 },
   { year: "25-2026*", public: 9200, private: 4100 },
 ];
-
-const dropoutTrend = [
-  { year: "22-2023", overall: 1.5, elementary: 0.95, jhs: 2.6 },
-  { year: "23-2024", overall: 1.35, elementary: 0.88, jhs: 2.4 },
-  { year: "24-2025", overall: 1.22, elementary: 0.82, jhs: 2.26 },
-];
-
-const cohortTrend = [
-  { year: "20-2021", rate: 82 },
-  { year: "21-2022", rate: 85 },
-  { year: "22-2023", rate: 87 },
-  { year: "23-2024", rate: 89 },
-  { year: "24-2025", rate: 91 },
-];
-
 
 
 // ─── Component ──────────────────────────────────────────────
@@ -142,6 +65,8 @@ export default function Dashboard() {
   });
 
   const [enrollmentRows, setEnrollmentRows] = useState([]);
+  const [kpiData, setKpiData] = useState([]);
+  const [enrollmentTrend, setEnrollmentTrend] = useState(enrollmentTrendStatic);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -173,6 +98,21 @@ export default function Dashboard() {
         setError(error.message);
         setLoading(false);
         return;
+      }
+
+      // Fetch all enrollment data for trend chart
+      const { data: allEnrollment } = await supabase.from("enrollment_data").select("school_year, category, grand_total");
+      if (allEnrollment) {
+        const trendYears = [...new Set(allEnrollment.map(d => d.school_year))].sort();
+        const trendData = trendYears.map(year => {
+          const yData = allEnrollment.filter(d => d.school_year === year);
+          return {
+            year,
+            public: yData.filter(d => d.category === "PUBLIC").reduce((acc, row) => acc + (row.grand_total ?? 0), 0),
+            private: yData.filter(d => d.category === "PRIVATE").reduce((acc, row) => acc + (row.grand_total ?? 0), 0),
+          };
+        });
+        if (trendData.length > 0) setEnrollmentTrend(trendData);
       }
 
       setEnrollmentRows(data);
@@ -254,9 +194,9 @@ export default function Dashboard() {
         const tShsNeeds = tShs?.reduce((acc, r) => acc + (r.teacher_needs || 0), 0) || 0;
 
         // 2. Fetch Classrooms
-        const { data: cKes } = await supabase.from("classrooms_kes").select("prev_total_classroom_inventory, kinder_needs, g1g6_needs, sned_needs");
-        const { data: cJhs } = await supabase.from("classrooms_jhs").select("total_classroom, classroom_needs");
-        const { data: cShs } = await supabase.from("classrooms_shs").select("total_classroom, classroom_needs");
+        const { data: cKes } = await supabase.from("classrooms_kes").select("*");
+        const { data: cJhs } = await supabase.from("classrooms_jhs").select("*");
+        const { data: cShs } = await supabase.from("classrooms_shs").select("*");
 
         const cKesTotal = cKes?.reduce((acc, r) => acc + (r.prev_total_classroom_inventory || 0), 0) || 0;
         const cJhsTotal = cJhs?.reduce((acc, r) => acc + (r.total_classroom || 0), 0) || 0;
@@ -270,9 +210,9 @@ export default function Dashboard() {
         // seats_kes: prev_total_seats_inventory for total, kinder_needs/g1g6_needs/sned_needs for needs
         // seats_jhs: total_jhs_seats for total, seat_needs for needs
         // seats_shs: total_shs_seats for total, seat_needs for needs
-        const { data: sKes } = await supabase.from("seats_kes").select("prev_total_seats_inventory, kinder_needs, g1g6_needs, sned_needs");
-        const { data: sJhs } = await supabase.from("seats_jhs").select("total_jhs_seats, seat_needs");
-        const { data: sShs } = await supabase.from("seats_shs").select("total_shs_seats, seat_needs");
+        const { data: sKes } = await supabase.from("seats_kes").select("*");
+        const { data: sJhs } = await supabase.from("seats_jhs").select("*");
+        const { data: sShs } = await supabase.from("seats_shs").select("*");
 
         const sKesTotal = sKes?.reduce((acc, r) => acc + (r.prev_total_seats_inventory || 0), 0) || 0;
         const sJhsTotal = sJhs?.reduce((acc, r) => acc + (r.total_jhs_seats || 0), 0) || 0;
@@ -283,9 +223,9 @@ export default function Dashboard() {
         const sShsNeeds = sShs?.reduce((acc, r) => acc + (r.seat_needs || 0), 0) || 0;
 
         // 4. Fetch Textbooks
-        const { data: txKes } = await supabase.from("textbooks_kes").select("textbook_needs, textbook_excess");
-        const { data: txJhs } = await supabase.from("textbooks_jhs").select("textbook_needs, textbook_excess");
-        const { data: txShs } = await supabase.from("textbooks_shs").select("textbook_needs, textbook_excess");
+        const { data: txKes } = await supabase.from("textbooks_kes").select("*");
+        const { data: txJhs } = await supabase.from("textbooks_jhs").select("*");
+        const { data: txShs } = await supabase.from("textbooks_shs").select("*");
 
         const txKesNeeds = txKes?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
         const txJhsNeeds = txJhs?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
@@ -352,10 +292,88 @@ export default function Dashboard() {
       }
     }
 
+    async function fetchPerformanceIndicators() {
+      const { data, error } = await supabase.from("performance_indicators_data").select("*");
+      if (!error && data) {
+        setKpiData(data);
+      }
+    }
+
     fetchEnrollmentSummary();
     fetchCrucialResources();
     fetchCespes();
+    fetchPerformanceIndicators();
   }, [selectedYear]);
+
+  // ── Derived KPI Calculations ───────────────────────────────
+  const getKpiRate = (yearData, sheetName, headerSubstring) => {
+    const sheet = yearData.find((r) => r.sheet_name.trim() === sheetName.trim());
+    if (!sheet) return 0;
+    const idx = sheet.headers_main.findIndex((h) => h && h.toString().includes(headerSubstring));
+    if (idx !== -1 && sheet.total_row[idx] !== undefined && sheet.total_row[idx] !== null) {
+      return parseFloat(sheet.total_row[idx]) * 100;
+    }
+    return 0;
+  };
+
+  const currentKpi = kpiData.filter((d) => d.school_year === selectedYear);
+
+  const elemDropout = getKpiRate(currentKpi, "G1toG6 SLR_DR", "Ave. School Leaver Rate");
+  const jhsDropout = getKpiRate(currentKpi, "JHS School Leaver Rate", "Ave. School Leaver Rate");
+  const shsDropout = getKpiRate(currentKpi, " JHS to SHS SLR_DR", "Ave. School Leaver Rate");
+  const overallDropout = (elemDropout + jhsDropout + shsDropout) / 3;
+
+  const dropoutByLevel = [
+    { label: "Overall", display: overallDropout.toFixed(2) + "%", value: overallDropout, color: "bg-rose-500" },
+    { label: "Kinder", display: "—", value: 0, note: "Grouped with Elem K-G6 · See Elementary", color: "bg-gray-300" },
+    { label: "Elementary", display: elemDropout.toFixed(2) + "%", value: elemDropout, color: "bg-amber-500" },
+    { label: "JHS", display: jhsDropout.toFixed(2) + "%", value: jhsDropout, color: "bg-violet-500" },
+    { label: "SHS", display: shsDropout.toFixed(2) + "%", value: shsDropout, color: "bg-emerald-500" },
+  ];
+
+  const elemPromo = getKpiRate(currentKpi, "G1toG6  Promo & Grad", "Ave. Promotion Rate");
+  const jhsPromo = getKpiRate(currentKpi, "JHS Promo & Grad", "Ave. Promotion Rate");
+  const shsPromo = getKpiRate(currentKpi, " JHS to SHS Promo & Grad", "Ave. Promotion Rate");
+  const promotionByLevel = [
+    { level: "Kinder", rate: 99.8 }, // Kept static if not available
+    { level: "Elementary", rate: elemPromo || 0 },
+    { level: "JHS", rate: jhsPromo || 0 },
+    { level: "SHS", rate: shsPromo || 0 },
+  ];
+
+  const kpiYears = [...new Set(kpiData.map((d) => d.school_year))].sort();
+  const dropoutTrend = kpiYears.length > 0 ? kpiYears.map((year) => {
+    const yData = kpiData.filter((d) => d.school_year === year);
+    const elem = getKpiRate(yData, "G1toG6 SLR_DR", "Ave. School Leaver Rate");
+    const jhs = getKpiRate(yData, "JHS School Leaver Rate", "Ave. School Leaver Rate");
+    const shs = getKpiRate(yData, " JHS to SHS SLR_DR", "Ave. School Leaver Rate");
+    return {
+      year,
+      overall: parseFloat(((elem + jhs + shs) / 3).toFixed(2)),
+      elementary: parseFloat(elem.toFixed(2)),
+      jhs: parseFloat(jhs.toFixed(2)),
+    };
+  }) : [{ year: selectedYear, overall: 0, elementary: 0, jhs: 0 }];
+
+  const cohortTrend = kpiYears.length > 0 ? kpiYears.map((year) => {
+    const yData = kpiData.filter((d) => d.school_year === year);
+    const elemCsr = getKpiRate(yData, "G1toG6 CSR & CompR", "CSR");
+    return {
+      year,
+      rate: parseFloat(elemCsr.toFixed(2)),
+    };
+  }) : [{ year: selectedYear, rate: 0 }];
+
+  const overviewData = {
+    totalEnrollment: enrollmentSummary.total,
+    overallDropout: overallDropout.toFixed(2) + "%",
+    elemPromotion: elemPromo.toFixed(2) + "%",
+    jhsDropout: jhsDropout.toFixed(2) + "%",
+    enrollmentTrend: "—", 
+    dropoutTrend: "—",
+    promotionTrend: "—",
+    jhsDropoutTrend: "—",
+  };
 
   return (
     <div className="min-h-screen bg-slate-50/40">

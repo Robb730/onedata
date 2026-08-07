@@ -158,6 +158,7 @@ export default function FileUploadModal({
                   <option value="teachers_inventory">Teachers Inventory (Parse & Store Data)</option>
                   <option value="textbook_inventory">Textbooks Inventory (Parse & Store Data)</option>
                   <option value="cespes">CESPES (Parse & Store Data)</option>
+                  <option value="performance_indicators">Performance Indicators (Parse & Store Data)</option>
                 </select>
               </div>
             </div>
