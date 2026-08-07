@@ -30,6 +30,41 @@ function getRoleLabel(role) {
   return ROLE_LABELS[role] || role;
 }
 
+// Division focals are scoped to a division; section focals/personnel are
+// scoped to a section. Administrators aren't scoped to either, so this
+// returns null for them (and whenever the relevant value is missing/"—").
+function getScopeLabel(role, section, division) {
+  const clean = (v) => (v && v !== "—" ? v : null);
+  if (role === "division_focal") return clean(division);
+  if (role === "section_focal" || role === "section_personnel") return clean(section);
+  return null;
+}
+
+// "Records Management Division" -> "RMD". Used to keep long office names
+// from blowing out the compact header / dropdown pill widths.
+const ACRONYM_STOPWORDS = new Set(["of", "the", "and"]);
+
+function toAcronym(name) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((word) => !ACRONYM_STOPWORDS.has(word.toLowerCase()))
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase();
+}
+
+// Swaps in the acronym once a name passes maxLen, but always keeps the
+// full name around (via the `full` field) so callers can put it in a
+// `title` attribute — hovering the abbreviation reveals the whole name.
+function abbreviate(name, maxLen = 22) {
+  if (!name) return { display: name, full: name };
+  return {
+    display: name.length > maxLen ? toAcronym(name) : name,
+    full: name,
+  };
+}
+
 export function TopHeader({
   userName,
   userRole,
@@ -46,8 +81,13 @@ export function TopHeader({
   // it's rendered without every page having to thread these props through.
   const resolvedName = userName ?? userProfile?.full_name ?? "Juan Dela Cruz";
   const resolvedRole = userRole ?? userProfile?.role ?? "Administrator";
-  const resolvedDivision = userDivision ?? userProfile?.division ?? null;
-  const resolvedSection = userSection ?? userProfile?.section ?? null;
+  // userProfile.division / userProfile.section come from UserContext's
+  // `division:divisions(name)` / `section:sections(name)` embed — each is
+  // an object like { name: "..." } (or null if that FK isn't set for this
+  // user's role), so pull .name back out into the flat strings the rest
+  // of this component expects.
+  const resolvedDivision = userDivision ?? userProfile?.division?.name ?? null;
+  const resolvedSection = userSection ?? userProfile?.section?.name ?? null;
 
   const initials =
     userInitials ||
@@ -59,6 +99,12 @@ export function TopHeader({
       .toUpperCase();
 
   const roleLabel = getRoleLabel(resolvedRole);
+  const scopeLabel = getScopeLabel(resolvedRole, resolvedSection, resolvedDivision);
+  const scopeAbbr = abbreviate(scopeLabel, 20);
+  // The dropdown card has more breathing room than the compact header pill,
+  // so it gets a slightly longer threshold before falling back to initials.
+  const divisionAbbr = abbreviate(resolvedDivision, 30);
+  const sectionAbbr = abbreviate(resolvedSection, 22);
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -128,12 +174,24 @@ export function TopHeader({
             onClick={() => setDropdownOpen((prev) => !prev)}
             className="flex items-center gap-2.5 rounded-[10px] px-2 py-1.5 cursor-pointer group hover:bg-slate-50 transition-all"
           >
-            <div className="hidden sm:block text-right">
-              <p className="text-[0.78rem] font-semibold text-slate-700 leading-tight group-hover:text-blue-600 transition-colors">
+            <div className="hidden sm:block text-right max-w-[220px]">
+              <p className="text-[0.78rem] font-semibold text-slate-700 leading-tight truncate group-hover:text-blue-600 transition-colors">
                 {resolvedName}
               </p>
-              <p className="text-[0.62rem] font-medium text-slate-400">
+              <p className="text-[0.62rem] font-medium text-slate-400 leading-tight truncate">
                 {roleLabel}
+                {scopeLabel && (
+                  <>
+                    {" "}
+                    <span className="text-slate-300">·</span>{" "}
+                    <span
+                      className="text-indigo-500 font-semibold"
+                      title={scopeAbbr.display !== scopeAbbr.full ? scopeAbbr.full : undefined}
+                    >
+                      {scopeAbbr.display}
+                    </span>
+                  </>
+                )}
               </p>
             </div>
             <div
@@ -203,8 +261,13 @@ export function TopHeader({
                   <div className="rounded-lg bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 p-3">
                     <div className="flex items-center gap-1.5">
                       <FolderOpen size={13} className="text-indigo-500 shrink-0" />
-                      <p className="text-[0.72rem] font-bold text-slate-800 leading-snug truncate">
-                        {resolvedDivision}
+                      <p
+                        className="text-[0.72rem] font-bold text-slate-800 leading-snug truncate"
+                        title={
+                          divisionAbbr.display !== divisionAbbr.full ? divisionAbbr.full : undefined
+                        }
+                      >
+                        {divisionAbbr.display}
                       </p>
                     </div>
                     {/* Section is only meaningful for section-scoped roles */}
@@ -213,8 +276,13 @@ export function TopHeader({
                       resolvedSection !== "—" && (
                         <div className="flex items-center gap-1 mt-1.5 ml-0.5">
                           <div className="w-1 h-1 rounded-full bg-indigo-300 shrink-0" />
-                          <span className="inline-block text-[10.5px] font-semibold text-indigo-600 bg-white px-2 py-0.5 rounded-full border border-indigo-200 truncate">
-                            {resolvedSection}
+                          <span
+                            className="inline-block text-[10.5px] font-semibold text-indigo-600 bg-white px-2 py-0.5 rounded-full border border-indigo-200 truncate"
+                            title={
+                              sectionAbbr.display !== sectionAbbr.full ? sectionAbbr.full : undefined
+                            }
+                          >
+                            {sectionAbbr.display}
                           </span>
                         </div>
                       )}

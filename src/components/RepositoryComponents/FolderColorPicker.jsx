@@ -81,7 +81,7 @@ export function FolderColorPicker({ currentColorId = "teal", onColorChange }) {
           setOpen((v) => !v);
         }}
         ref={btnRef}
-        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+        className="flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-500 transition-all hover:border-slate-300 hover:text-slate-700 hover:shadow-sm"
         title="Change folder color"
       >
         <Palette size={12} />
@@ -91,18 +91,17 @@ export function FolderColorPicker({ currentColorId = "teal", onColorChange }) {
         createPortal(
           <div
             ref={popRef}
-            className="z-50 bg-white rounded-xl p-3"
+            className="z-50 rounded-2xl border border-slate-200/80 bg-white p-3"
             style={{
               position: "fixed",
               left: `${pos.left}px`,
               top: `${pos.top}px`,
               width: 220,
-              border: "1px solid rgba(203,213,225,0.6)",
-              boxShadow: "0 8px 24px rgba(15,23,42,0.12)",
+              boxShadow: "0 18px 48px rgba(15,23,42,0.16)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Folder Color</p>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Folder Color</p>
             <div className="grid grid-cols-5 gap-1.5">
               {COLOR_PRESETS.map((preset) => {
                 const isSelected = preset.id === currentColorId;

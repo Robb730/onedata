@@ -35,6 +35,9 @@ import FileEditModal from "../../components/RepositoryComponents/FileEditModal";
 import LockedActionButton from "../../components/RepositoryComponents/LockedActionButton";
 import { useUser } from "../../contexts/UserContext";
 import { getSectionAccessLevel } from "../../utils/accessControl";
+import FileAccessRequestModal from "../../components/RepositoryComponents/FileAccessRequestModal";
+import AccessRequestsSidebar from "../../components/RepositoryComponents/AccessRequestsSidebar";
+import FloatingAccessRequestsButton from "../../components/RepositoryComponents/FloatingAccessRequestsButton";
 
 // ── Role map ────────────────────────────────────────────────────
 const roleDisplayMap = {
@@ -71,6 +74,22 @@ function getFileIcon(type) {
     default:
       return { Icon: File, color: "text-slate-400", bg: "bg-slate-50" };
   }
+}
+
+function LockedFileButton({ Icon, label, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      className="relative p-1.5 rounded-lg hover:bg-blue-50 text-slate-300 hover:text-blue-600 transition-colors"
+    >
+      <Icon size={14} />
+      <Lock
+        size={9}
+        className="absolute -bottom-0.5 -right-0.5 bg-white rounded-full text-slate-400"
+      />
+    </button>
+  );
 }
 
 const FILE_TYPE_TABS = ["All", "PDF", "Excel", "Word", "Image"];
@@ -549,6 +568,7 @@ export default function RepositoryFolderDetailPage() {
 
   // ── Supabase state ─────────────────────────────────────────────
   const [section, setSection] = useState(null);
+  const [sectionManagerNames, setSectionManagerNames] = useState([]);
   const [division, setDivision] = useState(null);
   const [allFiles, setAllFiles] = useState([]);
   const [uploaderDetails, setUploaderDetails] = useState({});
@@ -581,12 +601,120 @@ export default function RepositoryFolderDetailPage() {
   const userHoverTimer = useRef(null);
   const modifiedHoverTimer = useRef(null);
 
+  const [fileAccessMap, setFileAccessMap] = useState({}); // fileId -> "pending" | "approved" | "denied"
+  const [requestModalFiles, setRequestModalFiles] = useState(null); // array of files, or null when closed
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+
+  const [isAccessSidebarOpen, setIsAccessSidebarOpen] = useState(false);
+  const [accessRefreshKey, setAccessRefreshKey] = useState(0);
+
+  function hasFileAccess(file) {
+    return canEdit || fileAccessMap[file.id] === "approved";
+  }
+  function fileRequestStatus(file) {
+    return fileAccessMap[file.id];
+  }
+
+  function openRequestModal(fileOrFiles) {
+    setRequestModalFiles(
+      Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles],
+    );
+  }
+
+  async function submitAccessRequest(fileIds, message) {
+    const targetFiles = allFiles.filter(
+      (f) =>
+        fileIds.includes(f.id) &&
+        fileAccessMap[f.id] !== "approved" &&
+        fileAccessMap[f.id] !== "pending",
+    );
+    if (targetFiles.length === 0) {
+      setRequestModalFiles(null);
+      return;
+    }
+    setIsSubmittingRequest(true);
+    try {
+      const rows = targetFiles.map((f) => ({
+        file_id: f.id,
+        section_id: section?.id,
+        requested_by: userProfile?.id,
+        requested_by_name: userProfile?.full_name ?? "Unknown",
+        message: message || null,
+        status: "pending",
+      }));
+      const { error } = await supabase.from("file_access_request").insert(rows);
+      if (error) throw new Error(error.message);
+
+      setFileAccessMap((prev) => {
+        const next = { ...prev };
+        targetFiles.forEach((f) => (next[f.id] = "pending"));
+        return next;
+      });
+
+      await Promise.all(
+        targetFiles.map((f) =>
+          logAudit(
+            "Access Request",
+            f.name,
+            `Requested access in ${section?.name}`,
+            "Success",
+          ),
+        ),
+      );
+
+      setRequestModalFiles(null);
+      setSelectedIds(new Set());
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    } finally {
+      setIsSubmittingRequest(false);
+    }
+  }
+
   // ── Access control ─────────────────────────────────────────────
-  const accessLevel = useMemo(
-    () => getSectionAccessLevel(userProfile, section),
-    [userProfile, section],
-  );
+  const [accessLevel, setAccessLevel] = useState("blocked");
+
+  useEffect(() => {
+    if (!section || !userProfile) return;
+    let cancelled = false;
+
+    (async () => {
+      const level = await getSectionAccessLevel(userProfile, section);
+      if (cancelled) return;
+      setAccessLevel(level);
+      if (level === "blocked") {
+        navigate(`/repository/restricted/${encodeURIComponent(section.name)}`, {
+          replace: true,
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [section, userProfile, navigate]);
+
   const canEdit = accessLevel === "full";
+  // Verification is a separate permission from general edit access — only
+  // these three roles may verify/unverify a file, and even then only within
+  // the scope they actually own:
+  //   - admin: any section, anywhere
+  //   - division_focal: any section that belongs to their own division
+  //     (section.division_id === their division_id) — this covers every
+  //     section folder under the divisions they handle, not just one
+  //   - section_focal: only their own assigned section
+  //     (section.id === their section_id)
+  // Section personnel can never verify, even if they have "full" edit
+  // access to this section.
+  const canVerify =
+    userProfile?.role === "admin" ||
+    (userProfile?.role === "division_focal" &&
+      !!section &&
+      userProfile?.division_id === section.division_id) ||
+    (userProfile?.role === "section_focal" &&
+      !!section &&
+      userProfile?.section_id === section.id);
 
   useEffect(() => {
     if (!section || !userProfile) return;
@@ -614,6 +742,20 @@ export default function RepositoryFolderDetailPage() {
       return;
     }
     setSection(sectionData);
+
+    const { data: focalUsers, error: focalError } = await supabase
+      .from("users")
+      .select("full_name")
+      .eq("section_id", sectionData.id)
+      .eq("role", "section_focal");
+
+    if (!focalError && focalUsers?.length > 0) {
+      setSectionManagerNames(
+        focalUsers.map((u) => u.full_name).filter(Boolean),
+      );
+    } else {
+      setSectionManagerNames([]);
+    }
 
     const { data: divisionData, error: divisionError } = await supabase
       .from("divisions")
@@ -684,12 +826,36 @@ export default function RepositoryFolderDetailPage() {
 
     setAllFiles(mapped);
     setUploaderDetails(uploaderDetailMap);
+
+    if (mapped.length > 0) {
+      const fileIds = mapped.map((f) => f.id);
+      const { data: requestRows, error: reqErr } = await supabase
+        .from("file_access_request")
+        .select("file_id, status")
+        .eq("requested_by", userProfile.id)
+        .in("file_id", fileIds);
+
+      if (reqErr)
+        console.error("Access-request check failed:", reqErr.message, reqErr);
+      console.log("requestRows:", requestRows);
+
+      const map = {};
+      (requestRows || []).forEach((r) => {
+        if (!map[r.file_id] || r.status === "approved") {
+          map[r.file_id] = r.status;
+        }
+      });
+      setFileAccessMap(map);
+    } else {
+      setFileAccessMap({});
+    }
     setLoading(false);
   }
 
   useEffect(() => {
-    if (decodedName) fetchData();
-  }, [decodedName]);
+    if (decodedName && userProfile?.id) fetchData();
+  }, [decodedName, userProfile?.id]);
+
   useEffect(() => {
     if (!showDeleteToast) return;
     const t = setTimeout(() => setShowDeleteToast(false), 5000);
@@ -698,35 +864,35 @@ export default function RepositoryFolderDetailPage() {
 
   // ── Handlers ────────────────────────────────────────────────────
   async function handleDownloadFile(file) {
-    if (!canEdit || !file.path) return;
-    setDownloadingId(file.id);
-    try {
-      const bucket = getBucket(file.data_category);
-      const { data: blob, error } = await supabase.storage
-        .from(bucket)
-        .download(file.path);
-      if (error) throw new Error(error.message);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      await logAudit(
-        "Download",
-        file.name,
-        `Downloaded from ${section?.name}`,
-        "Success",
-      );
-    } catch (err) {
-      console.error(err);
-      await logAudit("Download", file.name, err.message, "Failed");
-    } finally {
-      setDownloadingId(null);
-    }
+  if (!hasFileAccess(file) || !file.path) return;
+  setDownloadingId(file.id);
+  try {
+    const bucket = getBucket(file.data_category);
+    const { data: blob, error } = await supabase.storage
+      .from(bucket)
+      .download(file.path);
+    if (error) throw new Error(error.message);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    await logAudit(
+      "Download",
+      file.name,
+      `Downloaded from ${section?.name}`,
+      "Success",
+    );
+  } catch (err) {
+    console.error(err);
+    await logAudit("Download", file.name, err.message, "Failed");
+  } finally {
+    setDownloadingId(null);
   }
+}
 
   const logAudit = async (action, fileName, details, status = "Success") => {
     const { error } = await supabase.from("audit_logs").insert({
@@ -981,9 +1147,24 @@ export default function RepositoryFolderDetailPage() {
                 Managed By
               </p>
             </div>
-            <p className="text-[0.88rem] font-semibold text-slate-800">
-              {loading ? "—" : (section?.managed_by ?? "—")}
-            </p>
+            {loading ? (
+              <p className="text-[0.88rem] font-semibold text-slate-800">—</p>
+            ) : sectionManagerNames.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {sectionManagerNames.map((name, i) => (
+                  <span
+                    key={`${name}-${i}`}
+                    className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-50 border border-slate-100 text-[0.8rem] font-semibold text-slate-800"
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[0.88rem] font-semibold text-slate-800">
+                {section?.managed_by ?? "—"}
+              </p>
+            )}
           </div>
           <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-1.5">
@@ -1093,7 +1274,7 @@ export default function RepositoryFolderDetailPage() {
         </div>
 
         {/* ── Bulk action bar (Verify/Unverify only) ─────────── */}
-        {someSelected && canEdit && (
+        {someSelected && canVerify && (
           <div className="mb-3 flex items-center gap-3 px-4 py-3 rounded-2xl border border-blue-200 bg-blue-50">
             <span className="text-[13px] font-semibold text-blue-700">
               {selectedIds.size} file{selectedIds.size > 1 ? "s" : ""} selected
@@ -1144,6 +1325,38 @@ export default function RepositoryFolderDetailPage() {
                 );
               })()}
             </div>
+            <button
+              onClick={clearSelection}
+              className="ml-auto p-1.5 rounded-lg hover:bg-blue-100 text-blue-400 hover:text-blue-600 transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
+        {someSelected && !canEdit && (
+          <div className="mb-3 flex items-center gap-3 px-4 py-3 rounded-2xl border border-blue-200 bg-blue-50">
+            <span className="text-[13px] font-semibold text-blue-700">
+              {selectedIds.size} file{selectedIds.size > 1 ? "s" : ""} selected
+            </span>
+            <button
+              onClick={() => {
+                const files = filtered.filter(
+                  (f) =>
+                    selectedIds.has(f.id) &&
+                    !hasFileAccess(f) &&
+                    fileRequestStatus(f) !== "pending",
+                );
+                if (files.length > 0) openRequestModal(files);
+                else
+                  alert(
+                    "The selected files are already granted or have a pending request.",
+                  );
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold transition-colors"
+            >
+              <Lock size={12} /> Request Access
+            </button>
             <button
               onClick={clearSelection}
               className="ml-auto p-1.5 rounded-lg hover:bg-blue-100 text-blue-400 hover:text-blue-600 transition-colors"
@@ -1335,13 +1548,13 @@ export default function RepositoryFolderDetailPage() {
                         </div>
                       </td>
 
-                      {/* Status badge — clickable to open verify modal */}
+                      {/* Status badge — clickable to open verify modal (verify-eligible roles only) */}
                       <td className="px-3 py-3.5 w-36">
                         <button
-                          onClick={() => canEdit && setVerifyTarget(file)}
-                          disabled={!canEdit}
+                          onClick={() => canVerify && setVerifyTarget(file)}
+                          disabled={!canVerify}
                           title={
-                            canEdit
+                            canVerify
                               ? isVerified
                                 ? "Click to unverify"
                                 : "Click to verify"
@@ -1351,7 +1564,7 @@ export default function RepositoryFolderDetailPage() {
                             isVerified
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                               : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
-                          } ${canEdit ? "cursor-pointer" : "cursor-default"}`}
+                          } ${canVerify ? "cursor-pointer" : "cursor-default"}`}
                         >
                           {isVerified ? (
                             <>
@@ -1492,10 +1705,40 @@ export default function RepositoryFolderDetailPage() {
                               <MoreHorizontal size={14} />
                             </button>
                           </div>
+                        ) : hasFileAccess(file) ? (
+                          <div className="flex items-center gap-0.5">
+                            <button
+                              onClick={() => setEditingFile(file)}
+                              title="Preview"
+                              className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-300 hover:text-blue-600 transition-colors"
+                            >
+                              <Eye size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDownloadFile(file)}
+                              disabled={downloadingId === file.id}
+                              title="Download"
+                              className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-300 hover:text-blue-600 transition-colors disabled:opacity-40"
+                            >
+                              <Download size={14} />
+                            </button>
+                          </div>
+                        ) : fileRequestStatus(file) === "pending" ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 text-[10px] font-semibold border border-amber-200">
+                            <Clock size={10} /> Requested
+                          </span>
                         ) : (
                           <div className="flex items-center gap-0.5">
-                            <LockedActionButton label="View — outside your section" />
-                            <LockedActionButton label="Download — outside your section" />
+                            <LockedFileButton
+                              Icon={Eye}
+                              label="View — request access"
+                              onClick={() => openRequestModal(file)}
+                            />
+                            <LockedFileButton
+                              Icon={Download}
+                              label="Download — request access"
+                              onClick={() => openRequestModal(file)}
+                            />
                           </div>
                         )}
                       </td>
@@ -1561,16 +1804,16 @@ export default function RepositoryFolderDetailPage() {
                     )}
                   </button>
 
-                  {/* Status + verify */}
+                  {/* Status + verify (verify-eligible roles only) */}
                   <div className="flex justify-end mb-3">
                     <button
-                      onClick={() => canEdit && setVerifyTarget(file)}
-                      disabled={!canEdit}
+                      onClick={() => canVerify && setVerifyTarget(file)}
+                      disabled={!canVerify}
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border transition-all ${
                         isVerified
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                           : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
-                      } ${canEdit ? "cursor-pointer" : "cursor-default"}`}
+                      } ${canVerify ? "cursor-pointer" : "cursor-default"}`}
                     >
                       {isVerified ? (
                         <>
@@ -1596,7 +1839,7 @@ export default function RepositoryFolderDetailPage() {
                     {file.size} · {uploaded.relative}
                   </p>
 
-                  {canEdit && (
+                  {canEdit ? (
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={(e) => {
@@ -1628,6 +1871,42 @@ export default function RepositoryFolderDetailPage() {
                         <Trash2 size={11} /> Delete
                       </button>
                     </div>
+                  ) : hasFileAccess(file) ? (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadFile(file);
+                        }}
+                        disabled={downloadingId === file.id}
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
+                      >
+                        <Download size={11} /> Download
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingFile(file);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
+                      >
+                        <Eye size={11} /> Preview
+                      </button>
+                    </div>
+                  ) : fileRequestStatus(file) === "pending" ? (
+                    <div className="flex items-center justify-center gap-1 py-1.5 text-[10px] font-semibold text-amber-600">
+                      <Clock size={11} /> Requested
+                    </div>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openRequestModal(file);
+                      }}
+                      className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
+                    >
+                      <Lock size={11} /> Request Access
+                    </button>
                   )}
                 </div>
               );
@@ -1639,15 +1918,16 @@ export default function RepositoryFolderDetailPage() {
 
       {/* ── Modals ──────────────────────────────────────────── */}
       <FileEditModal
-        isOpen={!!editingFile}
-        onClose={() => setEditingFile(null)}
-        file={editingFile}
-        uploaderName={editingFile?.uploader}
-        onSaved={() => {
-          setEditingFile(null);
-          if (decodedName) fetchData();
-        }}
-      />
+  isOpen={!!editingFile}
+  onClose={() => setEditingFile(null)}
+  file={editingFile}
+  uploaderName={editingFile?.uploader}
+  canEdit={canEdit}
+  onSaved={() => {
+    setEditingFile(null);
+    if (decodedName) fetchData();
+  }}
+/>
 
       <DeleteFileConfirmModal
         isOpen={!!fileToDelete}
@@ -1665,6 +1945,40 @@ export default function RepositoryFolderDetailPage() {
         userProfile={userProfile}
         isVerifying={isVerifying}
       />
+
+      <FileAccessRequestModal
+        isOpen={!!requestModalFiles}
+        onClose={() => setRequestModalFiles(null)}
+        files={requestModalFiles || []}
+        availableFiles={allFiles.filter(
+          (f) =>
+            !requestModalFiles?.some((rf) => rf.id === f.id) &&
+            !hasFileAccess(f) &&
+            fileRequestStatus(f) !== "pending",
+        )}
+        sectionName={section?.name}
+        onSubmit={submitAccessRequest}
+        isSubmitting={isSubmittingRequest}
+      />
+
+      {canEdit && (
+        <>
+          <FloatingAccessRequestsButton
+            userProfile={userProfile}
+            refreshKey={accessRefreshKey}
+            onClick={() => setIsAccessSidebarOpen(true)}
+          />
+
+          <AccessRequestsSidebar
+            isOpen={isAccessSidebarOpen}
+            onClose={() => {
+              setIsAccessSidebarOpen(false);
+              setAccessRefreshKey((k) => k + 1);
+            }}
+            userProfile={userProfile}
+          />
+        </>
+      )}
 
       {/* ── Success toast ──────────────────────────────────── */}
       {showDeleteToast && (

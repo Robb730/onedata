@@ -16,7 +16,13 @@ function getColorPreset(id) {
 
 export default function Repository({ onFolderClick }) {
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState("grid");
+  const [viewMode, setViewMode] = useState(
+    () => localStorage.getItem("repository-view-mode") || "grid"
+  );
+
+  useEffect(() => {
+    localStorage.setItem("repository-view-mode", viewMode);
+  }, [viewMode]);
   const [activeTab, setActiveTab] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -27,7 +33,7 @@ export default function Repository({ onFolderClick }) {
 
   const [folderColors, setFolderColors] = useState({});
 
-  
+
 
   useEffect(() => {
     async function fetchDivisions() {
@@ -124,53 +130,56 @@ export default function Repository({ onFolderClick }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/40">
-      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
+    <div className="relative min-h-screen overflow-hidden bg-slate-50">
+      <div className="relative mx-auto max-w-[1500px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         {/* ── Header ───────────────────────────────────── */}
         <RepositoryHeader />
 
-      {/* ── Search / Sort / View Toggle ────────────────── */}
-      <div className="bg-white rounded-[16px] border border-slate-100/80 p-4 mb-6" style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.03)" }}>
-        <RepositorySearchBar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-        />
+        {/* ── Search / Sort / View Toggle ────────────────── */}
+        <div className="mb-6 rounded-[28px] border border-white/70 bg-white/85 p-4 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-5">
+          <RepositorySearchBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+          />
 
-        {/* ── Tab Filters ──────────────────────────────── */}
-        <RepositoryTabs
-          tabs={tabs}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          counts={tabCounts}
-        />
-      </div>
+          {/* ── Tab Filters ──────────────────────────────── */}
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <RepositoryTabs
+              tabs={tabs}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              counts={tabCounts}
+            />
+          </div>
+        </div>
 
-      {/* ── States: loading / error / empty / grid ───────── */}
-      {loading ? (
-        <div className="flex items-center justify-center py-24 text-sm text-gray-400">
-          Loading divisions…
-        </div>
-      ) : error ? (
-        <div className="flex items-center justify-center py-24 text-sm text-red-400">
-          Failed to load divisions: {error}
-        </div>
-      ) : filteredFolders.length === 0 ? (
-        <div className="flex items-center justify-center py-24 text-sm text-gray-400">
-          {searchQuery
-            ? `No divisions matching "${searchQuery}"`
-            : "No divisions found."}
-        </div>
-      ) : (
-        <FolderGrid
-          folders={filteredFolders}
-          onFolderClick={handleFolderClick}
-          onFolderColorChange={(folder, newColorId) =>
-            handleFolderColorChange(folder.id, newColorId)
-          }
-        />
-      )}
+        {/* ── States: loading / error / empty / grid ───────── */}
+        {loading ? (
+          <div className="rounded-[28px] border border-white/70 bg-white/85 px-6 py-24 text-center text-sm text-slate-500 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+            Loading divisions…
+          </div>
+        ) : error ? (
+          <div className="rounded-[28px] border border-rose-100 bg-rose-50/80 px-6 py-24 text-center text-sm text-rose-600 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+            Failed to load divisions: {error}
+          </div>
+        ) : filteredFolders.length === 0 ? (
+          <div className="rounded-[28px] border border-white/70 bg-white/85 px-6 py-24 text-center text-sm text-slate-500 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+            {searchQuery
+              ? `No divisions matching "${searchQuery}"`
+              : "No divisions found."}
+          </div>
+        ) : (
+          <FolderGrid
+            folders={filteredFolders}
+            viewMode={viewMode}
+            onFolderClick={handleFolderClick}
+            onFolderColorChange={(folder, newColorId) =>
+              handleFolderColorChange(folder.id, newColorId)
+            }
+          />
+        )}
       </div>
     </div>
   );

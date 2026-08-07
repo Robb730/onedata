@@ -1,12 +1,23 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import ExcelJS from "exceljs";
 import * as XLSX from "xlsx";
-import { X, Save, Loader2, AlertTriangle, Pencil, Eye, Maximize2, Minimize2 } from "lucide-react";
+import {
+  X,
+  Save,
+  Loader2,
+  AlertTriangle,
+  Pencil,
+  Eye,
+  Maximize2,
+  Minimize2,
+} from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { parseAndSyncStructuredData } from "../../utils/structuredDataSync";
 
 function getBucket(category) {
-  return category === "general" || !category ? "repository-files" : "excel-files";
+  return category === "general" || !category
+    ? "repository-files"
+    : "excel-files";
 }
 
 // Turn a SheetJS sheet into a plain array-of-arrays of strings. This is the
@@ -16,7 +27,11 @@ function getBucket(category) {
 function extractSheetRowsFast(xWorkbook, sheetName) {
   const ws = xWorkbook.Sheets[sheetName];
   if (!ws) return [];
-  const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: "" });
+  const aoa = XLSX.utils.sheet_to_json(ws, {
+    header: 1,
+    raw: false,
+    defval: "",
+  });
   return aoa.map((row) => row.map((v) => (v == null ? "" : String(v))));
 }
 
@@ -34,9 +49,16 @@ const ROW_HEIGHT = 32;
 const OVERSCAN = 8; // extra rows rendered above/below the viewport
 const LARGE_SHEET_ROW_THRESHOLD = 500;
 
-export default function FileEditModal({ isOpen, onClose, file, uploaderName, onSaved }) {
-  const [loading, setLoading]   = useState(true);   // true only while the initial fast (SheetJS) parse is in flight
-  const [error, setError]       = useState(null);
+export default function FileEditModal({
+  isOpen,
+  onClose,
+  file,
+  uploaderName,
+  onSaved,
+  canEdit,
+}) {
+  const [loading, setLoading] = useState(true); // true only while the initial fast (SheetJS) parse is in flight
+  const [error, setError] = useState(null);
 
   // The ExcelJS workbook is what we ultimately write back to storage on
   // Save, because it's the only one of the two parsers that preserves
@@ -51,11 +73,11 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
   const xWorkbookRef = useRef(null);
 
   const [sheetNames, setSheetNames] = useState([]);
-  const [sheets, setSheets]     = useState({}); // { sheetName: aoa[][] } — populated lazily per sheet
+  const [sheets, setSheets] = useState({}); // { sheetName: aoa[][] } — populated lazily per sheet
   const [activeSheet, setActiveSheet] = useState(null);
   const [sheetLoading, setSheetLoading] = useState(false); // true while a not-yet-opened sheet is being parsed
 
-  const [saving, setSaving]     = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // ── Fullscreen toggle ─────────────────────────────────────────
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -94,12 +116,17 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
 
       try {
         const primaryBucket = getBucket(file.data_category);
-        const fallbackBucket = primaryBucket === "repository-files" ? "excel-files" : "repository-files";
+        const fallbackBucket =
+          primaryBucket === "repository-files"
+            ? "excel-files"
+            : "repository-files";
 
         let blob = null;
         let lastErr = null;
         for (const bucket of [primaryBucket, fallbackBucket]) {
-          const { data, error: dlError } = await supabase.storage.from(bucket).download(file.path);
+          const { data, error: dlError } = await supabase.storage
+            .from(bucket)
+            .download(file.path);
           if (!dlError && data) {
             blob = data;
             break;
@@ -110,8 +137,8 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
         if (!blob) {
           throw new Error(
             `Could not find "${file.name}" in storage at path "${file.path}". ` +
-            `The file record may be out of date — try refreshing the file list. ` +
-            (lastErr?.message ? `(${lastErr.message})` : "")
+              `The file record may be out of date — try refreshing the file list. ` +
+              (lastErr?.message ? `(${lastErr.message})` : ""),
           );
         }
 
@@ -121,7 +148,10 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
         // ── FAST PATH: parse with SheetJS so the user can see the data
         // right away, without waiting on ExcelJS's much slower style-aware
         // full parse.
-        const xWorkbook = XLSX.read(arrayBuffer, { type: "array", cellText: true });
+        const xWorkbook = XLSX.read(arrayBuffer, {
+          type: "array",
+          cellText: true,
+        });
         if (cancelled) return;
 
         xWorkbookRef.current = xWorkbook;
@@ -130,7 +160,9 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
 
         const firstName = names[0];
         if (firstName) {
-          setSheets({ [firstName]: extractSheetRowsFast(xWorkbook, firstName) });
+          setSheets({
+            [firstName]: extractSheetRowsFast(xWorkbook, firstName),
+          });
           setActiveSheet(firstName);
         }
         setLoading(false); // grid is now viewable — background load continues below
@@ -148,7 +180,8 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
         } catch (bgErr) {
           if (!cancelled) {
             setSavePrepError(
-              bgErr.message || "Failed to prepare this file for editing. You can still view it, but editing is unavailable."
+              bgErr.message ||
+                "Failed to prepare this file for editing. You can still view it, but editing is unavailable.",
             );
           }
         }
@@ -161,7 +194,9 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
     }
 
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, file]);
 
   // ── Lazily parse a sheet the first time its tab is opened ────
@@ -173,7 +208,10 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
     // Defer to next tick so the tab-switch click and loading indicator
     // paint before we run the parse.
     const timer = setTimeout(() => {
-      setSheets((prev) => ({ ...prev, [activeSheet]: extractSheetRowsFast(xWorkbookRef.current, activeSheet) }));
+      setSheets((prev) => ({
+        ...prev,
+        [activeSheet]: extractSheetRowsFast(xWorkbookRef.current, activeSheet),
+      }));
       setSheetLoading(false);
     }, 0);
     return () => clearTimeout(timer);
@@ -224,6 +262,7 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
 
   // ── Mode transitions ──────────────────────────────────────────
   function enterEditMode() {
+    if (!canEdit) return; // defensive — button should already be hidden for this user
     editSnapshotRef.current = deepCloneSheets(sheets);
     setIsDirty(false);
     setMode("edit");
@@ -267,6 +306,7 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
   }
 
   const handleSave = async () => {
+    if (!canEdit) return; // defensive — button should already be hidden for this user
     if (!workbookRef.current) return; // shouldn't happen — Save is disabled until this is ready
     setSaving(true);
     setError(null);
@@ -288,7 +328,9 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
       const newFileBlob = new Blob([arrayBuffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
-      const newFile = new File([newFileBlob], file.name, { type: newFileBlob.type });
+      const newFile = new File([newFileBlob], file.name, {
+        type: newFileBlob.type,
+      });
 
       const bucket = getBucket(file.data_category);
       const { error: uploadError } = await supabase.storage
@@ -296,7 +338,10 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
         .upload(file.path, newFile, { upsert: true, cacheControl: "3600" });
       if (uploadError) throw uploadError;
 
-      await supabase.from("files").update({ file_size: newFile.size }).eq("id", file.id);
+      await supabase
+        .from("files")
+        .update({ file_size: newFile.size })
+        .eq("id", file.id);
 
       if (file.data_category && file.data_category !== "general") {
         await parseAndSyncStructuredData(
@@ -305,7 +350,7 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
           file.school_year,
           uploaderName,
           file.id,
-          { replace: true }
+          { replace: true },
         );
       }
 
@@ -323,7 +368,7 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
   const activeRows = sheets[activeSheet] || [];
   const colCount = useMemo(
     () => activeRows.reduce((max, row) => Math.max(max, row.length), 0),
-    [activeRows]
+    [activeRows],
   );
 
   // ── Virtualization math: only render rows in/near the viewport ──
@@ -338,17 +383,23 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
   if (!isOpen || !file) return null;
 
   return (
-    <div className={`fixed inset-0 bg-black/50 flex items-center justify-center z-50 ${isFullScreen ? "p-0" : "p-4"}`}>
+    <div
+      className={`fixed inset-0 bg-black/50 flex items-center justify-center z-50 ${isFullScreen ? "p-0" : "p-4"}`}
+    >
       <div
         className={`relative bg-white shadow-2xl flex flex-col overflow-hidden transition-all ${
-          isFullScreen ? "w-screen h-screen rounded-none" : "w-full max-w-6xl h-[85vh] rounded-xl"
+          isFullScreen
+            ? "w-screen h-screen rounded-none"
+            : "w-full max-w-6xl h-[85vh] rounded-xl"
         }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-gray-900 truncate max-w-lg">{file.name}</h2>
+              <h2 className="text-lg font-bold text-gray-900 truncate max-w-lg">
+                {file.name}
+              </h2>
               <span
                 className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                   mode === "edit"
@@ -365,11 +416,13 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
                 ? file.data_category && file.data_category !== "general"
                   ? "Saving will re-sync the dashboard data for this file."
                   : "General file — saving only updates the stored spreadsheet."
-                : "Read-only view. Click \"Edit File\" to make changes."}
+                : canEdit
+                  ? 'Read-only view. Click "Edit File" to make changes.'
+                  : "Read-only view. You don't have edit access to this file."}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {mode === "view" && (
+            {mode === "view" && canEdit && (
               <button
                 onClick={enterEditMode}
                 disabled={loading || !!error}
@@ -386,7 +439,11 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
             >
               {isFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
             </button>
-            <button onClick={handleRequestClose} className="text-gray-400 hover:text-gray-600" disabled={saving}>
+            <button
+              onClick={handleRequestClose}
+              className="text-gray-400 hover:text-gray-600"
+              disabled={saving}
+            >
               <X size={22} />
             </button>
           </div>
@@ -430,8 +487,9 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
               {isLargeSheet && (
                 <div className="mb-2 flex items-center gap-2 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 shrink-0">
                   <AlertTriangle size={12} />
-                  Large sheet ({totalRows.toLocaleString()} rows × {colCount} columns) — only visible
-                  rows are rendered for performance. Scroll to load more.
+                  Large sheet ({totalRows.toLocaleString()} rows × {colCount}{" "}
+                  columns) — only visible rows are rendered for performance.
+                  Scroll to load more.
                 </div>
               )}
               <div
@@ -439,11 +497,17 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
                 onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
                 className="flex-1 min-h-0 overflow-auto rounded-lg border border-gray-200 bg-white shadow-sm"
               >
-                <table className="border-collapse text-xs" style={{ tableLayout: "fixed" }}>
+                <table
+                  className="border-collapse text-xs"
+                  style={{ tableLayout: "fixed" }}
+                >
                   <tbody>
                     {topSpacer > 0 && (
                       <tr style={{ height: topSpacer }} aria-hidden="true">
-                        <td colSpan={colCount || 1} style={{ padding: 0, border: "none" }} />
+                        <td
+                          colSpan={colCount || 1}
+                          style={{ padding: 0, border: "none" }}
+                        />
                       </tr>
                     )}
                     {activeRows.slice(startIndex, endIndex).map((row, i) => {
@@ -453,18 +517,33 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
                           key={rowIdx}
                           style={{ height: ROW_HEIGHT }}
                           className={`${
-                            rowIdx === 0 ? "bg-gray-100" : rowIdx % 2 === 0 ? "bg-gray-50/60" : "bg-white"
+                            rowIdx === 0
+                              ? "bg-gray-100"
+                              : rowIdx % 2 === 0
+                                ? "bg-gray-50/60"
+                                : "bg-white"
                           } ${mode === "view" ? "hover:bg-blue-50/50" : ""}`}
                         >
                           {Array.from({ length: colCount }).map((_, colIdx) => (
-                            <td key={colIdx} className="border border-gray-200 p-0">
+                            <td
+                              key={colIdx}
+                              className="border border-gray-200 p-0"
+                            >
                               {mode === "edit" ? (
                                 <input
                                   value={row[colIdx] ?? ""}
-                                  onChange={(e) => handleCellChange(rowIdx, colIdx, e.target.value)}
+                                  onChange={(e) =>
+                                    handleCellChange(
+                                      rowIdx,
+                                      colIdx,
+                                      e.target.value,
+                                    )
+                                  }
                                   style={{ height: ROW_HEIGHT - 2 }}
                                   className={`w-28 px-2 py-1.5 text-xs bg-transparent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:bg-blue-50 ${
-                                    rowIdx === 0 ? "font-semibold text-gray-700" : "text-gray-800"
+                                    rowIdx === 0
+                                      ? "font-semibold text-gray-700"
+                                      : "text-gray-800"
                                   }`}
                                 />
                               ) : (
@@ -472,7 +551,9 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
                                   style={{ height: ROW_HEIGHT - 2 }}
                                   title={row[colIdx] ?? ""}
                                   className={`w-28 px-2 py-1.5 text-xs truncate flex items-center cursor-default select-text ${
-                                    rowIdx === 0 ? "font-semibold text-gray-700" : "text-gray-700"
+                                    rowIdx === 0
+                                      ? "font-semibold text-gray-700"
+                                      : "text-gray-700"
                                   }`}
                                 >
                                   {row[colIdx] ?? ""}
@@ -485,7 +566,10 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
                     })}
                     {bottomSpacer > 0 && (
                       <tr style={{ height: bottomSpacer }} aria-hidden="true">
-                        <td colSpan={colCount || 1} style={{ padding: 0, border: "none" }} />
+                        <td
+                          colSpan={colCount || 1}
+                          style={{ padding: 0, border: "none" }}
+                        />
                       </tr>
                     )}
                   </tbody>
@@ -503,7 +587,8 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
             </span>
           ) : mode === "edit" && !savePrepared && !loading && !error ? (
             <span className="text-xs text-gray-400 mr-auto flex items-center gap-1.5">
-              <Loader2 className="animate-spin" size={12} /> Preparing file for saving…
+              <Loader2 className="animate-spin" size={12} /> Preparing file for
+              saving…
             </span>
           ) : null}
 
@@ -526,10 +611,18 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
               <button
                 onClick={handleSave}
                 disabled={saving || loading || !savePrepared}
-                title={!savePrepared ? "Still preparing this file for saving…" : undefined}
+                title={
+                  !savePrepared
+                    ? "Still preparing this file for saving…"
+                    : undefined
+                }
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-semibold disabled:opacity-50"
               >
-                {saving ? <Loader2 className="animate-spin" size={15} /> : <Save size={15} />}
+                {saving ? (
+                  <Loader2 className="animate-spin" size={15} />
+                ) : (
+                  <Save size={15} />
+                )}
                 {saving ? "Saving…" : "Save Changes"}
               </button>
             </>
@@ -545,9 +638,15 @@ export default function FileEditModal({ isOpen, onClose, file, uploaderName, onS
                   <AlertTriangle className="text-amber-500" size={18} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900">Discard unsaved changes?</h3>
+                  <h3 className="text-sm font-bold text-gray-900">
+                    Discard unsaved changes?
+                  </h3>
                   <p className="text-xs text-gray-500 mt-1">
-                    You have edits that haven't been saved. {discardIntent === "close" ? "Closing" : "Leaving edit mode"} now will lose them.
+                    You have edits that haven't been saved.{" "}
+                    {discardIntent === "close"
+                      ? "Closing"
+                      : "Leaving edit mode"}{" "}
+                    now will lose them.
                   </p>
                 </div>
               </div>

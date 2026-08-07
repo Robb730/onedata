@@ -8,6 +8,7 @@ import {
   ClipboardList,
   PanelLeftClose,
   PanelLeftOpen,
+  CalendarRange,
 } from "lucide-react";
 import iconSvg from "../assets/one_data-icon-v3.svg";
 
@@ -17,6 +18,7 @@ const navItems = [
   { label: "Manage Users", path: "/manage-user", icon: Users },
   { label: "Upload Files", path: "/upload-files", icon: Upload },
   { label: "Audit Logs", path: "/audit-logs", icon: ClipboardList },
+  { label: "School Year", path: "/school-year", icon: CalendarRange },
 ];
 
 /**
@@ -91,7 +93,9 @@ export function Sidebar({ collapsed = false, onToggle }) {
           className={`flex-1 py-2 space-y-0.5 ${collapsed ? "px-2" : "px-3"}`}
         >
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive =
+              location.pathname === item.path ||
+              location.pathname.startsWith(`${item.path}/`);
 
             return (
               <NavLink
@@ -153,7 +157,6 @@ export function Sidebar({ collapsed = false, onToggle }) {
             );
           })}
         </nav>
-
         {/* ── Footer — Collapse only ──────────────────────────── */}
         <div className="mt-auto">
           <div className="mx-4 h-px bg-slate-100 mb-2" />
