@@ -123,13 +123,14 @@ export default function Dashboard() {
 
       setSchoolYears(yearsData);
 
-      if (!activeErr && activeRow?.label) {
-        setSelectedYear(activeRow.label);
-      } else if (yearsData.length > 0) {
-        // Fallback only if no active year is set in the DB
+      if (yearsData.length > 0) {
+        // Default to the latest year
         setSelectedYear(yearsData[0].year);
+      } else if (!activeErr && activeRow?.label) {
+        // Fallback to active year if yearsData is empty for some reason
+        setSelectedYear(activeRow.label);
       }
-    } catch (err) {
+    } catch (err) { 
       console.error("Error initializing school year:", err);
     } finally {
       if (!cancelled) setYearsLoading(false);
