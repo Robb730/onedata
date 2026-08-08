@@ -553,12 +553,12 @@ export default function Dashboard() {
               <button
                 id="dashboard-year-select-btn"
                 onClick={() => !yearsLoading && setIsYearDropdownOpen(!isYearDropdownOpen)}
-                className="relative flex items-center gap-2 h-[38px] rounded-[10px] border border-slate-200/80 bg-white pl-3 pr-8 hover:border-slate-300 transition-colors w-[130px] shadow-sm cursor-pointer"
-              >
-                <CalendarDays size={14} className="text-blue-500 shrink-0" />
-                <span className="text-[0.82rem] font-bold text-slate-700 select-none truncate">
-                  {yearsLoading ? "Loading…" : selectedYear || "Select Year"}
-                </span>
+                className="relative flex items-center gap-2 h-[38px] rounded-[10px] border border-slate-200/80 bg-white pl-3 pr-8 hover:border-slate-300 transition-colors min-w-[130px] w-max shadow-sm cursor-pointer"
+>
+  <CalendarDays size={14} className="text-blue-500 shrink-0" />
+  <span className="text-[0.82rem] font-bold text-slate-700 select-none whitespace-nowrap">
+    {yearsLoading ? "Loading…" : selectedYear || "Select Year"}
+  </span>
                 <ChevronDown
                   size={14}
                   strokeWidth={2.5}

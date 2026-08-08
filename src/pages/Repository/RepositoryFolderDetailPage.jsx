@@ -166,6 +166,8 @@ function formatRelativeDate(dateStr) {
   return { relative: fullStr, time: timeStr, full: fullStr };
 }
 
+
+
 // ─────────────────────────────────────────────────────────────────
 // ── MODALS ────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────
@@ -609,6 +611,9 @@ export default function RepositoryFolderDetailPage() {
   const [isAccessSidebarOpen, setIsAccessSidebarOpen] = useState(false);
   const [accessRefreshKey, setAccessRefreshKey] = useState(0);
 
+  const [schoolYears, setSchoolYears] = useState([]);
+  const [selectedSchoolYear, setSelectedSchoolYear] = useState("");
+
   function hasFileAccess(file) {
     return canEdit || fileAccessMap[file.id] === "approved";
   }
@@ -675,6 +680,21 @@ export default function RepositoryFolderDetailPage() {
 
   // ── Access control ─────────────────────────────────────────────
   const [accessLevel, setAccessLevel] = useState("blocked");
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("school_years")
+      .select("label, status")
+      .order("label", { ascending: false })
+      .then(({ data, error }) => {
+        if (cancelled || error || !data) return;
+        setSchoolYears(data);
+        const active = data.find((y) => y.status === "active");
+        setSelectedSchoolYear((prev) => prev || active?.label || data[0]?.label || "");
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!section || !userProfile) return;
@@ -1015,7 +1035,8 @@ export default function RepositoryFolderDetailPage() {
           file.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           file.uploader.toLowerCase().includes(searchQuery.toLowerCase());
         const matchType = activeType === "All" || file.type === activeType;
-        return matchSearch && matchType;
+        const matchYear = !selectedSchoolYear || file.school_year === selectedSchoolYear;
+        return matchSearch && matchType && matchYear;
       })
       .sort((a, b) => {
         if (sortBy === "name") return a.name.localeCompare(b.name);
@@ -1028,17 +1049,23 @@ export default function RepositoryFolderDetailPage() {
     activeType,
     searchQuery,
     sortBy,
+    selectedSchoolYear,
   ]);
+   
+
+  const yearFilteredFiles = selectedSchoolYear
+    ? allFiles.filter((f) => f.school_year === selectedSchoolYear)
+    : allFiles;
 
   const typeCounts = FILE_TYPE_TABS.reduce((acc, type) => {
     acc[type] =
       type === "All"
-        ? allFiles.length
-        : allFiles.filter((f) => f.type === type).length;
+        ? yearFilteredFiles.length
+        : yearFilteredFiles.filter((f) => f.type === type).length;
     return acc;
   }, {});
 
-  const verifiedCount = allFiles.filter((f) => f.status === "Verified").length;
+  const verifiedCount = yearFilteredFiles.filter((f) => f.status === "Verified").length;
   const backTarget = division
     ? `/repository/divisions/${division.id}`
     : "/repository";
@@ -1116,7 +1143,7 @@ export default function RepositoryFolderDetailPage() {
             <p className="text-[0.78rem] text-slate-400 font-medium mt-1">
               {loading
                 ? "Loading…"
-                : `${allFiles.length} files · ${verifiedCount} verified`}
+                : `${yearFilteredFiles.length} files · ${verifiedCount} verified`}
             </p>
           </div>
           {canEdit && (
@@ -1190,6 +1217,9 @@ export default function RepositoryFolderDetailPage() {
             sortBy={sortBy}
             onSortChange={setSortBy}
             placeholder="Search files by name or uploader..."
+            schoolYears={schoolYears}
+            selectedYear={selectedSchoolYear}
+            onYearChange={setSelectedSchoolYear}
           />
 
           {/* Type filter pills */}
@@ -1227,7 +1257,7 @@ export default function RepositoryFolderDetailPage() {
             <span className="font-semibold text-slate-700">
               {filtered.length}
             </span>{" "}
-            of {allFiles.length} files
+            of {yearFilteredFiles.length} files
           </p>
           {allFiles.length > 0 && (
             <p className="text-[11px] text-slate-400">
@@ -1375,10 +1405,10 @@ export default function RepositoryFolderDetailPage() {
                   <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-32 hidden sm:table-cell">
                     Date Uploaded
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-32 hidden xl:table-cell">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-32">
                     Last Modified
                   </th>
-                  <th className="px-3 py-3 pr-4 w-12"></th>
+                  <th className="px-3 py-3 pr-4 w-40"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -1614,7 +1644,7 @@ export default function RepositoryFolderDetailPage() {
                       </td>
 
                       {/* Actions */}
-                      <td className="px-3 py-3.5 pr-4 w-12">
+                      <td className="px-3 py-3.5 pr-4 w-40">
                         {canEdit ? (
                           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-150">
                             <button
@@ -1691,9 +1721,10 @@ export default function RepositoryFolderDetailPage() {
             </table>
 
             {/* Table footer */}
+            {/* Table footer */}
             <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
               <p className="text-[11px] text-slate-400">
-                {allFiles.length} file{allFiles.length !== 1 ? "s" : ""}
+                {yearFilteredFiles.length} file{yearFilteredFiles.length !== 1 ? "s" : ""}
               </p>
               <p className="text-[11px] text-slate-400">
                 ○ All actions are audit-logged
