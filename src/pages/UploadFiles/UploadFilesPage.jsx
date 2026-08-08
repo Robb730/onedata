@@ -79,22 +79,44 @@ function getRequestStatusStyle(status) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function UploadFilesPage({
-  role = "personnel",
-  userSection = "",
-}) {
+export default function UploadFilesPage() {
   const { userProfile } = useUser();
-  const isAdmin = role === "admin";
-  const isDivision = role === "division" || role === "division_focal";
-  const isSectionFocal = role === "sectionFocal";
-  const isPersonnel = role === "personnel" || isSectionFocal;
 
-  const preAssignedFolder = isPersonnel && userSection ? userSection : null;
+  const role = userProfile?.role; // "administrator" | "division_focal" | "section_focal" | "section_personnel"
+  const isAdmin = role === "administrator";
+  const isDivisionFocal = role === "division_focal";
+  const isSectionFocal = role === "section_focal";
+  const isSectionPersonnel = role === "section_personnel";
+  const isSectionScoped = isSectionFocal || isSectionPersonnel;
 
   console.log("ROLE:", role, "| userProfile:", userProfile);
 
+  const [selectedFolder, setSelectedFolder] = useState(null);
+
   // selectedFolder is now { id, name, divisionId, divisionName } or null
-  const [selectedFolder, setSelectedFolder] = useState(preAssignedFolder);
+  // ── Auto-resolve the assigned section for section_focal / section_personnel ──
+  useEffect(() => {
+    if (!isSectionScoped || !userProfile?.section_id) return;
+
+    let cancelled = false;
+    supabase
+      .from("sections")
+      .select("id, name, division_id, divisions(name)")
+      .eq("id", userProfile.section_id)
+      .single()
+      .then(({ data, error }) => {
+        if (cancelled || error || !data) return;
+        setSelectedFolder({
+          id: data.id,
+          name: data.name,
+          divisionId: data.division_id,
+          divisionName: data.divisions?.name ?? "",
+        });
+      });
+
+    return () => { cancelled = true; };
+  }, [isSectionScoped, userProfile?.section_id]);
+
   const [folderSearchQuery, setFolderSearchQuery] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [showFolderModal, setShowFolderModal] = useState(false);
@@ -153,29 +175,10 @@ export default function UploadFilesPage({
   }, [showToast]);
 
   // Near the top, after your state declarations
-  useEffect(() => {
-    if (!preAssignedFolder || typeof preAssignedFolder !== "string") return;
+  
 
-    // Resolve the string name to a full section object
-    supabase
-      .from("sections")
-      .select("id, name, division_id, divisions(name)")
-      .eq("name", preAssignedFolder)
-      .single()
-      .then(({ data, error }) => {
-        if (!error && data) {
-          setSelectedFolder({
-            id: data.id,
-            name: data.name,
-            divisionId: data.division_id,
-            divisionName: data.divisions?.name ?? "",
-          });
-        }
-      });
-  }, [preAssignedFolder]);
-
-  const showFolderPanel = isAdmin || isDivision;
-  const showFileRequestPanel = !isAdmin && !isDivision;
+  const showFolderPanel = isAdmin || isDivisionFocal;
+  const showFileRequestPanel = isSectionFocal || isSectionPersonnel;
 
   const activeSubfolders = getSubfoldersForSection(
     typeof selectedFolder === "object" ? selectedFolder?.name : selectedFolder,
@@ -186,7 +189,8 @@ export default function UploadFilesPage({
 
   // ── Upload handler ────────────────────────────────────────────────────────
   const triggerUpload = (fileName) => {
-    if (!showFolderPanel) {
+    if (isSectionScoped) {
+      // Folder is already auto-assigned; go straight to the upload modal.
       setPendingFile({ name: fileName });
       setShowUploadModal(true);
     } else if (!selectedFolder) {
@@ -245,15 +249,15 @@ export default function UploadFilesPage({
   // ── Core upload + Supabase insert ─────────────────────────────────────────
   // ── Core upload + Supabase insert ─────────────────────────────────────────
   const addToUploads = async (fileName, schoolYear, uploadType, file) => {
-    // Always prefer the full object; fall back only for pre-assigned string folders
-    const folder = selectedFolder || preAssignedFolder;
+    const folder = selectedFolder;
 
     const sectionId = typeof folder === "object" ? folder?.id : null;
     const sectionName = typeof folder === "object" ? folder?.name : folder;
     const divisionId = typeof folder === "object" ? folder?.divisionId : null;
 
     const pathSegment = sectionId ?? sectionName ?? "general";
-    const storagePath = `sections/${pathSegment}/${fileName}`;
+    const yearSegment = schoolYear || "unspecified";
+    const storagePath = `sections/${pathSegment}/${yearSegment}/${fileName}`;
 
     const newEntry = {
       id: String(Date.now()),
@@ -739,9 +743,9 @@ export default function UploadFilesPage({
   // Add near your other helper functions, above the component or inside it
   const roleDisplayMap = {
     division_focal: "Division Focal Person",
-    sectionFocal: "Section Officer",
-    personnel: "Section Personnel",
-    admin: "Administrator",
+    section_focal: "Section Officer",
+    section_personnel: "Section Personnel",
+    administrator: "Administrator",
   };
 
   const getRoleDisplay = (role) => roleDisplayMap[role] ?? role;
@@ -994,9 +998,7 @@ export default function UploadFilesPage({
             ? `Uploading to: ${selectedFolderName}`
             : showFolderPanel
               ? "Select a section folder on the right before uploading"
-              : preAssignedFolder
-                ? `Your folder: ${preAssignedFolder}`
-                : "Upload files to your assigned section"}
+              : "Resolving your assigned section…"}
         </p>
       </div>
 
@@ -1061,6 +1063,9 @@ export default function UploadFilesPage({
         isOpen={showFolderModal}
         onClose={() => setShowFolderModal(false)}
         onSelect={handleFolderSelect}
+        mode={isDivisionFocal ? "division" : "admin"}
+        divisionId={isDivisionFocal ? userProfile?.division_id : null}
+        divisionName={isDivisionFocal ? (userProfile?.division?.name ?? "") : ""}
       />
 
       {showUploadModal && (
@@ -1071,7 +1076,7 @@ export default function UploadFilesPage({
             setPendingFile(null);
             setPendingRequestUpload(null);
           }}
-          selectedFolder={selectedFolderName || preAssignedFolder || ""}
+          selectedFolder={selectedFolderName || ""}
           fileName={
             pendingFile?.name === "browse" ? "" : pendingFile?.name || ""
           }
