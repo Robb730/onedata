@@ -1308,12 +1308,19 @@ export default function RepositoryFolderDetailPage() {
             <div className="flex items-center gap-2 flex-wrap">
               {FILE_TYPE_TABS.map((tab) => {
                 const isActive = activeType === tab;
+                
+                let activeColors = "bg-blue-600 text-white border-blue-600 shadow-sm";
+                if (isActive) {
+                  if (tab === "PDF") activeColors = "bg-red-500 text-white border-red-500 shadow-sm";
+                  else if (tab === "Excel") activeColors = "bg-emerald-500 text-white border-emerald-500 shadow-sm";
+                }
+
                 return (
                   <button
                     key={tab}
                     onClick={() => setActiveType(tab)}
                     className={`px-3.5 py-1.5 text-[11px] font-semibold rounded-full transition-all border ${isActive
-                      ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                      ? activeColors
                       : "text-slate-500 hover:bg-slate-50 border-slate-200 bg-white"
                       }`}
                   >
@@ -1465,30 +1472,30 @@ export default function RepositoryFolderDetailPage() {
           </div>
         ) : viewMode === "list" ? (
           /* ── LIST VIEW ───────────────────────────────────── */
-          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-100 overflow-visible shadow-sm">
             {/* TABLE using real <table> for perfect alignment */}
             <table className="w-full border-collapse table-fixed">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/80">
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                <tr className="border-b border-slate-100">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-50/80 rounded-tl-[15px]">
                     File
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-32">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-32 bg-slate-50/80">
                     Status
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-24">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-24 bg-slate-50/80">
                     Size
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-44 hidden md:table-cell">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-44 hidden md:table-cell bg-slate-50/80">
                     Uploaded By
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-32 hidden sm:table-cell">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-32 hidden sm:table-cell bg-slate-50/80">
                     Date Uploaded
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-32">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-32 bg-slate-50/80">
                     Last Modified
                   </th>
-                  <th className="px-3 py-3 pr-4 w-40"></th>
+                  <th className="px-3 py-3 pr-4 w-40 bg-slate-50/80 rounded-tr-[15px]"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -1523,7 +1530,7 @@ export default function RepositoryFolderDetailPage() {
                       {/* File cell — with hover popover */}
                       <td className="px-3 py-3.5 min-w-[220px]">
                         <div
-                          className="relative inline-block"
+                          className="relative block w-full"
                           onMouseEnter={() => handleFileMouseEnter(file.id)}
                           onMouseLeave={handleFileMouseLeave}
                         >
@@ -1572,8 +1579,8 @@ export default function RepositoryFolderDetailPage() {
                                 </div>
                               )}
                             </button>
-                            <div className="min-w-0">
-                              <p className="text-[13px] font-semibold text-slate-800 truncate leading-tight">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[13px] font-semibold text-slate-800 truncate w-full leading-tight">
                                 {file.name}
                               </p>
                               <p
@@ -1637,7 +1644,7 @@ export default function RepositoryFolderDetailPage() {
                       {/* Uploaded By — with user popover */}
                       <td className="px-3 py-3.5 w-44 hidden md:table-cell">
                         <div
-                          className="relative inline-block"
+                          className="relative block w-full"
                           onMouseEnter={() =>
                             file.uploaderId &&
                             handleUserMouseEnter(file.uploaderId)
@@ -1652,12 +1659,12 @@ export default function RepositoryFolderDetailPage() {
                                 {getInitials(file.uploader)}
                               </span>
                             </div>
-                            <div className="min-w-0">
-                              <p className="text-[12px] font-semibold text-slate-700 truncate max-w-[110px] leading-tight">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[12px] font-semibold text-slate-700 truncate w-full leading-tight">
                                 {file.uploader}
                               </p>
                               {uploaderInfo?.role && (
-                                <p className="text-[10px] text-slate-400 leading-none mt-0.5 truncate max-w-[110px]">
+                                <p className="text-[10px] text-slate-400 leading-none mt-0.5 truncate w-full">
                                   {getRoleDisplay(uploaderInfo.role)}
                                 </p>
                               )}

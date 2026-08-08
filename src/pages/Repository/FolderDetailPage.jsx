@@ -199,13 +199,20 @@ export default function FolderDetailPage() {
         <div className="flex items-center gap-2 flex-wrap">
           {FILE_TYPE_TABS.map((tab) => {
             const isActive = activeType === tab;
+            
+            let activeColors = "bg-blue-600 text-white border-blue-600 shadow-sm";
+            if (isActive) {
+              if (tab === "PDF") activeColors = "bg-red-500 text-white border-red-500 shadow-sm";
+              else if (tab === "Excel") activeColors = "bg-emerald-500 text-white border-emerald-500 shadow-sm";
+            }
+
             return (
               <button
                 key={tab}
                 onClick={() => setActiveType(tab)}
                 className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all border ${
                   isActive
-                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                    ? activeColors
                     : "text-gray-600 hover:bg-gray-50 border-gray-200 bg-white"
                 }`}
               >
