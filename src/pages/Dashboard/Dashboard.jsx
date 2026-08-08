@@ -13,6 +13,7 @@ import {
   CalendarDays,
   ChevronDown,
   ArrowLeftRight,
+  Download,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import {
@@ -625,7 +626,7 @@ export default function Dashboard() {
             </p>
           </div>
           <span className="text-[0.72rem] font-medium text-slate-400">
-            5 sections
+            4 sections
           </span>
         </div>
 
@@ -985,7 +986,7 @@ export default function Dashboard() {
         <div className="mt-3" />
 
         {/* ── Accomplishment Report ─────────────────────── */}
-        <DashboardAccordion
+        {/* <DashboardAccordion
           icon={
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50">
               <FileText size={16} className="text-emerald-500" />
@@ -1007,7 +1008,7 @@ export default function Dashboard() {
               No data available for SY {selectedYear}
             </p>
           </div>
-        </DashboardAccordion>
+        </DashboardAccordion> */}
 
         <div className="mt-3" />
 
@@ -1258,57 +1259,8 @@ export default function Dashboard() {
 
         <div className="mt-3" />
 
-        {/* ── QBEDP ─────────────────────────────────────── */}
-        <DashboardAccordion
-          icon={
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50">
-              <BarChart3 size={16} className="text-blue-500" />
-            </div>
-          }
-          title="QBEDP"
-          subtitle="Quality Basic Education Development Plan"
-          subtitleColor="#6366f1"
-          accentBg="rgba(238,242,255,0.7)"
-        >
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="mb-3 opacity-25 text-indigo-400">
-              <BarChart3 size={36} strokeWidth={1.5} />
-            </div>
-            <p
-              className="text-[0.78rem] font-semibold"
-              style={{ color: "rgba(99,102,241,0.55)" }}
-            >
-              No data available for SY {selectedYear}
-            </p>
-          </div>
-        </DashboardAccordion>
-
-        <div className="mt-3" />
-
-        {/* ── AIP ───────────────────────────────────────── */}
-        <DashboardAccordion
-          icon={
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-50">
-              <BookOpen size={16} className="text-red-500" />
-            </div>
-          }
-          title="AIP"
-          subtitle="Annual Implementation Plan"
-          subtitleColor="#ef4444"
-          accentBg="rgba(254,242,242,0.7)"
-        >
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="mb-3 opacity-25 text-red-400">
-              <BookOpen size={36} strokeWidth={1.5} />
-            </div>
-            <p
-              className="text-[0.78rem] font-semibold"
-              style={{ color: "rgba(239,68,68,0.55)" }}
-            >
-              No data available for SY {selectedYear}
-            </p>
-          </div>
-        </DashboardAccordion>
+        {/* ── Institutional Plans & Reports ──────────────── */}
+        <InstitutionalPlansCard selectedYear={selectedYear} />
 
         {/* Footer spacing */}
         <div className="h-8" />
@@ -1669,6 +1621,173 @@ function CespesPerformanceTable({ rows }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+// ─── Sub-component: Institutional Plans Card ────────────────
+
+function InstitutionalPlansCard({ selectedYear }) {
+  const [expandedSection, setExpandedSection] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selectedYear) return;
+
+    async function fetchFiles() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("files")
+        .select(`
+          id, file_name, file_path, created_at, uploaded_by_name, data_category,
+          sections ( name ), divisions ( name )
+        `)
+        .in("data_category", ["aip_school", "aip_sdo", "qbedp", "accomplishment_report"])
+        .eq("school_year", selectedYear)
+        .order("created_at", { ascending: false });
+      
+      if (!error && data) {
+        setFiles(data);
+      }
+      setLoading(false);
+    }
+    
+    fetchFiles();
+  }, [selectedYear]);
+
+  const toggleSection = (section) => {
+    setExpandedSection(expandedSection === section ? null : section);
+  };
+
+  const FolderUserIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+      <path d="M10 4H4C2.89543 4 2 4.89543 2 6V18C2 19.1046 2.89543 20 4 20H20C21.1046 20 22 19.1046 22 18V8C22 6.89543 21.1046 6 20 6H12L10 4Z" fill="#475569" />
+      <path d="M12.5 11.5C12.5 12.8807 11.3807 14 10 14C8.61929 14 7.5 12.8807 7.5 11.5C7.5 10.1193 8.61929 9 10 9C11.3807 9 12.5 10.1193 12.5 11.5ZM14.5 17.5C14.5 16.6716 12.4853 15 10 15C7.51472 15 5.5 16.6716 5.5 17.5V18H14.5V17.5Z" fill="white" />
+    </svg>
+  );
+
+  const getPublicUrl = (path) => {
+    if (!path) return "#";
+    const { data } = supabase.storage.from("repository-files").getPublicUrl(path);
+    return data.publicUrl;
+  };
+
+  const downloadFile = async (path, filename) => {
+    if (!path) return;
+    const { data, error } = await supabase.storage.from("repository-files").download(path);
+    if (error) {
+      console.error("Error downloading file:", error);
+      return;
+    }
+    const url = URL.createObjectURL(data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const renderSection = (id, title, categoryType) => {
+    const isOpen = expandedSection === id;
+    const sectionFiles = files.filter(f => f.data_category === categoryType);
+    
+    return (
+      <div className="rounded-[10px] border border-slate-100/80 overflow-hidden mb-3 last:mb-0">
+        <button
+          onClick={() => toggleSection(id)}
+          className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50/50 cursor-pointer"
+        >
+          <div className="flex-1 min-w-0 flex items-center gap-3">
+            <FolderUserIcon />
+            <p className="text-[0.78rem] font-bold text-slate-700 truncate">
+              {title}
+            </p>
+          </div>
+          <ChevronDown
+            size={16}
+            className={`text-slate-400 transition-transform duration-200 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {isOpen && (
+          <div className="border-t border-slate-100/60 overflow-x-auto bg-white p-1">
+            <table className="w-full text-[0.72rem]">
+              <thead>
+                <tr className="bg-slate-50/70 border-b border-slate-100/60">
+                  <th className="px-4 py-2.5 text-left font-semibold text-slate-500">File Name</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td className="px-4 py-6 text-center text-slate-400 text-xs">
+                      Loading files...
+                    </td>
+                  </tr>
+                ) : sectionFiles.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-6 text-center text-slate-400 text-xs italic">
+                      No files uploaded for {title} yet.
+                    </td>
+                  </tr>
+                ) : sectionFiles.map((file, i) => (
+                  <tr
+                    key={file.id || i}
+                    className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <a 
+                        href={getPublicUrl(file.file_path)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 cursor-pointer group"
+                      >
+                        <FileText size={14} className="text-red-500 shrink-0" />
+                        <span className="text-slate-700 font-medium truncate group-hover:text-blue-600 group-hover:underline transition-colors" title={file.file_name}>
+                          {file.file_name}
+                        </span>
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <DashboardAccordion
+      icon={
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50">
+          <BookOpen size={16} className="text-rose-500" />
+        </div>
+      }
+      title="Institutional Plans & Reports"
+      subtitle={
+        <span className="flex items-center gap-1.5">
+          <span onClick={(e) => e.stopPropagation()} className="text-blue-500 hover:underline cursor-pointer">AIP</span>
+          <span className="text-slate-300">•</span>
+          <span onClick={(e) => e.stopPropagation()} className="text-blue-500 hover:underline cursor-pointer">QBEDP</span>
+          <span className="text-slate-300">•</span>
+          <span onClick={(e) => e.stopPropagation()} className="text-blue-500 hover:underline cursor-pointer">Accomplishment Report</span>
+        </span>
+      }
+      accentBg="rgba(254, 242, 242, 0.15)"
+    >
+      <div className="flex flex-col gap-2">
+        {renderSection("aip-school", "Approved School AIP 2026", "aip_school")}
+        {renderSection("aip-sdo", "Approved SDO AIP 2026 (Per Functional Division)", "aip_sdo")}
+        {renderSection("qbedp", "Quality Basic Education Development Plan (QBEDP)", "qbedp")}
+        {renderSection("accomp", "Accomplishment Report", "accomplishment_report")}
+      </div>
+    </DashboardAccordion>
   );
 }
 
