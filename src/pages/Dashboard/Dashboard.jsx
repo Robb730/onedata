@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   TrendingUp,
   Info,
@@ -99,6 +99,20 @@ export default function Dashboard() {
     loading: true,
   });
   const [activeCespesTab, setActiveCespesTab] = useState("Operations");
+
+  // ── Year Dropdown State ─────────────────────────────────────
+  const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
+  const yearDropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (yearDropdownRef.current && !yearDropdownRef.current.contains(event.target)) {
+        setIsYearDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // ── Resolve the default (active) school year once on mount ──
   useEffect(() => {
@@ -534,36 +548,55 @@ export default function Dashboard() {
           <div className="flex items-center gap-2.5 shrink-0 pt-1">
             {/* Year selector */}
             <div
-  className="relative flex items-center gap-2 h-[38px] rounded-xl border border-slate-200 bg-white pl-3.5 pr-9 hover:border-slate-300 transition-colors"
-  style={{ boxShadow: "0 1px 2px rgba(15,23,42,0.06)" }}
+              ref={yearDropdownRef}
+              className="relative"
+            >
+              <button
+                id="dashboard-year-select-btn"
+                onClick={() => !yearsLoading && setIsYearDropdownOpen(!isYearDropdownOpen)}
+                className="relative flex items-center gap-2 h-[38px] rounded-[10px] border border-slate-200/80 bg-white pl-3 pr-8 hover:border-slate-300 transition-colors min-w-[130px] w-max shadow-sm cursor-pointer"
 >
   <CalendarDays size={14} className="text-blue-500 shrink-0" />
+  <span className="text-[0.82rem] font-bold text-slate-700 select-none whitespace-nowrap">
+    {yearsLoading ? "Loading…" : selectedYear || "Select Year"}
+  </span>
+                <ChevronDown
+                  size={14}
+                  strokeWidth={2.5}
+                  className={`text-slate-400 pointer-events-none absolute right-3 transition-transform duration-200 ${
+                    isYearDropdownOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
 
-  {yearsLoading ? (
-    <span className="text-[0.82rem] font-semibold text-slate-400 leading-none select-none">
-      Loading…
-    </span>
-  ) : (
-    <select
-      id="dashboard-year-select"
-      value={selectedYear || ""}
-      onChange={(e) => setSelectedYear(e.target.value)}
-      className="h-full bg-transparent text-[0.82rem] font-semibold text-slate-700 outline-none cursor-pointer appearance-none leading-none"
-    >
-      {schoolYears.map(({ year }) => (
-        <option key={year} value={year}>
-          {year}
-        </option>
-      ))}
-    </select>
-  )}
-
-  <ChevronDown
-    size={14}
-    strokeWidth={2.5}
-    className="text-slate-400 pointer-events-none absolute right-3"
-  />
-</div>
+              {/* Custom Dropdown Menu */}
+              {isYearDropdownOpen && !yearsLoading && (
+                <div className="absolute top-[calc(100%+6px)] right-0 w-full min-w-[130px] bg-white border border-slate-200 rounded-[10px] shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                  {schoolYears.map(({ year }) => {
+                    const isSelected = selectedYear === year;
+                    return (
+                      <button
+                        key={year}
+                        onClick={() => {
+                          setSelectedYear(year);
+                          setIsYearDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3.5 py-2 text-[0.82rem] font-semibold transition-colors ${
+                          isSelected
+                            ? "bg-blue-50 text-blue-700"
+                            : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                        }`}
+                      >
+                        {year}
+                        {isSelected && (
+                          <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Compare button */}
             <button

@@ -93,6 +93,24 @@ export default function FileEditModal({
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(480);
 
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const pdfUrlRef = useRef(null); // so cleanup can revoke it even after state resets
+
+  function isPdfFile(f) {
+    if (!f) return false;
+    if (f.type === "PDF") return true; // matches your inferType() output
+    return f.name?.toLowerCase().endsWith(".pdf");
+  }
+
+  useEffect(() => {
+    if (isOpen) return;
+    if (pdfUrlRef.current) {
+      URL.revokeObjectURL(pdfUrlRef.current);
+      pdfUrlRef.current = null;
+      setPdfUrl(null);
+    }
+  }, [isOpen]);
+
   // ── Load: download once, parse fast (SheetJS) for display, then ──
   // ── prepare the ExcelJS workbook in the background for saving. ──
   useEffect(() => {
@@ -113,6 +131,13 @@ export default function FileEditModal({
       setDiscardIntent(null);
       workbookRef.current = null;
       xWorkbookRef.current = null;
+
+      // Clean up any previous PDF blob URL before loading a new file
+      if (pdfUrlRef.current) {
+        URL.revokeObjectURL(pdfUrlRef.current);
+        pdfUrlRef.current = null;
+      }
+      setPdfUrl(null);
 
       try {
         const primaryBucket = getBucket(file.data_category);
@@ -142,6 +167,16 @@ export default function FileEditModal({
           );
         }
 
+        // ── PDF: skip all spreadsheet parsing, just show it ──
+        if (isPdfFile(file)) {
+          if (cancelled) return;
+          const url = URL.createObjectURL(blob);
+          pdfUrlRef.current = url;
+          setPdfUrl(url);
+          setLoading(false);
+          return;
+        }
+
         const arrayBuffer = await blob.arrayBuffer();
         if (cancelled) return;
 
@@ -165,12 +200,8 @@ export default function FileEditModal({
           });
           setActiveSheet(firstName);
         }
-        setLoading(false); // grid is now viewable — background load continues below
+        setLoading(false);
 
-        // ── SLOW PATH (backgrounded, does not block the UI): load the full
-        // ExcelJS workbook so Save can write values back without losing
-        // styles/merges/column widths. Uses a cloned buffer since ExcelJS
-        // may take ownership of/transfer the one it's given.
         try {
           const excelWorkbook = new ExcelJS.Workbook();
           await excelWorkbook.xlsx.load(arrayBuffer.slice(0));
@@ -198,6 +229,15 @@ export default function FileEditModal({
       cancelled = true;
     };
   }, [isOpen, file]);
+
+  useEffect(() => {
+    return () => {
+      if (pdfUrlRef.current) {
+        URL.revokeObjectURL(pdfUrlRef.current);
+        pdfUrlRef.current = null;
+      }
+    };
+  }, []);
 
   // ── Lazily parse a sheet the first time its tab is opened ────
   useEffect(() => {
@@ -412,17 +452,19 @@ export default function FileEditModal({
               </span>
             </div>
             <p className="text-xs text-gray-400 mt-0.5">
-              {mode === "edit"
-                ? file.data_category && file.data_category !== "general"
-                  ? "Saving will re-sync the dashboard data for this file."
-                  : "General file — saving only updates the stored spreadsheet."
-                : canEdit
-                  ? 'Read-only view. Click "Edit File" to make changes.'
-                  : "Read-only view. You don't have edit access to this file."}
+              {isPdfFile(file)
+                ? "PDF preview"
+                : mode === "edit"
+                  ? file.data_category && file.data_category !== "general"
+                    ? "Saving will re-sync the dashboard data for this file."
+                    : "General file — saving only updates the stored spreadsheet."
+                  : canEdit
+                    ? 'Read-only view. Click "Edit File" to make changes.'
+                    : "Read-only view. You don't have edit access to this file."}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {mode === "view" && canEdit && (
+            {mode === "view" && canEdit && !isPdfFile(file) && (
               <button
                 onClick={enterEditMode}
                 disabled={loading || !!error}
@@ -450,7 +492,7 @@ export default function FileEditModal({
         </div>
 
         {/* Sheet tabs */}
-        {sheetNames.length > 1 && (
+        {!isPdfFile(file) && sheetNames.length > 1 && (
           <div className="flex items-center gap-1 px-6 pt-3 border-b border-gray-100 shrink-0 overflow-x-auto">
             {sheetNames.map((name) => (
               <button
@@ -478,6 +520,18 @@ export default function FileEditModal({
             <div className="flex items-center justify-center h-full text-red-500 gap-2 text-sm text-center px-8">
               <AlertTriangle size={16} className="shrink-0" /> {error}
             </div>
+          ) : isPdfFile(file) ? (
+            pdfUrl ? (
+              <iframe
+                src={pdfUrl}
+                title={file.name}
+                className="flex-1 min-h-0 w-full rounded-lg border border-gray-200 bg-white shadow-sm"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400 gap-2">
+                <Loader2 className="animate-spin" size={18} /> Preparing preview…
+              </div>
+            )
           ) : sheetLoading ? (
             <div className="flex items-center justify-center h-full text-gray-400 gap-2">
               <Loader2 className="animate-spin" size={18} /> Loading sheet…

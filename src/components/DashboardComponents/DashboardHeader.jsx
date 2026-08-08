@@ -73,38 +73,38 @@ export function DashboardHeader({
       </div>
 
       {/* Year selector + Compare */}
-      <div className="flex items-center gap-2.5">
-        <div
-          className="relative flex items-center gap-2 rounded-[10px] border border-slate-200/80 bg-white px-3.5 py-[7px] text-sm"
-          style={{ boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }}
-        >
-          <span
-            className={`h-[6px] w-[6px] rounded-full shrink-0 ${
-              error ? "bg-red-400" : "bg-blue-500"
-            }`}
-          />
-          <select
-            id="dashboard-year-select"
-            value={selectedYear}
-            onChange={(e) => onYearChange?.(e.target.value)}
-            disabled={loading || !!error}
-            className="bg-transparent text-[0.78rem] font-semibold text-slate-700 outline-none cursor-pointer pr-4 appearance-none disabled:cursor-not-allowed disabled:text-slate-400"
-          >
-            {loading && <option>Loading years…</option>}
-            {error && <option>Failed to load years</option>}
-            {!loading &&
-              !error &&
-              years.map(({ year, archived }) => (
-                <option key={year} value={year}>
-                  {year}
-                  {archived ? " (Archived)" : ""}
-                </option>
-              ))}
-          </select>
-          <svg className="h-3 w-3 text-slate-400 pointer-events-none absolute right-3" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
-          </svg>
-        </div>
+      <div className="flex items-center gap-2.5 shrink-0">
+  <div
+    className="relative flex items-center gap-2 rounded-[10px] border border-slate-200/80 bg-white px-3.5 py-[7px] text-sm shrink-0 w-max"
+    style={{ boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }}
+  >
+    <span
+      className={`h-[6px] w-[6px] rounded-full shrink-0 ${
+        error ? "bg-red-400" : "bg-blue-500"
+      }`}
+    />
+    <select
+      id="dashboard-year-select"
+      value={selectedYear}
+      onChange={(e) => onYearChange?.(e.target.value)}
+      disabled={loading || !!error}
+      className="bg-transparent text-[0.78rem] font-semibold text-slate-700 outline-none cursor-pointer pr-5 appearance-none disabled:cursor-not-allowed disabled:text-slate-400 whitespace-nowrap"
+    >
+      {loading && <option>Loading years…</option>}
+      {error && <option>Failed to load years</option>}
+      {!loading &&
+        !error &&
+        years.map(({ year, archived }) => (
+          <option key={year} value={year}>
+            {year}
+            {archived ? " (Archived)" : ""}
+          </option>
+        ))}
+    </select>
+    <svg className="h-3 w-3 text-slate-400 pointer-events-none absolute right-3" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
+    </svg>
+  </div>
 
         {onCompare && (
           <button

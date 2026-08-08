@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, Bell, Menu, LogOut, FolderOpen } from "lucide-react";
+import { Search, Bell, Menu, LogOut, FolderOpen, Settings } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 // Adjust this relative path to match TopHeader's location in your tree
 // (this mirrors the import used in ManageUsers.jsx).
@@ -290,16 +290,28 @@ export function TopHeader({
                 </div>
               )}
 
-              <button
-                onClick={() => {
-                  setDropdownOpen(false);
-                  onLogout?.();
-                }}
-                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[0.78rem] font-medium text-rose-500 hover:bg-rose-50 transition-colors"
-              >
+              <div className="py-1">
+                <button
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    // Settings workflow to be implemented
+                  }}
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[0.78rem] font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  <Settings size={14} strokeWidth={2} />
+                  Settings
+                </button>
+                <button
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    onLogout?.();
+                  }}
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[0.78rem] font-medium text-rose-500 hover:bg-rose-50 transition-colors"
+                >
                 <LogOut size={14} strokeWidth={2} />
                 Logout
               </button>
+              </div>
             </div>
           )}
         </div>
