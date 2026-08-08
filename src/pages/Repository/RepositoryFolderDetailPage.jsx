@@ -20,6 +20,7 @@ import {
   MoreHorizontal,
   ChevronRight,
   Upload,
+  FileUp,
   Tag,
   Link2,
   User,
@@ -28,6 +29,7 @@ import {
   Shield,
   X,
   Clock,
+  Inbox
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import RepositoryBackButton from "../../components/RepositoryComponents/RepositoryBackButton";
@@ -39,6 +41,8 @@ import FileAccessRequestModal from "../../components/RepositoryComponents/FileAc
 import AccessRequestsSidebar from "../../components/RepositoryComponents/AccessRequestsSidebar";
 import FloatingAccessRequestsButton from "../../components/RepositoryComponents/FloatingAccessRequestsButton";
 import { RepositorySearchBar } from "../../components/RepositoryComponents";
+import FileRequestModal from "../../components/RepositoryComponents/FileRequestModal";
+import FileRequestsPanel from "../../components/RepositoryComponents/FileRequestsPanel";
 
 // ── Role map ────────────────────────────────────────────────────
 const roleDisplayMap = {
@@ -504,14 +508,14 @@ function LastModifiedInfoCard({ rawDate, uploaderInfo }) {
   // Format full datetime string
   const fullDate = rawDate
     ? new Date(rawDate).toLocaleString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
     : "—";
 
   return (
@@ -568,6 +572,13 @@ export default function RepositoryFolderDetailPage() {
   const navigate = useNavigate();
   const decodedName = decodeURIComponent(folderName || "");
   const { userProfile } = useUser();
+
+  // ── File Request ─────────────────────────────────────────────
+  const [showFileRequestModal, setShowFileRequestModal] = useState(false);
+  const [isSubmittingFileRequest, setIsSubmittingFileRequest] = useState(false);
+  const [myFileRequests, setMyFileRequests] = useState([]);
+  const [showFileRequestsPanel, setShowFileRequestsPanel] = useState(false);
+  const [showFileRequestToast, setShowFileRequestToast] = useState(false);
 
   // ── Supabase state ─────────────────────────────────────────────
   const [section, setSection] = useState(null);
@@ -873,6 +884,53 @@ export default function RepositoryFolderDetailPage() {
     setLoading(false);
   }
 
+  async function fetchMyFileRequests() {
+    if (!userProfile?.id || !section?.id) return;
+    const { data, error } = await supabase
+      .from("file_requests")
+      .select("*")
+      .eq("requested_by", userProfile.id)
+      .eq("section_id", section.id)
+      .order("created_at", { ascending: false });
+    if (!error) setMyFileRequests(data || []);
+  }
+
+  useEffect(() => {
+    if (section?.id && userProfile?.id) fetchMyFileRequests();
+  }, [section?.id, userProfile?.id]);
+
+  async function submitFileRequest({ fileName, deadline, message }) {
+    setIsSubmittingFileRequest(true);
+    try {
+      const { error } = await supabase.from("file_requests").insert({
+        file_name: fileName,
+        description: message,
+        deadline,
+        status: "pending",
+        requested_by: userProfile?.id,
+        section_id: section?.id,
+        division_id: section?.division_id,
+      });
+      if (error) throw new Error(error.message);
+
+      await logAudit(
+        "File Request",
+        fileName,
+        `Requested in ${section?.name}`,
+        "Success",
+      );
+
+      setShowFileRequestModal(false);
+      setShowFileRequestToast(true);
+      fetchMyFileRequests();
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    } finally {
+      setIsSubmittingFileRequest(false);
+    }
+  }
+
   useEffect(() => {
     if (decodedName && userProfile?.id) fetchData();
   }, [decodedName, userProfile?.id]);
@@ -883,37 +941,43 @@ export default function RepositoryFolderDetailPage() {
     return () => clearTimeout(t);
   }, [showDeleteToast]);
 
+  useEffect(() => {
+    if (!showFileRequestToast) return;
+    const t = setTimeout(() => setShowFileRequestToast(false), 5000);
+    return () => clearTimeout(t);
+  }, [showFileRequestToast]);
+
   // ── Handlers ────────────────────────────────────────────────────
   async function handleDownloadFile(file) {
-  if (!hasFileAccess(file) || !file.path) return;
-  setDownloadingId(file.id);
-  try {
-    const bucket = getBucket(file.data_category);
-    const { data: blob, error } = await supabase.storage
-      .from(bucket)
-      .download(file.path);
-    if (error) throw new Error(error.message);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = file.name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    await logAudit(
-      "Download",
-      file.name,
-      `Downloaded from ${section?.name}`,
-      "Success",
-    );
-  } catch (err) {
-    console.error(err);
-    await logAudit("Download", file.name, err.message, "Failed");
-  } finally {
-    setDownloadingId(null);
+    if (!hasFileAccess(file) || !file.path) return;
+    setDownloadingId(file.id);
+    try {
+      const bucket = getBucket(file.data_category);
+      const { data: blob, error } = await supabase.storage
+        .from(bucket)
+        .download(file.path);
+      if (error) throw new Error(error.message);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      await logAudit(
+        "Download",
+        file.name,
+        `Downloaded from ${section?.name}`,
+        "Success",
+      );
+    } catch (err) {
+      console.error(err);
+      await logAudit("Download", file.name, err.message, "Failed");
+    } finally {
+      setDownloadingId(null);
+    }
   }
-}
 
   const logAudit = async (action, fileName, details, status = "Success") => {
     const { error } = await supabase.from("audit_logs").insert({
@@ -1051,7 +1115,7 @@ export default function RepositoryFolderDetailPage() {
     sortBy,
     selectedSchoolYear,
   ]);
-   
+
 
   const yearFilteredFiles = selectedSchoolYear
     ? allFiles.filter((f) => f.school_year === selectedSchoolYear)
@@ -1147,13 +1211,30 @@ export default function RepositoryFolderDetailPage() {
             </p>
           </div>
           {canEdit && (
-            <button
-              onClick={() => navigate("/upload-files")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm hover:shadow-md transition-all shrink-0"
-            >
-              <Upload size={15} />
-              Upload File
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => {
+                  setShowFileRequestsPanel(true);
+                  fetchMyFileRequests();
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-all"
+              >
+                <Inbox size={15} />
+                My Requests
+                {myFileRequests.length > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
+                    {myFileRequests.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setShowFileRequestModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm hover:shadow-md transition-all"
+              >
+                <FileUp size={15} />
+                Request File
+              </button>
+            </div>
           )}
         </div>
 
@@ -1231,11 +1312,10 @@ export default function RepositoryFolderDetailPage() {
                   <button
                     key={tab}
                     onClick={() => setActiveType(tab)}
-                    className={`px-3.5 py-1.5 text-[11px] font-semibold rounded-full transition-all border ${
-                      isActive
-                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                        : "text-slate-500 hover:bg-slate-50 border-slate-200 bg-white"
-                    }`}
+                    className={`px-3.5 py-1.5 text-[11px] font-semibold rounded-full transition-all border ${isActive
+                      ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                      : "text-slate-500 hover:bg-slate-50 border-slate-200 bg-white"
+                      }`}
                   >
                     {tab}
                     <span
@@ -1435,9 +1515,8 @@ export default function RepositoryFolderDetailPage() {
                   return (
                     <tr
                       key={file.id}
-                      className={`group relative transition-colors ${
-                        isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
-                      }`}
+                      className={`group relative transition-colors ${isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
+                        }`}
                     >
 
 
@@ -1454,11 +1533,10 @@ export default function RepositoryFolderDetailPage() {
                                 e.stopPropagation();
                                 toggleSelect(file.id);
                               }}
-                              className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                                isSelected
-                                  ? "bg-blue-50 border border-blue-200 text-blue-600"
-                                  : `border border-transparent group-hover:bg-slate-100 group-hover:border-slate-200 group-hover:text-slate-400 ${bg}`
-                              }`}
+                              className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${isSelected
+                                ? "bg-blue-50 border border-blue-200 text-blue-600"
+                                : `border border-transparent group-hover:bg-slate-100 group-hover:border-slate-200 group-hover:text-slate-400 ${bg}`
+                                }`}
                             >
                               {isSelected ? (
                                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -1507,11 +1585,10 @@ export default function RepositoryFolderDetailPage() {
                           </div>
                           {/* File hover popover */}
                           <div
-                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
-                              isFileHovered
-                                ? "opacity-100 visible scale-100 pointer-events-auto"
-                                : "opacity-0 invisible scale-95 pointer-events-none"
-                            }`}
+                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${isFileHovered
+                              ? "opacity-100 visible scale-100 pointer-events-auto"
+                              : "opacity-0 invisible scale-95 pointer-events-none"
+                              }`}
                           >
                             <FileInfoCard
                               file={file}
@@ -1532,11 +1609,10 @@ export default function RepositoryFolderDetailPage() {
                       {/* Status badge — clickable to open verify modal (verify-eligible roles only) */}
                       <td className="px-3 py-3.5 w-32">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                            isVerified
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : "bg-slate-100 text-slate-500 border-slate-200"
-                          } cursor-default`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${isVerified
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-slate-100 text-slate-500 border-slate-200"
+                            } cursor-default`}
                         >
                           {isVerified ? (
                             <>
@@ -1590,11 +1666,10 @@ export default function RepositoryFolderDetailPage() {
                           {/* User hover popover */}
                           {uploaderInfo && (
                             <div
-                              className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
-                                isUserHovered
-                                  ? "opacity-100 visible scale-100 pointer-events-auto"
-                                  : "opacity-0 invisible scale-95 pointer-events-none"
-                              }`}
+                              className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${isUserHovered
+                                ? "opacity-100 visible scale-100 pointer-events-auto"
+                                : "opacity-0 invisible scale-95 pointer-events-none"
+                                }`}
                             >
                               <UserInfoCard info={uploaderInfo} />
                             </div>
@@ -1629,11 +1704,10 @@ export default function RepositoryFolderDetailPage() {
                           </div>
                           {/* Last Modified hover popover */}
                           <div
-                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
-                              hoveredModifiedId === file.id
-                                ? "opacity-100 visible scale-100 pointer-events-auto"
-                                : "opacity-0 invisible scale-95 pointer-events-none"
-                            }`}
+                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${hoveredModifiedId === file.id
+                              ? "opacity-100 visible scale-100 pointer-events-auto"
+                              : "opacity-0 invisible scale-95 pointer-events-none"
+                              }`}
                           >
                             <LastModifiedInfoCard
                               rawDate={file.rawUpdatedAt || file.rawCreatedAt}
@@ -1743,20 +1817,18 @@ export default function RepositoryFolderDetailPage() {
               return (
                 <div
                   key={file.id}
-                  className={`relative bg-white rounded-2xl border p-4 transition-all cursor-pointer group ${
-                    isSelected
-                      ? "border-blue-300 shadow-md ring-1 ring-blue-100"
-                      : "border-slate-100 hover:shadow-md hover:border-slate-200 shadow-sm"
-                  }`}
+                  className={`relative bg-white rounded-2xl border p-4 transition-all cursor-pointer group ${isSelected
+                    ? "border-blue-300 shadow-md ring-1 ring-blue-100"
+                    : "border-slate-100 hover:shadow-md hover:border-slate-200 shadow-sm"
+                    }`}
                 >
                   {/* Checkbox */}
                   <button
                     onClick={() => toggleSelect(file.id)}
-                    className={`absolute top-3 left-3 w-5 h-5 rounded border flex items-center justify-center transition-all ${
-                      isSelected
-                        ? "bg-blue-600 border-blue-600 text-white opacity-100"
-                        : "bg-white border-slate-300 text-transparent opacity-0 group-hover:opacity-100 hover:border-blue-400"
-                    }`}
+                    className={`absolute top-3 left-3 w-5 h-5 rounded border flex items-center justify-center transition-all ${isSelected
+                      ? "bg-blue-600 border-blue-600 text-white opacity-100"
+                      : "bg-white border-slate-300 text-transparent opacity-0 group-hover:opacity-100 hover:border-blue-400"
+                      }`}
                   >
                     {isSelected && (
                       <svg
@@ -1779,11 +1851,10 @@ export default function RepositoryFolderDetailPage() {
                   {/* Status + verify (verify-eligible roles only) */}
                   <div className="flex justify-end mb-3">
                     <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${
-                        isVerified
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : "bg-slate-100 text-slate-500 border-slate-200"
-                      } cursor-default`}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${isVerified
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-slate-100 text-slate-500 border-slate-200"
+                        } cursor-default`}
                     >
                       {isVerified ? (
                         <>
@@ -1888,16 +1959,16 @@ export default function RepositoryFolderDetailPage() {
 
       {/* ── Modals ──────────────────────────────────────────── */}
       <FileEditModal
-  isOpen={!!editingFile}
-  onClose={() => setEditingFile(null)}
-  file={editingFile}
-  uploaderName={editingFile?.uploader}
-  canEdit={canEdit}
-  onSaved={() => {
-    setEditingFile(null);
-    if (decodedName) fetchData();
-  }}
-/>
+        isOpen={!!editingFile}
+        onClose={() => setEditingFile(null)}
+        file={editingFile}
+        uploaderName={editingFile?.uploader}
+        canEdit={canEdit}
+        onSaved={() => {
+          setEditingFile(null);
+          if (decodedName) fetchData();
+        }}
+      />
 
       <DeleteFileConfirmModal
         isOpen={!!fileToDelete}
@@ -1914,6 +1985,19 @@ export default function RepositoryFolderDetailPage() {
         file={verifyTarget}
         userProfile={userProfile}
         isVerifying={isVerifying}
+      />
+
+      <FileRequestModal
+        isOpen={showFileRequestModal}
+        onClose={() => setShowFileRequestModal(false)}
+        onSubmit={submitFileRequest}
+        isSubmitting={isSubmittingFileRequest}
+      />
+
+      <FileRequestsPanel
+        isOpen={showFileRequestsPanel}
+        onClose={() => setShowFileRequestsPanel(false)}
+        requests={myFileRequests}
       />
 
       <FileAccessRequestModal
@@ -2029,6 +2113,66 @@ export default function RepositoryFolderDetailPage() {
                 lineHeight: 1,
                 cursor: "pointer",
               }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showFileRequestToast && (
+        <div
+          className="fixed top-6 right-6 z-50 flex bg-white overflow-hidden"
+          style={{
+            width: 360,
+            height: 72,
+            borderRadius: 12,
+            boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
+            fontFamily: "Poppins, sans-serif",
+          }}
+        >
+          <div style={{ width: 6, backgroundColor: "#43D45B", flexShrink: 0 }} />
+          <div
+            className="flex items-center flex-1 relative"
+            style={{ padding: "0 14px", gap: 12 }}
+          >
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: "50%",
+                backgroundColor: "#43D45B",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <div>
+              <p style={{ fontSize: 15, fontWeight: 700, color: "#1F1F2E", lineHeight: 1.2, margin: 0 }}>
+                Success
+              </p>
+              <p style={{ fontSize: 12.5, fontWeight: 500, color: "#666", marginTop: 2, margin: 0 }}>
+                File request submitted.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowFileRequestToast(false)}
+              className="absolute top-2 right-2.5"
+              style={{ color: "#666", background: "none", border: "none", fontSize: 16, lineHeight: 1, cursor: "pointer" }}
             >
               ×
             </button>
