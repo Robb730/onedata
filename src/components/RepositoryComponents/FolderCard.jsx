@@ -1,6 +1,7 @@
 //DVISION FOLDER CARD COMPONENT
+import { useId } from "react";
 import { User, FolderOpen } from "lucide-react";
-import { FolderColorPicker } from "./FolderColorPicker";
+import { FolderColorPicker, COLOR_PRESETS } from "./FolderColorPicker";
 
 /**
  * FolderCard — Displays a division folder with customizable accent color,
@@ -18,79 +19,70 @@ import { FolderColorPicker } from "./FolderColorPicker";
  * @param {boolean}  [locked=false]
  */
 
-const AVATAR_PALETTE = [
-  { bg: "bg-emerald-100", text: "text-emerald-700" },
-  { bg: "bg-sky-100", text: "text-sky-700" },
-  { bg: "bg-amber-100", text: "text-amber-700" },
-  { bg: "bg-violet-100", text: "text-violet-700" },
-  { bg: "bg-rose-100", text: "text-rose-700" },
-  { bg: "bg-cyan-100", text: "text-cyan-700" },
-];
-
-function hashString(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
-}
-
-function getAvatarColors(identifier) {
-  return AVATAR_PALETTE[hashString(identifier) % AVATAR_PALETTE.length];
-}
-
-function getInitials(identifier) {
+// ManagerRow handles individual manager rendering
+function ManagerRow({ identifier }) {
   const namePart = identifier.includes("@") ? identifier.split("@")[0] : identifier;
   const pieces = namePart.split(/[.\s_-]+/).filter(Boolean);
+  let initials = namePart.slice(0, 2).toUpperCase();
   if (pieces.length >= 2) {
-    return (pieces[0][0] + pieces[1][0]).toUpperCase();
+    initials = (pieces[0][0] + pieces[1][0]).toUpperCase();
   }
-  return namePart.slice(0, 2).toUpperCase();
-}
 
-function ManagerRow({ identifier }) {
-  const { bg, text } = getAvatarColors(identifier);
+  let hash = 0;
+  for (let i = 0; i < identifier.length; i++) {
+    hash = (hash << 5) - hash + identifier.charCodeAt(i);
+    hash |= 0;
+  }
+  const idx = Math.abs(hash) % 6;
+  const palettes = [
+    { bg: "bg-emerald-100", text: "text-emerald-700" },
+    { bg: "bg-sky-100", text: "text-sky-700" },
+    { bg: "bg-amber-100", text: "text-amber-700" },
+    { bg: "bg-violet-100", text: "text-violet-700" },
+    { bg: "bg-rose-100", text: "text-rose-700" },
+    { bg: "bg-cyan-100", text: "text-cyan-700" },
+  ];
+  const { bg, text } = palettes[idx];
+
   return (
-    <div className="flex items-center gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-white">
-      <div
-        className={`${bg} ${text} rounded-full flex items-center justify-center font-semibold shrink-0`}
-        style={{ width: 22, height: 22, fontSize: 8 }}
-      >
-        {getInitials(identifier)}
+    <div className="flex items-center gap-2 py-1.5">
+      <div className={`${bg} ${text} rounded-full flex items-center justify-center font-semibold shrink-0`} style={{ width: 18, height: 18, fontSize: 8 }}>
+        {initials}
       </div>
-      <span className="text-xs font-medium text-slate-700 break-words leading-snug">
+      <span className="text-[11px] font-medium text-slate-700 break-words leading-tight">
         {identifier}
       </span>
     </div>
   );
 }
 
-function ManagerNamePill({ identifier }) {
-  const { bg, text } = getAvatarColors(identifier);
-  return (
-    <div className={`${bg} ${text} flex items-center gap-1.5 rounded-full px-2.5 py-1 shrink-0`}>
-      <div
-        className="rounded-full flex items-center justify-center font-semibold bg-white/60 shrink-0"
-        style={{ width: 16, height: 16, fontSize: 7 }}
-      >
-        {getInitials(identifier)}
-      </div>
-      <span className="text-[11px] font-medium whitespace-nowrap">{identifier}</span>
-    </div>
-  );
-}
-
 function ManagerNameList({ managerList }) {
-  const shown = managerList.slice(0, 2);
-  const extra = managerList.length - shown.length;
+  const visible = managerList.slice(0, 3);
+  const hiddenCount = managerList.length - 3;
   return (
-    <div className="flex items-center gap-1.5 overflow-hidden">
-      {shown.map((m) => (
-        <ManagerNamePill key={m} identifier={m} />
-      ))}
-      {extra > 0 && (
-        <span className="text-[11px] font-medium text-slate-500 shrink-0">+{extra} more</span>
+    <div className="group/mlist relative min-w-0 flex-1">
+      <div className="flex items-center gap-0.5">
+        <span className="truncate text-xs font-medium text-slate-800">
+          {visible.join(", ")}
+        </span>
+        {hiddenCount > 0 && (
+          <span className="shrink-0 text-[10px] font-bold text-slate-400">
+            +{hiddenCount}
+          </span>
+        )}
+      </div>
+
+      {managerList.length > 1 && (
+        <div className="absolute left-0 bottom-full mb-1 z-20 hidden w-48 flex-col rounded-xl border border-slate-200/60 bg-white/95 p-1.5 shadow-[0_8px_30px_rgba(15,23,42,0.12)] backdrop-blur-sm group-hover/mlist:flex">
+          <p className="px-1.5 py-1 text-[9px] font-bold uppercase tracking-widest text-slate-400">
+            Folder Managers
+          </p>
+          <div className="flex max-h-32 flex-col overflow-y-auto">
+            {managerList.map((m) => (
+              <ManagerRow key={m} identifier={m} />
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -115,26 +107,61 @@ export function FolderCard({
     if (onClick) onClick();
   };
 
+  const rawId = useId();
+  const cardId = `folder-card-${rawId.replace(/:/g, "")}`;
+
   const managerList = managers?.length ? managers : owner ? [owner] : [];
+  const preset = COLOR_PRESETS?.find(p => p.id === colorId) || COLOR_PRESETS?.find(p => p.id === "slate") || { accent: "#64748b", iconBg: iconBgColor };
+  const lordColor = preset.accent;
+  const dynamicIconBg = preset.iconBg || iconBgColor;
+
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    e.currentTarget.style.setProperty('--x', `${x}px`);
+    e.currentTarget.style.setProperty('--y', `${y}px`);
+  };
 
   if (viewMode === "list") {
     return (
       <div
+        id={cardId}
         onClick={handleClick}
-        className={`group relative flex cursor-pointer items-center gap-4 overflow-hidden rounded-2xl border border-slate-100/80 bg-white px-4 py-3 transition-all duration-300 hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)] ${locked ? "opacity-80" : ""
-          }`}
+        onMouseMove={handleMouseMove}
+        className={`group relative flex cursor-pointer rounded-2xl p-[1.5px] transition-all duration-300 hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)] ${locked ? "opacity-80" : ""}`}
         style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
         role="button"
         tabIndex={0}
       >
-        <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-sky-400 via-emerald-400 to-indigo-400" />
+        {/* Default static border background */}
+        <div className="absolute inset-0 rounded-2xl bg-slate-100/80 transition-opacity duration-300 group-hover:opacity-0" />
+
+        {/* Hover pointer glow background */}
+        <div 
+          className="absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" 
+          style={{ background: 'radial-gradient(circle 350px at var(--x, 50%) var(--y, 50%), #3EBA8F, #4B86EC, transparent 60%)' }}
+        />
+
+        {/* Inner White Card */}
+        <div className="relative flex items-center gap-4 w-full overflow-hidden rounded-[15px] bg-white px-4 py-3">
 
         {/* Icon */}
         <div
-          className={`w-11 h-11 ${locked ? "bg-gray-100" : iconBgColor
+          className={`w-11 h-11 ${locked ? "bg-gray-100" : dynamicIconBg
             } rounded-xl flex items-center justify-center shrink-0 ml-1 transition-all duration-300 group-hover:scale-[1.04]`}
         >
-          <FolderOpen size={20} className={locked ? "text-slate-400" : iconColor} />
+          {locked ? (
+            <FolderOpen size={20} className="text-slate-400" />
+          ) : (
+            <lord-icon
+              src="/folder-outline.json"
+              trigger="hover"
+              target={`#${cardId}`}
+              colors={`primary:${lordColor}`}
+              style={{ width: "24px", height: "24px" }}
+            ></lord-icon>
+          )}
         </div>
 
         {/* Name + section count */}
@@ -175,20 +202,32 @@ export function FolderCard({
             <FolderColorPicker currentColorId={colorId} onColorChange={onColorChange} />
           </div>
         )}
+        </div>
       </div>
     );
   }
 
   return (
     <div
+      id={cardId}
       onClick={handleClick}
-      className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-[22px] border border-slate-100/80 bg-white p-5 transition-all duration-300 hover:-translate-y-[3px] hover:shadow-[0_18px_42px_rgba(15,23,42,0.10)] ${locked ? "opacity-80" : ""
-        }`}
+      onMouseMove={handleMouseMove}
+      className={`group relative flex cursor-pointer flex-col rounded-[22px] p-[1.5px] transition-all duration-300 hover:-translate-y-[3px] hover:shadow-[0_18px_42px_rgba(15,23,42,0.10)] ${locked ? "opacity-80" : ""}`}
       style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
       role="button"
       tabIndex={0}
     >
-      <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-sky-400 via-emerald-400 to-indigo-400" />
+      {/* Default static border background */}
+      <div className="absolute inset-0 rounded-[22px] bg-slate-100/80 transition-opacity duration-300 group-hover:opacity-0" />
+
+      {/* Hover pointer glow background */}
+      <div 
+         className="absolute inset-0 rounded-[22px] opacity-0 transition-opacity duration-300 group-hover:opacity-100" 
+         style={{ background: 'radial-gradient(circle 350px at var(--x, 50%) var(--y, 50%), #3EBA8F, #4B86EC, transparent 60%)' }}
+      />
+      
+      {/* Inner White Card */}
+      <div className="relative flex w-full h-full flex-col overflow-hidden rounded-[21px] bg-white p-5">
 
       <div className="mb-4 flex items-center justify-between">
         <div>
@@ -208,10 +247,20 @@ export function FolderCard({
 
       <div className="mb-4 flex flex-col items-center gap-3 text-center">
         <div
-          className={`w-14 h-14 ${locked ? "bg-gray-100" : iconBgColor
+          className={`w-14 h-14 ${locked ? "bg-gray-100" : dynamicIconBg
             } rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-[1.04] group-hover:shadow-lg`}
         >
-          <FolderOpen size={24} className={locked ? "text-slate-400" : iconColor} />
+          {locked ? (
+            <FolderOpen size={24} className="text-slate-400" />
+          ) : (
+            <lord-icon
+              src="/folder-outline.json"
+              trigger="hover"
+              target={`#${cardId}`}
+              colors={`primary:${lordColor}`}
+              style={{ width: "28px", height: "28px" }}
+            ></lord-icon>
+          )}
         </div>
 
         <div className="flex w-full flex-col items-center gap-1">
@@ -242,6 +291,7 @@ export function FolderCard({
               ))}
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

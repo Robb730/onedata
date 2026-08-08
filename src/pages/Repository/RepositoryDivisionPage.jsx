@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import {
   RepositorySectionHeader,
   SectionFolderGrid,
+  RepositorySearchBar,
+  RepositoryTabs,
 } from "../../components/RepositoryComponents";
 import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
@@ -28,6 +30,17 @@ export default function RepositoryDivisionPage() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const [activeTab, setActiveTab] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem("sectionViewMode") || "grid";
+  });
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem("sectionViewMode", mode);
+  };
 
   const isOwnDivisionFocal =
     userProfile?.role === "division_focal" &&
@@ -164,9 +177,26 @@ export default function RepositoryDivisionPage() {
     };
   });
 
+  const tabs = ["All", "Active", "Review", "Archived"];
+
+  const tabCounts = {
+    All: folders.length,
+    Active: folders.length,
+    Review: 0,
+    Archived: 0,
+  };
+
+  const filteredFolders = folders.filter((folder) => {
+    const matchesSearch = folder.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const matchesTab = activeTab === "All" || activeTab === "Active";
+    return matchesSearch && matchesTab;
+  });
+
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-50 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-      <div className="relative mx-auto max-w-[1500px]">
+    <div className="min-h-screen bg-slate-50/40 pb-10">
+      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
         <RepositorySectionHeader
           title={loading ? "Loading…" : (division?.name ?? "Division")}
           subtitle={
@@ -216,6 +246,26 @@ export default function RepositoryDivisionPage() {
           </div>
         </div>
 
+        {/* ── Search / Sort / View Toggle ────────────────── */}
+        <div className="mb-6 rounded-[28px] border border-white/70 bg-white/85 p-4 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-5">
+          <RepositorySearchBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            viewMode={viewMode}
+            onViewModeChange={handleViewModeChange}
+          />
+
+          {/* ── Tab Filters ──────────────────────────────── */}
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <RepositoryTabs
+              tabs={tabs}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              counts={tabCounts}
+            />
+          </div>
+        </div>
+
         {/* ── States: loading / error / grid ────────────────────── */}
         {loading ? (
           <div className="rounded-[28px] border border-white/70 bg-white/85 px-6 py-24 text-center text-sm text-slate-500 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
@@ -225,9 +275,16 @@ export default function RepositoryDivisionPage() {
           <div className="rounded-[28px] border border-rose-100 bg-rose-50/80 px-6 py-24 text-center text-sm text-rose-600 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
             Failed to load sections: {error}
           </div>
+        ) : filteredFolders.length === 0 ? (
+          <div className="rounded-[28px] border border-white/70 bg-white/85 px-6 py-24 text-center text-sm text-slate-500 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+            {searchQuery
+              ? `No sections matching "${searchQuery}"`
+              : "No sections found."}
+          </div>
         ) : (
           <SectionFolderGrid
-            folders={folders}
+            folders={filteredFolders}
+            viewMode={viewMode}
             showCreateCard
             onFolderClick={(folder) =>
               navigate(`/repository/folder/${encodeURIComponent(folder.name)}`)

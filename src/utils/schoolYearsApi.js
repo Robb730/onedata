@@ -139,6 +139,24 @@ export async function getPreviousYearsProps() {
   );
 }
 
+// -> options for the upload-modal school-year selector: active year first-class,
+// plus any archived years that have been reopened. Newest label first, each
+// tagged so the UI can render "Active" / "Reopened" badges.
+export async function getUploadableSchoolYears() {
+  const { data, error } = await supabase
+    .from("school_years")
+    .select("label, status, is_reopened")
+    .order("label", { ascending: false });
+  if (error) throw error;
+
+  return (data ?? [])
+    .filter((row) => row.status === "active" || (row.status === "archived" && row.is_reopened))
+    .map((row) => ({
+      label: row.label,
+      tag: row.status === "active" ? "Active" : "Reopened",
+    }));
+}
+
 // -> options for the school-year selector dropdown: every year on record
 // (active, scheduled, and archived), newest label first, each flagged so
 // the UI can show an "Archived" tag.

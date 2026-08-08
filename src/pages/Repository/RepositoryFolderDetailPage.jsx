@@ -20,6 +20,7 @@ import {
   MoreHorizontal,
   ChevronRight,
   Upload,
+  FileUp,
   Tag,
   Link2,
   User,
@@ -28,6 +29,7 @@ import {
   Shield,
   X,
   Clock,
+  Inbox
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import RepositoryBackButton from "../../components/RepositoryComponents/RepositoryBackButton";
@@ -38,6 +40,9 @@ import { getSectionAccessLevel } from "../../utils/accessControl";
 import FileAccessRequestModal from "../../components/RepositoryComponents/FileAccessRequestModal";
 import AccessRequestsSidebar from "../../components/RepositoryComponents/AccessRequestsSidebar";
 import FloatingAccessRequestsButton from "../../components/RepositoryComponents/FloatingAccessRequestsButton";
+import { RepositorySearchBar } from "../../components/RepositoryComponents";
+import FileRequestModal from "../../components/RepositoryComponents/FileRequestModal";
+import FileRequestsPanel from "../../components/RepositoryComponents/FileRequestsPanel";
 
 // ── Role map ────────────────────────────────────────────────────
 const roleDisplayMap = {
@@ -164,6 +169,8 @@ function formatRelativeDate(dateStr) {
     return { relative: `${diffDays}d ago`, time: timeStr, full: fullStr };
   return { relative: fullStr, time: timeStr, full: fullStr };
 }
+
+
 
 // ─────────────────────────────────────────────────────────────────
 // ── MODALS ────────────────────────────────────────────────────────
@@ -501,14 +508,14 @@ function LastModifiedInfoCard({ rawDate, uploaderInfo }) {
   // Format full datetime string
   const fullDate = rawDate
     ? new Date(rawDate).toLocaleString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
     : "—";
 
   return (
@@ -566,6 +573,13 @@ export default function RepositoryFolderDetailPage() {
   const decodedName = decodeURIComponent(folderName || "");
   const { userProfile } = useUser();
 
+  // ── File Request ─────────────────────────────────────────────
+  const [showFileRequestModal, setShowFileRequestModal] = useState(false);
+  const [isSubmittingFileRequest, setIsSubmittingFileRequest] = useState(false);
+  const [myFileRequests, setMyFileRequests] = useState([]);
+  const [showFileRequestsPanel, setShowFileRequestsPanel] = useState(false);
+  const [showFileRequestToast, setShowFileRequestToast] = useState(false);
+
   // ── Supabase state ─────────────────────────────────────────────
   const [section, setSection] = useState(null);
   const [sectionManagerNames, setSectionManagerNames] = useState([]);
@@ -607,6 +621,9 @@ export default function RepositoryFolderDetailPage() {
 
   const [isAccessSidebarOpen, setIsAccessSidebarOpen] = useState(false);
   const [accessRefreshKey, setAccessRefreshKey] = useState(0);
+
+  const [schoolYears, setSchoolYears] = useState([]);
+  const [selectedSchoolYear, setSelectedSchoolYear] = useState("");
 
   function hasFileAccess(file) {
     return canEdit || fileAccessMap[file.id] === "approved";
@@ -674,6 +691,21 @@ export default function RepositoryFolderDetailPage() {
 
   // ── Access control ─────────────────────────────────────────────
   const [accessLevel, setAccessLevel] = useState("blocked");
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("school_years")
+      .select("label, status")
+      .order("label", { ascending: false })
+      .then(({ data, error }) => {
+        if (cancelled || error || !data) return;
+        setSchoolYears(data);
+        const active = data.find((y) => y.status === "active");
+        setSelectedSchoolYear((prev) => prev || active?.label || data[0]?.label || "");
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!section || !userProfile) return;
@@ -852,6 +884,53 @@ export default function RepositoryFolderDetailPage() {
     setLoading(false);
   }
 
+  async function fetchMyFileRequests() {
+    if (!userProfile?.id || !section?.id) return;
+    const { data, error } = await supabase
+      .from("file_requests")
+      .select("*")
+      .eq("requested_by", userProfile.id)
+      .eq("section_id", section.id)
+      .order("created_at", { ascending: false });
+    if (!error) setMyFileRequests(data || []);
+  }
+
+  useEffect(() => {
+    if (section?.id && userProfile?.id) fetchMyFileRequests();
+  }, [section?.id, userProfile?.id]);
+
+  async function submitFileRequest({ fileName, deadline, message }) {
+    setIsSubmittingFileRequest(true);
+    try {
+      const { error } = await supabase.from("file_requests").insert({
+        file_name: fileName,
+        description: message,
+        deadline,
+        status: "pending",
+        requested_by: userProfile?.id,
+        section_id: section?.id,
+        division_id: section?.division_id,
+      });
+      if (error) throw new Error(error.message);
+
+      await logAudit(
+        "File Request",
+        fileName,
+        `Requested in ${section?.name}`,
+        "Success",
+      );
+
+      setShowFileRequestModal(false);
+      setShowFileRequestToast(true);
+      fetchMyFileRequests();
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    } finally {
+      setIsSubmittingFileRequest(false);
+    }
+  }
+
   useEffect(() => {
     if (decodedName && userProfile?.id) fetchData();
   }, [decodedName, userProfile?.id]);
@@ -862,37 +941,43 @@ export default function RepositoryFolderDetailPage() {
     return () => clearTimeout(t);
   }, [showDeleteToast]);
 
+  useEffect(() => {
+    if (!showFileRequestToast) return;
+    const t = setTimeout(() => setShowFileRequestToast(false), 5000);
+    return () => clearTimeout(t);
+  }, [showFileRequestToast]);
+
   // ── Handlers ────────────────────────────────────────────────────
   async function handleDownloadFile(file) {
-  if (!hasFileAccess(file) || !file.path) return;
-  setDownloadingId(file.id);
-  try {
-    const bucket = getBucket(file.data_category);
-    const { data: blob, error } = await supabase.storage
-      .from(bucket)
-      .download(file.path);
-    if (error) throw new Error(error.message);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = file.name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    await logAudit(
-      "Download",
-      file.name,
-      `Downloaded from ${section?.name}`,
-      "Success",
-    );
-  } catch (err) {
-    console.error(err);
-    await logAudit("Download", file.name, err.message, "Failed");
-  } finally {
-    setDownloadingId(null);
+    if (!hasFileAccess(file) || !file.path) return;
+    setDownloadingId(file.id);
+    try {
+      const bucket = getBucket(file.data_category);
+      const { data: blob, error } = await supabase.storage
+        .from(bucket)
+        .download(file.path);
+      if (error) throw new Error(error.message);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      await logAudit(
+        "Download",
+        file.name,
+        `Downloaded from ${section?.name}`,
+        "Success",
+      );
+    } catch (err) {
+      console.error(err);
+      await logAudit("Download", file.name, err.message, "Failed");
+    } finally {
+      setDownloadingId(null);
+    }
   }
-}
 
   const logAudit = async (action, fileName, details, status = "Success") => {
     const { error } = await supabase.from("audit_logs").insert({
@@ -1014,7 +1099,8 @@ export default function RepositoryFolderDetailPage() {
           file.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           file.uploader.toLowerCase().includes(searchQuery.toLowerCase());
         const matchType = activeType === "All" || file.type === activeType;
-        return matchSearch && matchType;
+        const matchYear = !selectedSchoolYear || file.school_year === selectedSchoolYear;
+        return matchSearch && matchType && matchYear;
       })
       .sort((a, b) => {
         if (sortBy === "name") return a.name.localeCompare(b.name);
@@ -1027,17 +1113,23 @@ export default function RepositoryFolderDetailPage() {
     activeType,
     searchQuery,
     sortBy,
+    selectedSchoolYear,
   ]);
+
+
+  const yearFilteredFiles = selectedSchoolYear
+    ? allFiles.filter((f) => f.school_year === selectedSchoolYear)
+    : allFiles;
 
   const typeCounts = FILE_TYPE_TABS.reduce((acc, type) => {
     acc[type] =
       type === "All"
-        ? allFiles.length
-        : allFiles.filter((f) => f.type === type).length;
+        ? yearFilteredFiles.length
+        : yearFilteredFiles.filter((f) => f.type === type).length;
     return acc;
   }, {});
 
-  const verifiedCount = allFiles.filter((f) => f.status === "Verified").length;
+  const verifiedCount = yearFilteredFiles.filter((f) => f.status === "Verified").length;
   const backTarget = division
     ? `/repository/divisions/${division.id}`
     : "/repository";
@@ -1115,17 +1207,34 @@ export default function RepositoryFolderDetailPage() {
             <p className="text-[0.78rem] text-slate-400 font-medium mt-1">
               {loading
                 ? "Loading…"
-                : `${allFiles.length} files · ${verifiedCount} verified`}
+                : `${yearFilteredFiles.length} files · ${verifiedCount} verified`}
             </p>
           </div>
           {canEdit && (
-            <button
-              onClick={() => navigate("/upload-files")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm hover:shadow-md transition-all shrink-0"
-            >
-              <Upload size={15} />
-              Upload File
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => {
+                  setShowFileRequestsPanel(true);
+                  fetchMyFileRequests();
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-all"
+              >
+                <Inbox size={15} />
+                My Requests
+                {myFileRequests.length > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
+                    {myFileRequests.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setShowFileRequestModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm hover:shadow-md transition-all"
+              >
+                <FileUp size={15} />
+                Request File
+              </button>
+            </div>
           )}
         </div>
 
@@ -1179,81 +1288,45 @@ export default function RepositoryFolderDetailPage() {
           </div>
         </div>
 
-        {/* ── Search + Filter bar ───────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-4 mb-4 shadow-sm">
-          <div className="flex flex-col md:flex-row items-center gap-3 mb-4">
-            {/* Search */}
-            <div className="flex-1 w-full relative">
-              <Search
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                size={14}
-              />
-              <input
-                type="text"
-                placeholder="Search files by name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-[13px] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 transition-colors"
-              />
-            </div>
-
-            {/* Sort + view toggle */}
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="flex items-center gap-1.5 border border-slate-200 rounded-xl px-3 py-2.5 bg-white">
-                <SlidersHorizontal
-                  className="text-slate-400 shrink-0"
-                  size={13}
-                />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="text-[13px] text-slate-600 bg-transparent focus:outline-none cursor-pointer"
-                >
-                  <option value="date">Sort: Date</option>
-                  <option value="name">Sort: Name</option>
-                  <option value="size">Sort: Size</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-0.5 border border-slate-200 rounded-xl p-1">
-                <button
-                  onClick={() => setViewMode("list")}
-                  className={`p-2 rounded-lg transition-all ${viewMode === "list" ? "bg-blue-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
-                >
-                  <List size={14} />
-                </button>
-                <button
-                  onClick={() => setViewMode("grid")}
-                  className={`p-2 rounded-lg transition-all ${viewMode === "grid" ? "bg-blue-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
-                >
-                  <Grid3x3 size={14} />
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* ── Search / Sort / View Toggle ────────────────── */}
+        <div className="mb-6 rounded-[28px] border border-white/70 bg-white/85 p-4 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-5">
+          <RepositorySearchBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            placeholder="Search files by name or uploader..."
+            schoolYears={schoolYears}
+            selectedYear={selectedSchoolYear}
+            onYearChange={setSelectedSchoolYear}
+          />
 
           {/* Type filter pills */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {FILE_TYPE_TABS.map((tab) => {
-              const isActive = activeType === tab;
-              return (
-                <button
-                  key={tab}
-                  onClick={() => setActiveType(tab)}
-                  className={`px-3.5 py-1.5 text-[11px] font-semibold rounded-full transition-all border ${
-                    isActive
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              {FILE_TYPE_TABS.map((tab) => {
+                const isActive = activeType === tab;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveType(tab)}
+                    className={`px-3.5 py-1.5 text-[11px] font-semibold rounded-full transition-all border ${isActive
                       ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                       : "text-slate-500 hover:bg-slate-50 border-slate-200 bg-white"
-                  }`}
-                >
-                  {tab}
-                  <span
-                    className={`ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"}`}
+                      }`}
                   >
-                    {typeCounts[tab]}
-                  </span>
-                </button>
-              );
-            })}
+                    {tab}
+                    <span
+                      className={`ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"}`}
+                    >
+                      {typeCounts[tab]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -1264,7 +1337,7 @@ export default function RepositoryFolderDetailPage() {
             <span className="font-semibold text-slate-700">
               {filtered.length}
             </span>{" "}
-            of {allFiles.length} files
+            of {yearFilteredFiles.length} files
           </p>
           {allFiles.length > 0 && (
             <p className="text-[11px] text-slate-400">
@@ -1392,54 +1465,30 @@ export default function RepositoryFolderDetailPage() {
           </div>
         ) : viewMode === "list" ? (
           /* ── LIST VIEW ───────────────────────────────────── */
-          <div className="bg-white rounded-2xl border border-slate-100 overflow-visible shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
             {/* TABLE using real <table> for perfect alignment */}
-            <table className="w-full border-collapse">
+            <table className="w-full border-collapse table-fixed">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80">
-                  {/* Checkbox */}
-                  <th className="w-10 pl-4 pr-2 py-3 text-left">
-                    <button
-                      onClick={toggleSelectAll}
-                      className="flex items-center justify-center w-5 h-5 rounded border border-slate-300 text-slate-400 hover:text-slate-600 hover:border-slate-400 transition-colors bg-white"
-                    >
-                      {allFilteredSelected ? (
-                        <svg
-                          width="11"
-                          height="11"
-                          viewBox="0 0 12 12"
-                          fill="none"
-                        >
-                          <path
-                            d="M2 6l3 3 5-5"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      ) : null}
-                    </button>
-                  </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 min-w-[220px]">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">
                     File
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-36">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-32">
                     Status
                   </th>
                   <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-24">
                     Size
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-44">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-44 hidden md:table-cell">
                     Uploaded By
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-36">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-32 hidden sm:table-cell">
                     Date Uploaded
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-36">
+                  <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 w-32">
                     Last Modified
                   </th>
-                  <th className="px-3 py-3 pr-4 w-28"></th>
+                  <th className="px-3 py-3 pr-4 w-40"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -1466,39 +1515,10 @@ export default function RepositoryFolderDetailPage() {
                   return (
                     <tr
                       key={file.id}
-                      className={`group relative transition-colors ${
-                        isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
-                      }`}
+                      className={`group relative transition-colors ${isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
+                        }`}
                     >
-                      {/* Checkbox */}
-                      <td className="pl-4 pr-2 py-3.5 w-10">
-                        <button
-                          onClick={() => toggleSelect(file.id)}
-                          className="flex items-center justify-center w-5 h-5 rounded border text-slate-400 hover:border-blue-400 transition-colors bg-white"
-                          style={{
-                            borderColor: isSelected ? "#3b82f6" : undefined,
-                            backgroundColor: isSelected ? "#3b82f6" : undefined,
-                            color: isSelected ? "#fff" : undefined,
-                          }}
-                        >
-                          {isSelected && (
-                            <svg
-                              width="11"
-                              height="11"
-                              viewBox="0 0 12 12"
-                              fill="none"
-                            >
-                              <path
-                                d="M2 6l3 3 5-5"
-                                stroke="currentColor"
-                                strokeWidth="2.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          )}
-                        </button>
-                      </td>
+
 
                       {/* File cell — with hover popover */}
                       <td className="px-3 py-3.5 min-w-[220px]">
@@ -1508,13 +1528,52 @@ export default function RepositoryFolderDetailPage() {
                           onMouseLeave={handleFileMouseLeave}
                         >
                           <div className="flex items-center gap-2.5">
-                            <div
-                              className={`w-8 h-8 ${bg} rounded-lg flex items-center justify-center shrink-0`}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSelect(file.id);
+                              }}
+                              className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${isSelected
+                                ? "bg-blue-50 border border-blue-200 text-blue-600"
+                                : `border border-transparent group-hover:bg-slate-100 group-hover:border-slate-200 group-hover:text-slate-400 ${bg}`
+                                }`}
                             >
-                              <Icon size={14} className={color} />
-                            </div>
+                              {isSelected ? (
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                  <path
+                                    d="M2 6l3 3 5-5"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              ) : (
+                                <div className="relative flex items-center justify-center w-full h-full">
+                                  <Icon
+                                    size={14}
+                                    className={`absolute transition-opacity duration-200 ${color} group-hover:opacity-0`}
+                                  />
+                                  <svg
+                                    width="12"
+                                    height="12"
+                                    viewBox="0 0 12 12"
+                                    fill="none"
+                                    className="absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                  >
+                                    <path
+                                      d="M2 6l3 3 5-5"
+                                      stroke="currentColor"
+                                      strokeWidth="2.5"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                </div>
+                              )}
+                            </button>
                             <div className="min-w-0">
-                              <p className="text-[13px] font-semibold text-slate-800 truncate max-w-[200px] leading-tight">
+                              <p className="text-[13px] font-semibold text-slate-800 truncate leading-tight">
                                 {file.name}
                               </p>
                               <p
@@ -1526,11 +1585,10 @@ export default function RepositoryFolderDetailPage() {
                           </div>
                           {/* File hover popover */}
                           <div
-                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
-                              isFileHovered
-                                ? "opacity-100 visible scale-100 pointer-events-auto"
-                                : "opacity-0 invisible scale-95 pointer-events-none"
-                            }`}
+                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${isFileHovered
+                              ? "opacity-100 visible scale-100 pointer-events-auto"
+                              : "opacity-0 invisible scale-95 pointer-events-none"
+                              }`}
                           >
                             <FileInfoCard
                               file={file}
@@ -1549,22 +1607,12 @@ export default function RepositoryFolderDetailPage() {
                       </td>
 
                       {/* Status badge — clickable to open verify modal (verify-eligible roles only) */}
-                      <td className="px-3 py-3.5 w-36">
-                        <button
-                          onClick={() => canVerify && setVerifyTarget(file)}
-                          disabled={!canVerify}
-                          title={
-                            canVerify
-                              ? isVerified
-                                ? "Click to unverify"
-                                : "Click to verify"
-                              : ""
-                          }
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all ${
-                            isVerified
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                              : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
-                          } ${canVerify ? "cursor-pointer" : "cursor-default"}`}
+                      <td className="px-3 py-3.5 w-32">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${isVerified
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-slate-100 text-slate-500 border-slate-200"
+                            } cursor-default`}
                         >
                           {isVerified ? (
                             <>
@@ -1576,7 +1624,7 @@ export default function RepositoryFolderDetailPage() {
                               Unverified
                             </>
                           )}
-                        </button>
+                        </span>
                       </td>
 
                       {/* Size */}
@@ -1587,7 +1635,7 @@ export default function RepositoryFolderDetailPage() {
                       </td>
 
                       {/* Uploaded By — with user popover */}
-                      <td className="px-3 py-3.5 w-44">
+                      <td className="px-3 py-3.5 w-44 hidden md:table-cell">
                         <div
                           className="relative inline-block"
                           onMouseEnter={() =>
@@ -1618,11 +1666,10 @@ export default function RepositoryFolderDetailPage() {
                           {/* User hover popover */}
                           {uploaderInfo && (
                             <div
-                              className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
-                                isUserHovered
-                                  ? "opacity-100 visible scale-100 pointer-events-auto"
-                                  : "opacity-0 invisible scale-95 pointer-events-none"
-                              }`}
+                              className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${isUserHovered
+                                ? "opacity-100 visible scale-100 pointer-events-auto"
+                                : "opacity-0 invisible scale-95 pointer-events-none"
+                                }`}
                             >
                               <UserInfoCard info={uploaderInfo} />
                             </div>
@@ -1631,7 +1678,7 @@ export default function RepositoryFolderDetailPage() {
                       </td>
 
                       {/* Date Uploaded */}
-                      <td className="px-3 py-3.5 w-36">
+                      <td className="px-3 py-3.5 w-32 hidden sm:table-cell">
                         <p className="text-[12px] font-semibold text-slate-700 leading-tight">
                           {uploaded.relative}
                         </p>
@@ -1641,7 +1688,7 @@ export default function RepositoryFolderDetailPage() {
                       </td>
 
                       {/* Last Modified — with hover popover */}
-                      <td className="px-3 py-3.5 w-36">
+                      <td className="px-3 py-3.5 w-32 hidden xl:table-cell">
                         <div
                           className="relative inline-block"
                           onMouseEnter={() => handleModifiedMouseEnter(file.id)}
@@ -1657,11 +1704,10 @@ export default function RepositoryFolderDetailPage() {
                           </div>
                           {/* Last Modified hover popover */}
                           <div
-                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
-                              hoveredModifiedId === file.id
-                                ? "opacity-100 visible scale-100 pointer-events-auto"
-                                : "opacity-0 invisible scale-95 pointer-events-none"
-                            }`}
+                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${hoveredModifiedId === file.id
+                              ? "opacity-100 visible scale-100 pointer-events-auto"
+                              : "opacity-0 invisible scale-95 pointer-events-none"
+                              }`}
                           >
                             <LastModifiedInfoCard
                               rawDate={file.rawUpdatedAt || file.rawCreatedAt}
@@ -1672,7 +1718,7 @@ export default function RepositoryFolderDetailPage() {
                       </td>
 
                       {/* Actions */}
-                      <td className="px-3 py-3.5 pr-4 w-28">
+                      <td className="px-3 py-3.5 pr-4 w-40">
                         {canEdit ? (
                           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-150">
                             <button
@@ -1749,10 +1795,10 @@ export default function RepositoryFolderDetailPage() {
             </table>
 
             {/* Table footer */}
+            {/* Table footer */}
             <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
               <p className="text-[11px] text-slate-400">
-                {allFiles.length} file{allFiles.length !== 1 ? "s" : ""} · Click
-                status badge to verify or unverify
+                {yearFilteredFiles.length} file{yearFilteredFiles.length !== 1 ? "s" : ""}
               </p>
               <p className="text-[11px] text-slate-400">
                 ○ All actions are audit-logged
@@ -1771,20 +1817,18 @@ export default function RepositoryFolderDetailPage() {
               return (
                 <div
                   key={file.id}
-                  className={`relative bg-white rounded-2xl border p-4 transition-all cursor-pointer group ${
-                    isSelected
-                      ? "border-blue-300 shadow-md ring-1 ring-blue-100"
-                      : "border-slate-100 hover:shadow-md hover:border-slate-200 shadow-sm"
-                  }`}
+                  className={`relative bg-white rounded-2xl border p-4 transition-all cursor-pointer group ${isSelected
+                    ? "border-blue-300 shadow-md ring-1 ring-blue-100"
+                    : "border-slate-100 hover:shadow-md hover:border-slate-200 shadow-sm"
+                    }`}
                 >
                   {/* Checkbox */}
                   <button
                     onClick={() => toggleSelect(file.id)}
-                    className={`absolute top-3 left-3 w-5 h-5 rounded border flex items-center justify-center transition-all ${
-                      isSelected
-                        ? "bg-blue-600 border-blue-600 text-white opacity-100"
-                        : "bg-white border-slate-300 text-transparent opacity-0 group-hover:opacity-100 hover:border-blue-400"
-                    }`}
+                    className={`absolute top-3 left-3 w-5 h-5 rounded border flex items-center justify-center transition-all ${isSelected
+                      ? "bg-blue-600 border-blue-600 text-white opacity-100"
+                      : "bg-white border-slate-300 text-transparent opacity-0 group-hover:opacity-100 hover:border-blue-400"
+                      }`}
                   >
                     {isSelected && (
                       <svg
@@ -1806,14 +1850,11 @@ export default function RepositoryFolderDetailPage() {
 
                   {/* Status + verify (verify-eligible roles only) */}
                   <div className="flex justify-end mb-3">
-                    <button
-                      onClick={() => canVerify && setVerifyTarget(file)}
-                      disabled={!canVerify}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border transition-all ${
-                        isVerified
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                          : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
-                      } ${canVerify ? "cursor-pointer" : "cursor-default"}`}
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${isVerified
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-slate-100 text-slate-500 border-slate-200"
+                        } cursor-default`}
                     >
                       {isVerified ? (
                         <>
@@ -1824,7 +1865,7 @@ export default function RepositoryFolderDetailPage() {
                           <XCircle size={8} /> Unverified
                         </>
                       )}
-                    </button>
+                    </span>
                   </div>
 
                   <div
@@ -1918,16 +1959,16 @@ export default function RepositoryFolderDetailPage() {
 
       {/* ── Modals ──────────────────────────────────────────── */}
       <FileEditModal
-  isOpen={!!editingFile}
-  onClose={() => setEditingFile(null)}
-  file={editingFile}
-  uploaderName={editingFile?.uploader}
-  canEdit={canEdit}
-  onSaved={() => {
-    setEditingFile(null);
-    if (decodedName) fetchData();
-  }}
-/>
+        isOpen={!!editingFile}
+        onClose={() => setEditingFile(null)}
+        file={editingFile}
+        uploaderName={editingFile?.uploader}
+        canEdit={canEdit}
+        onSaved={() => {
+          setEditingFile(null);
+          if (decodedName) fetchData();
+        }}
+      />
 
       <DeleteFileConfirmModal
         isOpen={!!fileToDelete}
@@ -1944,6 +1985,19 @@ export default function RepositoryFolderDetailPage() {
         file={verifyTarget}
         userProfile={userProfile}
         isVerifying={isVerifying}
+      />
+
+      <FileRequestModal
+        isOpen={showFileRequestModal}
+        onClose={() => setShowFileRequestModal(false)}
+        onSubmit={submitFileRequest}
+        isSubmitting={isSubmittingFileRequest}
+      />
+
+      <FileRequestsPanel
+        isOpen={showFileRequestsPanel}
+        onClose={() => setShowFileRequestsPanel(false)}
+        requests={myFileRequests}
       />
 
       <FileAccessRequestModal
@@ -2059,6 +2113,66 @@ export default function RepositoryFolderDetailPage() {
                 lineHeight: 1,
                 cursor: "pointer",
               }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showFileRequestToast && (
+        <div
+          className="fixed top-6 right-6 z-50 flex bg-white overflow-hidden"
+          style={{
+            width: 360,
+            height: 72,
+            borderRadius: 12,
+            boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
+            fontFamily: "Poppins, sans-serif",
+          }}
+        >
+          <div style={{ width: 6, backgroundColor: "#43D45B", flexShrink: 0 }} />
+          <div
+            className="flex items-center flex-1 relative"
+            style={{ padding: "0 14px", gap: 12 }}
+          >
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: "50%",
+                backgroundColor: "#43D45B",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <div>
+              <p style={{ fontSize: 15, fontWeight: 700, color: "#1F1F2E", lineHeight: 1.2, margin: 0 }}>
+                Success
+              </p>
+              <p style={{ fontSize: 12.5, fontWeight: 500, color: "#666", marginTop: 2, margin: 0 }}>
+                File request submitted.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowFileRequestToast(false)}
+              className="absolute top-2 right-2.5"
+              style={{ color: "#666", background: "none", border: "none", fontSize: 16, lineHeight: 1, cursor: "pointer" }}
             >
               ×
             </button>
