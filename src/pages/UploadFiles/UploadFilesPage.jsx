@@ -164,9 +164,59 @@ export default function UploadFilesPage() {
     setUploadsPage(1);
   };
 
+  const fetchFileRequests = async () => {
+    if (!userProfile?.section_id) return;
+    const { data, error } = await supabase
+      .from("file_requests")
+      .select(`
+      id, file_name, description, deadline, status, created_at,
+      requested_by,
+      users:requested_by ( full_name, role )
+    `)
+      .eq("section_id", userProfile.section_id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Failed to fetch file requests:", error);
+      return;
+    }
+
+    const today = new Date();
+    setFileRequests(
+      (data || []).map((r) => {
+        const isOverdue =
+          r.status === "pending" && r.deadline && new Date(r.deadline) < today;
+        return {
+          id: r.id,
+          fileName: r.file_name,
+          message: r.description,
+          dueDate: r.deadline
+            ? new Date(r.deadline).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
+            : "—",
+          requestedBy: r.users?.full_name ?? "Unknown",
+          requesterRole: getRoleDisplay(r.users?.role) ?? "",
+          status:
+            r.status === "completed"
+              ? "Completed"
+              : isOverdue
+                ? "Overdue"
+                : "Pending",
+        };
+      }),
+    );
+  };
+
   useEffect(() => {
     fetchRecentUploads();
   }, []);
+
+  useEffect(() => {
+    fetchFileRequests();
+  }, [userProfile?.section_id]);
 
   useEffect(() => {
     if (!showToast) return;
@@ -175,7 +225,7 @@ export default function UploadFilesPage() {
   }, [showToast]);
 
   // Near the top, after your state declarations
-  
+
 
   const showFolderPanel = isAdmin || isDivisionFocal;
   const showFileRequestPanel = isSectionFocal || isSectionPersonnel;
@@ -707,12 +757,23 @@ export default function UploadFilesPage() {
 
   const handleRequestFileUpload = async (fileName, schoolYear, uploadType, file) => {
     const req = pendingRequestUpload;
-    const newStatus =
-      req.status === "Overdue" ? "Completed Overdue" : "Completed";
-    setFileRequests((prev) =>
-      prev.map((r) => (r.id === req.id ? { ...r, status: newStatus } : r)),
-    );
+
+    const { error } = await supabase
+      .from("file_requests")
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", req.id);
+
+    if (error) {
+      console.error("Failed to update file request status:", error);
+      alert("File uploaded, but failed to update the request status.");
+    }
+
     await addToUploads(fileName, schoolYear, uploadType, file);
+    await fetchFileRequests();
+
     setShowUploadModal(false);
     setPendingFile(null);
     setPendingRequestUpload(null);
@@ -883,6 +944,11 @@ export default function UploadFilesPage() {
                 </div>
                 <div className="text-xs text-gray-400">{req.requesterRole}</div>
               </div>
+              {req.message && (
+                <p className="ml-6 mt-2 text-xs text-gray-500 italic">
+                  "{req.message}"
+                </p>
+              )}
               {req.status !== "Completed" &&
                 req.status !== "Completed Overdue" && (
                   <div className="flex justify-end mt-3">
@@ -991,159 +1057,159 @@ export default function UploadFilesPage() {
   return (
     <div className="min-h-screen bg-slate-50/40">
       <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
-      <div className="mb-8">
-        <h1 className="text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">Upload Files</h1>
-        <p className="text-[0.78rem] text-slate-400 font-medium mt-1">
-          {selectedFolderName
-            ? `Uploading to: ${selectedFolderName}`
-            : showFolderPanel
-              ? "Select a section folder on the right before uploading"
-              : "Resolving your assigned section…"}
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {renderUploadArea()}
-          {renderRecentUploads()}
+        <div className="mb-8">
+          <h1 className="text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">Upload Files</h1>
+          <p className="text-[0.78rem] text-slate-400 font-medium mt-1">
+            {selectedFolderName
+              ? `Uploading to: ${selectedFolderName}`
+              : showFolderPanel
+                ? "Select a section folder on the right before uploading"
+                : "Resolving your assigned section…"}
+          </p>
         </div>
 
-        <div className="lg:col-span-1">
-          {showFolderPanel && (
-            <div className="rounded-[16px] border border-slate-100/80 bg-white p-6 shadow-[0_1px_4px_rgba(15,23,42,0.03)] sticky top-8">
-              <h3 className="text-[1.05rem] font-bold text-slate-900 mb-1 tracking-tight">Selected Section</h3>
-              <p className="text-[0.75rem] text-slate-400 font-medium mb-4">
-                Click to change the destination folder
-              </p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            {renderUploadArea()}
+            {renderRecentUploads()}
+          </div>
 
-              {selectedFolder ? (
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-[11px] text-blue-500 font-bold uppercase tracking-wide mb-1">
-                    Section
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <FolderOpen
-                      className="text-blue-600 flex-shrink-0"
-                      size={15}
-                    />
-                    <p className="text-sm font-semibold text-blue-900 truncate">
-                      {selectedFolderName}
-                    </p>
-                  </div>
-                  {selectedFolder.divisionName && (
-                    <p className="text-xs text-blue-400 mt-1 ml-5">
-                      {selectedFolder.divisionName}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-400 mb-4">
-                  No section selected
+          <div className="lg:col-span-1">
+            {showFolderPanel && (
+              <div className="rounded-[16px] border border-slate-100/80 bg-white p-6 shadow-[0_1px_4px_rgba(15,23,42,0.03)] sticky top-8">
+                <h3 className="text-[1.05rem] font-bold text-slate-900 mb-1 tracking-tight">Selected Section</h3>
+                <p className="text-[0.75rem] text-slate-400 font-medium mb-4">
+                  Click to change the destination folder
                 </p>
-              )}
 
-              <button
-                onClick={() => setShowFolderModal(true)}
-                className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium transition-colors"
-              >
-                {selectedFolder ? "Change Section" : "Select Section"}
-              </button>
-            </div>
-          )}
+                {selectedFolder ? (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-[11px] text-blue-500 font-bold uppercase tracking-wide mb-1">
+                      Section
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <FolderOpen
+                        className="text-blue-600 flex-shrink-0"
+                        size={15}
+                      />
+                      <p className="text-sm font-semibold text-blue-900 truncate">
+                        {selectedFolderName}
+                      </p>
+                    </div>
+                    {selectedFolder.divisionName && (
+                      <p className="text-xs text-blue-400 mt-1 ml-5">
+                        {selectedFolder.divisionName}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400 mb-4">
+                    No section selected
+                  </p>
+                )}
 
-          {showFileRequestPanel && (
-            <div className="sticky top-8 h-[calc(100vh-8rem)]">
-              {renderFileRequestsPanel()}
-            </div>
-          )}
-        </div>
-      </div>
+                <button
+                  onClick={() => setShowFolderModal(true)}
+                  className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium transition-colors"
+                >
+                  {selectedFolder ? "Change Section" : "Select Section"}
+                </button>
+              </div>
+            )}
 
-      <FolderSelectionModal
-        isOpen={showFolderModal}
-        onClose={() => setShowFolderModal(false)}
-        onSelect={handleFolderSelect}
-        mode={isDivisionFocal ? "division" : "admin"}
-        divisionId={isDivisionFocal ? userProfile?.division_id : null}
-        divisionName={isDivisionFocal ? (userProfile?.division?.name ?? "") : ""}
-      />
-
-      {showUploadModal && (
-        <FileUploadModal
-          isOpen={showUploadModal}
-          onClose={() => {
-            setShowUploadModal(false);
-            setPendingFile(null);
-            setPendingRequestUpload(null);
-          }}
-          selectedFolder={selectedFolderName || ""}
-          fileName={
-            pendingFile?.name === "browse" ? "" : pendingFile?.name || ""
-          }
-          onUpload={
-            pendingRequestUpload ? handleRequestFileUpload : handleFileUpload
-          }
-          subfolders={activeSubfolders}
-        />
-      )}
-
-      {showToast && (
-        <div
-          className="fixed top-6 right-6 z-50 flex bg-white overflow-hidden animate-toast-in"
-          style={{
-            width: "360px",
-            height: "72px",
-            borderRadius: "12px",
-            boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
-            fontFamily: "Poppins, sans-serif",
-          }}
-        >
-          <div style={{ width: "6px", backgroundColor: "#43D45B", flexShrink: 0 }} />
-
-          <div
-            className="flex items-center flex-1 relative"
-            style={{ padding: "0 14px", gap: "12px" }}
-          >
-            <div
-              className="flex items-center justify-center shrink-0"
-              style={{
-                width: "34px",
-                height: "34px",
-                borderRadius: "50%",
-                backgroundColor: "#43D45B",
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </div>
-
-            <div className="flex flex-col justify-center">
-              <p style={{ fontSize: "15px", fontWeight: 700, color: "#1F1F2E", lineHeight: 1.2, margin: 0 }}>
-                Success
-              </p>
-              <p style={{ fontSize: "12.5px", fontWeight: 500, color: "#666666", marginTop: "2px", margin: 0 }}>
-                File uploaded successfully.
-              </p>
-            </div>
-
-            <button
-              onClick={() => setShowToast(false)}
-              className="absolute top-2 right-2.5 cursor-pointer"
-              style={{
-                color: "#666666",
-                background: "none",
-                border: "none",
-                fontSize: "16px",
-                lineHeight: 1,
-              }}
-            >
-              ×
-            </button>
+            {showFileRequestPanel && (
+              <div className="sticky top-8 h-[calc(100vh-8rem)]">
+                {renderFileRequestsPanel()}
+              </div>
+            )}
           </div>
         </div>
-      )}
-    </div>
+
+        <FolderSelectionModal
+          isOpen={showFolderModal}
+          onClose={() => setShowFolderModal(false)}
+          onSelect={handleFolderSelect}
+          mode={isDivisionFocal ? "division" : "admin"}
+          divisionId={isDivisionFocal ? userProfile?.division_id : null}
+          divisionName={isDivisionFocal ? (userProfile?.division?.name ?? "") : ""}
+        />
+
+        {showUploadModal && (
+          <FileUploadModal
+            isOpen={showUploadModal}
+            onClose={() => {
+              setShowUploadModal(false);
+              setPendingFile(null);
+              setPendingRequestUpload(null);
+            }}
+            selectedFolder={selectedFolderName || ""}
+            fileName={
+              pendingFile?.name === "browse" ? "" : pendingFile?.name || ""
+            }
+            onUpload={
+              pendingRequestUpload ? handleRequestFileUpload : handleFileUpload
+            }
+            subfolders={activeSubfolders}
+          />
+        )}
+
+        {showToast && (
+          <div
+            className="fixed top-6 right-6 z-50 flex bg-white overflow-hidden animate-toast-in"
+            style={{
+              width: "360px",
+              height: "72px",
+              borderRadius: "12px",
+              boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
+              fontFamily: "Poppins, sans-serif",
+            }}
+          >
+            <div style={{ width: "6px", backgroundColor: "#43D45B", flexShrink: 0 }} />
+
+            <div
+              className="flex items-center flex-1 relative"
+              style={{ padding: "0 14px", gap: "12px" }}
+            >
+              <div
+                className="flex items-center justify-center shrink-0"
+                style={{
+                  width: "34px",
+                  height: "34px",
+                  borderRadius: "50%",
+                  backgroundColor: "#43D45B",
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+
+              <div className="flex flex-col justify-center">
+                <p style={{ fontSize: "15px", fontWeight: 700, color: "#1F1F2E", lineHeight: 1.2, margin: 0 }}>
+                  Success
+                </p>
+                <p style={{ fontSize: "12.5px", fontWeight: 500, color: "#666666", marginTop: "2px", margin: 0 }}>
+                  File uploaded successfully.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowToast(false)}
+                className="absolute top-2 right-2.5 cursor-pointer"
+                style={{
+                  color: "#666666",
+                  background: "none",
+                  border: "none",
+                  fontSize: "16px",
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
