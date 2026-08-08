@@ -14,6 +14,7 @@ export default function FileUploadModal({
   onClose,
   selectedFolder,
   fileName: initialFileName,
+  initialFile,
   onUpload,
   subfolders = [],
 }) {
@@ -26,6 +27,8 @@ export default function FileUploadModal({
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedSubfolder, setSelectedSubfolder] = useState(null);
   const [uploadType, setUploadType] = useState("general");
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const [isYearOpen, setIsYearOpen] = useState(false);
   const yearRef = useRef(null);
@@ -51,7 +54,7 @@ export default function FileUploadModal({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStep(1);
     setFileName(initialFileName);
-    setSelectedFile(null);
+    setSelectedFile(initialFile || null);
     setSelectedSubfolder(null);
     setUploadType("general");
     setIsYearOpen(false);
@@ -82,6 +85,22 @@ export default function FileUploadModal({
     return () => { cancelled = true; };
   }, [isOpen, initialFileName]);
 
+  useEffect(() => {
+    let interval;
+    if (isUploading) {
+      setUploadProgress(0);
+      interval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 95) return prev;
+          return prev + Math.random() * 5 + 2; 
+        });
+      }, 600);
+    } else {
+      setUploadProgress(100);
+    }
+    return () => clearInterval(interval);
+  }, [isUploading]);
+
   if (!isOpen) return null;
 
   const handleFileChange = (e) => {
@@ -92,24 +111,34 @@ export default function FileUploadModal({
     }
   };
 
-  const handleStep1Submit = (e) => {
+  const handleStep1Submit = async (e) => {
     e.preventDefault();
     if (!fileName || !schoolYear || !selectedFile) return;
     if (isTwoStep) {
       setStep(2);
     } else {
-      onUpload(fileName, schoolYear, uploadType, selectedFile);
+      setIsUploading(true);
+      try {
+        await onUpload(fileName, schoolYear, uploadType, selectedFile);
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
-  const handleFinalUpload = () => {
+  const handleFinalUpload = async () => {
+    setIsUploading(true);
     const finalName = codedName ?? fileName;
-    onUpload(finalName, schoolYear, uploadType, selectedFile);
-    setStep(1);
-    setFileName("");
-    setSelectedFile(null);
-    setSelectedSubfolder(null);
-    setUploadType("general");
+    try {
+      await onUpload(finalName, schoolYear, uploadType, selectedFile);
+    } finally {
+      setIsUploading(false);
+      setStep(1);
+      setFileName("");
+      setSelectedFile(null);
+      setSelectedSubfolder(null);
+      setUploadType("general");
+    }
   };
 
   const accentStyle = activeCode
@@ -160,6 +189,32 @@ export default function FileUploadModal({
           </button>
         </div>
 
+        {isUploading ? (
+          <div className="p-12 flex flex-col items-center justify-center space-y-6">
+            <div className="relative flex items-center justify-center">
+              <div className="w-16 h-16 border-4 border-blue-100 rounded-full"></div>
+              <div className="w-16 h-16 border-4 border-blue-600 rounded-full animate-spin absolute border-t-transparent"></div>
+              <FileText size={20} className="text-blue-600 absolute animate-pulse" />
+            </div>
+            <div className="w-full max-w-xs text-center">
+              <h3 className="text-gray-900 font-bold mb-1">Uploading File</h3>
+              <p className="text-sm text-gray-500 mb-4 truncate">{fileName}</p>
+              
+              <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                <div 
+                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out" 
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+              <p className="text-xs text-blue-600 font-medium mt-2">{Math.round(uploadProgress)}%</p>
+              
+              <p className="text-[0.65rem] text-gray-400 mt-4 leading-relaxed">
+                Large files may take several minutes. <br/> Please do not close this window.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
         {/* ── STEP 1: File Details ── */}
         {step === 1 && (
           <form onSubmit={handleStep1Submit} className="px-6 py-5 space-y-5">
@@ -198,6 +253,10 @@ export default function FileUploadModal({
                   <option value="textbook_inventory">Textbooks Inventory (Parse & Store Data)</option>
                   <option value="cespes">CESPES (Parse & Store Data)</option>
                   <option value="performance_indicators">Performance Indicators (Parse & Store Data)</option>
+                  <option value="aip_school">Approved School AIP 2026 (Store file for Dashboard)</option>
+                  <option value="aip_sdo">Approved SDO AIP 2026 (Store file for Dashboard)</option>
+                  <option value="qbedp">QBEDP (Store file for Dashboard)</option>
+                  <option value="accomplishment_report">Accomplishment Report (Store file for Dashboard)</option>
                 </select>
               </div>
             </div>
@@ -507,6 +566,8 @@ export default function FileUploadModal({
               </button>
             </div>
           </div>
+        )}
+        </>
         )}
       </div>
     </div>

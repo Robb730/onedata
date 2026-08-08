@@ -126,7 +126,7 @@ export default function UploadFilesPage() {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [fileRequests, setFileRequests] = useState([]);
   const [pendingRequestUpload, setPendingRequestUpload] = useState(null);
-  const [showToast, setShowToast] = useState(false);
+  const [uploadToastStatus, setUploadToastStatus] = useState(null); // 'uploading', 'success', 'error'
   const [uploadsPage, setUploadsPage] = useState(1);
   const uploadsPerPage = 5;
 
@@ -218,11 +218,7 @@ export default function UploadFilesPage() {
     fetchFileRequests();
   }, [userProfile?.section_id]);
 
-  useEffect(() => {
-    if (!showToast) return;
-    const timer = setTimeout(() => setShowToast(false), 5000);
-    return () => clearTimeout(timer);
-  }, [showToast]);
+
 
   // Near the top, after your state declarations
 
@@ -238,16 +234,20 @@ export default function UploadFilesPage() {
     typeof selectedFolder === "object" ? selectedFolder?.name : selectedFolder;
 
   // ── Upload handler ────────────────────────────────────────────────────────
-  const triggerUpload = (fileName) => {
+  const triggerUpload = (fileOrName) => {
+    const isFile = fileOrName instanceof File;
+    const fileName = isFile ? fileOrName.name : fileOrName;
+    const fileObj = isFile ? fileOrName : null;
+
     if (isSectionScoped) {
       // Folder is already auto-assigned; go straight to the upload modal.
-      setPendingFile({ name: fileName });
+      setPendingFile({ name: fileName, file: fileObj });
       setShowUploadModal(true);
     } else if (!selectedFolder) {
-      setPendingFile({ name: fileName });
+      setPendingFile({ name: fileName, file: fileObj });
       setShowFolderModal(true);
     } else {
-      setPendingFile({ name: fileName });
+      setPendingFile({ name: fileName, file: fileObj });
       setShowUploadModal(true);
     }
   };
@@ -265,7 +265,7 @@ export default function UploadFilesPage() {
       e.preventDefault();
       setIsDragging(false);
       const files = Array.from(e.dataTransfer.files);
-      if (files.length > 0) triggerUpload(files[0].name);
+      if (files.length > 0) triggerUpload(files[0]);
     },
     [selectedFolder, showFolderPanel],
   );
@@ -326,8 +326,9 @@ export default function UploadFilesPage() {
 
     try {
       // 1. Upload file to Supabase Storage
-      const bucket =
-        uploadType === "general" ? "repository-files" : "excel-files";
+      const structuredTypes = ["enrollment", "classrooms", "seats", "teachers_inventory", "textbook_inventory", "cespes", "performance_indicators"];
+      const isStructured = structuredTypes.includes(uploadType);
+      const bucket = isStructured ? "excel-files" : "repository-files";
       const { error: storageError } = await supabase.storage
         .from(bucket)
         .upload(storagePath, file, { cacheControl: "3600", upsert: false });
@@ -357,7 +358,7 @@ export default function UploadFilesPage() {
       if (dbError) throw dbError;
 
       // 3. If structured upload type, also parse + insert data
-      if (uploadType !== "general") {
+      if (isStructured) {
         await parseAndSyncStructuredData(
           uploadType,
           file,
@@ -749,35 +750,56 @@ export default function UploadFilesPage() {
   };
 
   const handleFileUpload = async (fileName, schoolYear, uploadType, file) => {
-    await addToUploads(fileName, schoolYear, uploadType, file);
     setShowUploadModal(false);
     setPendingFile(null);
-    setShowToast(true);
+    setUploadToastStatus("uploading");
+    
+    try {
+      await addToUploads(fileName, schoolYear, uploadType, file);
+      setUploadToastStatus("success");
+    } catch (e) {
+      setUploadToastStatus("error");
+    }
+    
+    setTimeout(() => {
+      setUploadToastStatus((prev) => prev !== "uploading" ? null : prev);
+    }, 4000);
   };
 
   const handleRequestFileUpload = async (fileName, schoolYear, uploadType, file) => {
     const req = pendingRequestUpload;
 
-    const { error } = await supabase
-      .from("file_requests")
-      .update({
-        status: "completed",
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", req.id);
-
-    if (error) {
-      console.error("Failed to update file request status:", error);
-      alert("File uploaded, but failed to update the request status.");
-    }
-
-    await addToUploads(fileName, schoolYear, uploadType, file);
-    await fetchFileRequests();
-
     setShowUploadModal(false);
     setPendingFile(null);
     setPendingRequestUpload(null);
-    setShowToast(true);
+    
+    setUploadToastStatus("uploading");
+
+    try {
+      const { error } = await supabase
+        .from("file_requests")
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", req.id);
+
+      if (error) {
+        throw error;
+      }
+
+      await addToUploads(fileName, schoolYear, uploadType, file);
+      await fetchFileRequests();
+      
+      setUploadToastStatus("success");
+    } catch (err) {
+      console.error("Failed to update file request status or upload:", err);
+      setUploadToastStatus("error");
+    }
+    
+    setTimeout(() => {
+      setUploadToastStatus((prev) => prev !== "uploading" ? null : prev);
+    }, 4000);
   };
 
   const filteredRequests = fileRequests.filter((r) => {
@@ -1146,6 +1168,7 @@ export default function UploadFilesPage() {
             fileName={
               pendingFile?.name === "browse" ? "" : pendingFile?.name || ""
             }
+            initialFile={pendingFile?.file || null}
             onUpload={
               pendingRequestUpload ? handleRequestFileUpload : handleFileUpload
             }
@@ -1153,18 +1176,22 @@ export default function UploadFilesPage() {
           />
         )}
 
-        {showToast && (
+        {uploadToastStatus && (
           <div
-            className="fixed top-6 right-6 z-50 flex bg-white overflow-hidden animate-toast-in"
+            className="fixed bottom-6 right-6 z-50 flex bg-white overflow-hidden animate-toast-in"
             style={{
               width: "360px",
-              height: "72px",
+              minHeight: "72px",
               borderRadius: "12px",
               boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
               fontFamily: "Poppins, sans-serif",
             }}
           >
-            <div style={{ width: "6px", backgroundColor: "#43D45B", flexShrink: 0 }} />
+            <div style={{ 
+              width: "6px", 
+              backgroundColor: uploadToastStatus === "success" ? "#43D45B" : uploadToastStatus === "error" ? "#ef4444" : "#3b82f6", 
+              flexShrink: 0 
+            }} />
 
             <div
               className="flex items-center flex-1 relative"
@@ -1176,36 +1203,47 @@ export default function UploadFilesPage() {
                   width: "34px",
                   height: "34px",
                   borderRadius: "50%",
-                  backgroundColor: "#43D45B",
+                  backgroundColor: uploadToastStatus === "success" ? "#43D45B" : uploadToastStatus === "error" ? "#ef4444" : "#3b82f6",
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
+                {uploadToastStatus === "uploading" ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : uploadToastStatus === "error" ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
               </div>
 
-              <div className="flex flex-col justify-center">
+              <div className="flex flex-col justify-center py-3">
                 <p style={{ fontSize: "15px", fontWeight: 700, color: "#1F1F2E", lineHeight: 1.2, margin: 0 }}>
-                  Success
+                  {uploadToastStatus === "uploading" ? "Uploading File" : uploadToastStatus === "error" ? "Upload Failed" : "Success"}
                 </p>
                 <p style={{ fontSize: "12.5px", fontWeight: 500, color: "#666666", marginTop: "2px", margin: 0 }}>
-                  File uploaded successfully.
+                  {uploadToastStatus === "uploading" ? "Please wait, your file is uploading..." : uploadToastStatus === "error" ? "An error occurred during upload." : "File uploaded successfully."}
                 </p>
               </div>
 
-              <button
-                onClick={() => setShowToast(false)}
-                className="absolute top-2 right-2.5 cursor-pointer"
-                style={{
-                  color: "#666666",
-                  background: "none",
-                  border: "none",
-                  fontSize: "16px",
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
+              {uploadToastStatus !== "uploading" && (
+                <button
+                  onClick={() => setUploadToastStatus(null)}
+                  className="absolute top-2 right-2.5 cursor-pointer"
+                  style={{
+                    color: "#666666",
+                    background: "none",
+                    border: "none",
+                    fontSize: "16px",
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              )}
             </div>
           </div>
         )}
