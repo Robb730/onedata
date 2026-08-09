@@ -10,6 +10,7 @@ import {
   User,
   Tag,
   X,
+  Loader,
 } from "lucide-react";
 import FolderSelectionModal from "../../components/UploadFilesComponents/FolderSelectionModal";
 import FileUploadModal from "../../components/UploadFilesComponents/FileUploadModal";
@@ -169,8 +170,22 @@ export default function UploadFilesPage() {
   const [fileRequests, setFileRequests] = useState([]);
   const [pendingRequestUpload, setPendingRequestUpload] = useState(null);
   const [uploadToastStatus, setUploadToastStatus] = useState(null); // 'uploading', 'success', 'error'
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadsPage, setUploadsPage] = useState(1);
   const uploadsPerPage = 5;
+
+  useEffect(() => {
+    let interval;
+    if (uploadToastStatus === "uploading") {
+      setUploadProgress(0);
+      interval = setInterval(() => {
+        setUploadProgress((prev) => (prev >= 95 ? prev : prev + Math.random() * 5 + 2));
+      }, 600);
+    } else if (uploadToastStatus === "success") {
+      setUploadProgress(100);
+    }
+    return () => clearInterval(interval);
+  }, [uploadToastStatus]);
 
   const fetchRecentUploads = async () => {
     const { data, error } = await supabase
@@ -1331,131 +1346,101 @@ export default function UploadFilesPage() {
           />
         )}
 
-        {uploadToastStatus && (
+        {/* Toast Notification */}
+        <div
+          className={`fixed bottom-8 right-8 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${
+            uploadToastStatus
+              ? "translate-x-0 opacity-100 pointer-events-auto"
+              : "translate-x-[120%] opacity-0 pointer-events-none"
+          }`}
+          style={{
+            width: "380px",
+            minHeight: "76px",
+            borderRadius: "16px",
+            boxShadow: uploadToastStatus 
+              ? uploadToastStatus === "success"
+                ? "0 4px 24px rgba(16, 185, 129, 0.25), 0 1px 3px rgba(0,0,0,0.05)"
+                : uploadToastStatus === "error"
+                ? "0 4px 24px rgba(239, 68, 68, 0.25), 0 1px 3px rgba(0,0,0,0.05)"
+                : "0 4px 24px rgba(59, 130, 246, 0.25), 0 1px 3px rgba(0,0,0,0.05)"
+              : "0 12px 30px rgba(0,0,0,0)",
+            fontFamily: "Poppins, sans-serif",
+            border: "1px solid rgba(241, 245, 249, 1)",
+          }}
+        >
+          {/* Soft background gradient on the left */}
+          <div 
+            className={`absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r to-transparent ${
+              uploadToastStatus === "success" 
+                ? "from-emerald-100/60" 
+                : uploadToastStatus === "error" 
+                ? "from-red-100/60" 
+                : "from-blue-100/60"
+            }`} 
+          />
+
+          {/* Content */}
           <div
-            className="fixed bottom-6 right-6 z-50 flex bg-white overflow-hidden animate-toast-in"
-            style={{
-              width: "360px",
-              minHeight: "72px",
-              borderRadius: "12px",
-              boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
-              fontFamily: "Poppins, sans-serif",
-            }}
+            className="flex items-center relative z-10 py-4 flex-1"
+            style={{ padding: "0 20px", gap: "16px", minHeight: "76px" }}
           >
+            {/* Icon Box */}
             <div
+              className="flex items-center justify-center shrink-0 bg-white rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.06),_0_1px_3px_rgba(0,0,0,0.03)]"
               style={{
-                width: "6px",
-                backgroundColor:
-                  uploadToastStatus === "success"
-                    ? "#43D45B"
-                    : uploadToastStatus === "error"
-                      ? "#ef4444"
-                      : "#3b82f6",
-                flexShrink: 0,
+                width: "42px",
+                height: "42px",
               }}
-            />
-
-            <div
-              className="flex items-center flex-1 relative"
-              style={{ padding: "0 14px", gap: "12px" }}
             >
-              <div
-                className="flex items-center justify-center shrink-0"
-                style={{
-                  width: "34px",
-                  height: "34px",
-                  borderRadius: "50%",
-                  backgroundColor:
-                    uploadToastStatus === "success"
-                      ? "#43D45B"
-                      : uploadToastStatus === "error"
-                        ? "#ef4444"
-                        : "#3b82f6",
-                }}
-              >
-                {uploadToastStatus === "uploading" ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : uploadToastStatus === "error" ? (
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#FFFFFF"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
-                ) : (
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#FFFFFF"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                )}
-              </div>
-
-              <div className="flex flex-col justify-center py-3">
-                <p
-                  style={{
-                    fontSize: "15px",
-                    fontWeight: 700,
-                    color: "#1F1F2E",
-                    lineHeight: 1.2,
-                    margin: 0,
-                  }}
-                >
-                  {uploadToastStatus === "uploading"
-                    ? "Uploading File"
-                    : uploadToastStatus === "error"
-                      ? "Upload Failed"
-                      : "Success"}
-                </p>
-                <p
-                  style={{
-                    fontSize: "12.5px",
-                    fontWeight: 500,
-                    color: "#666666",
-                    marginTop: "2px",
-                    margin: 0,
-                  }}
-                >
-                  {uploadToastStatus === "uploading"
-                    ? "Please wait, your file is uploading..."
-                    : uploadToastStatus === "error"
-                      ? "An error occurred during upload."
-                      : "File uploaded successfully."}
-                </p>
-              </div>
-
-              {uploadToastStatus !== "uploading" && (
-                <button
-                  onClick={() => setUploadToastStatus(null)}
-                  className="absolute top-2 right-2.5 cursor-pointer"
-                  style={{
-                    color: "#666666",
-                    background: "none",
-                    border: "none",
-                    fontSize: "16px",
-                    lineHeight: 1,
-                  }}
-                >
-                  ×
-                </button>
+              {uploadToastStatus === "uploading" ? (
+                <Loader size={22} className="text-blue-500 animate-spin" strokeWidth={2.5} />
+              ) : uploadToastStatus === "error" ? (
+                <X size={22} className="text-red-500" strokeWidth={2.5} />
+              ) : (
+                <CheckCircle size={22} className="text-emerald-500" strokeWidth={2.5} />
               )}
             </div>
+
+            {/* Text */}
+            <div className="flex flex-col justify-center flex-1">
+              <p style={{ fontSize: "15px", fontWeight: 700, color: "#0F172A", lineHeight: 1.2, margin: 0 }}>
+                {uploadToastStatus === "uploading"
+                  ? "Uploading File"
+                  : uploadToastStatus === "error"
+                    ? "Upload Failed"
+                    : "Success"}
+              </p>
+              <p style={{ fontSize: "13px", fontWeight: 500, color: "#64748B", marginTop: "3px", margin: 0 }}>
+                {uploadToastStatus === "uploading"
+                  ? "Please wait, your file is uploading..."
+                  : uploadToastStatus === "error"
+                    ? "An error occurred during upload."
+                    : "File uploaded successfully."}
+              </p>
+            </div>
+
+            {/* Close button */}
+            {uploadToastStatus !== "uploading" && (
+              <button
+                onClick={() => setUploadToastStatus(null)}
+                className="absolute top-1/2 -translate-y-1/2 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-md hover:bg-slate-100"
+                aria-label="Close notification"
+              >
+                <X size={18} strokeWidth={2.5} />
+              </button>
+            )}
           </div>
-        )}
+          
+          {/* Progress Bar (Only visible when uploading) */}
+          <div 
+            className={`w-full h-1 bg-slate-100 transition-all duration-300 ${uploadToastStatus === 'uploading' ? 'opacity-100' : 'opacity-0 h-0'}`}
+          >
+            <div 
+              className="h-full bg-blue-500 transition-all duration-500 ease-out rounded-r-full"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

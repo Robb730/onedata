@@ -15,6 +15,8 @@ import {
   Building2,
   Hash,
   User,
+  X,
+  CheckCircle,
 } from "lucide-react";
 import EditUserModal from "../../components/ManageUsersComponents/EditUserModal";
 import DeleteConfirmationModal from "../../components/ManageUsersComponents/DeleteConfirmationModal";
@@ -310,9 +312,11 @@ export default function ManageUsers() {
   const getRoleBadgeColor = (role) => {
     const display = getRoleDisplay(role);
     if (display.includes("Focal Person"))
-      return "bg-blue-50 text-blue-600 border border-blue-100";
-    if (display.includes("Officer"))
       return "bg-purple-50 text-purple-600 border border-purple-100";
+    if (display.includes("Officer"))
+      return "bg-emerald-50 text-emerald-600 border border-emerald-100";
+    if (display.includes("Personnel"))
+      return "bg-amber-50 text-amber-600 border border-amber-100";
     if (display.includes("Administrator"))
       return "bg-rose-50 text-rose-600 border border-rose-100";
     return "bg-slate-100 text-slate-600 border border-slate-200/80";
@@ -347,7 +351,7 @@ export default function ManageUsers() {
       icon: <UsersIcon size={18} className="text-white" />,
     },
     {
-      label: "FOCAL PERSONS",
+      label: "DIVISION FOCAL PERSONS",
       value: focalPersonsCount,
       gradient: "linear-gradient(135deg, #c084fc 0%, #9333ea 100%)",
       icon: <UserCheck size={18} className="text-white" />,
@@ -359,7 +363,7 @@ export default function ManageUsers() {
       icon: <Shield size={18} className="text-white" />,
     },
     {
-      label: "PERSONNEL",
+      label: "SECTION PERSONNELS",
       value: personnelCount,
       gradient: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
       icon: <Briefcase size={18} className="text-white" />,
@@ -381,67 +385,63 @@ export default function ManageUsers() {
   return (
     <div className="min-h-screen bg-slate-50/40">
       <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
-        {showToast && (
+        {/* Toast Notification */}
+        <div
+          className={`fixed bottom-8 right-8 z-50 flex bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${
+            showToast
+              ? "translate-x-0 opacity-100 pointer-events-auto"
+              : "translate-x-[120%] opacity-0 pointer-events-none"
+          }`}
+          style={{
+            width: "380px",
+            height: "76px",
+            borderRadius: "16px",
+            boxShadow: showToast 
+              ? "0 4px 24px rgba(16, 185, 129, 0.25), 0 1px 3px rgba(0,0,0,0.05)" 
+              : "0 12px 30px rgba(0,0,0,0)",
+            fontFamily: "Poppins, sans-serif",
+            border: "1px solid rgba(241, 245, 249, 1)",
+          }}
+        >
+          {/* Soft green background gradient on the left */}
+          <div className="absolute top-0 left-0 bottom-0 w-32 bg-gradient-to-r from-emerald-100/60 to-transparent pointer-events-none" />
+
+          {/* Content */}
           <div
-            className="fixed top-6 right-6 z-50 flex bg-white overflow-hidden animate-toast-in"
-            style={{
-              width: "360px",
-              height: "72px",
-              borderRadius: "12px",
-              boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
-              fontFamily: "Poppins, sans-serif",
-            }}
+            className="flex items-center flex-1 relative z-10"
+            style={{ padding: "0 20px", gap: "16px" }}
           >
-            {/* Green accent bar */}
-            <div style={{ width: "6px", backgroundColor: "#43D45B", flexShrink: 0 }} />
-
-            {/* Content */}
+            {/* Icon Box */}
             <div
-              className="flex items-center flex-1 relative"
-              style={{ padding: "0 14px", gap: "12px" }}
+              className="flex items-center justify-center shrink-0 bg-white rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.06),_0_1px_3px_rgba(0,0,0,0.03)]"
+              style={{
+                width: "42px",
+                height: "42px",
+              }}
             >
-              {/* Icon circle */}
-              <div
-                className="flex items-center justify-center shrink-0"
-                style={{
-                  width: "34px",
-                  height: "34px",
-                  borderRadius: "50%",
-                  backgroundColor: "#43D45B",
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              </div>
-
-              {/* Text */}
-              <div className="flex flex-col justify-center">
-                <p style={{ fontSize: "15px", fontWeight: 700, color: "#1F1F2E", lineHeight: 1.2, margin: 0 }}>
-                  Success
-                </p>
-                <p style={{ fontSize: "12.5px", fontWeight: 500, color: "#666666", marginTop: "2px", margin: 0 }}>
-                  {toastMessage}
-                </p>
-              </div>
-
-              {/* Close button */}
-              <button
-                onClick={() => setShowToast(false)}
-                className="absolute top-2 right-2.5 cursor-pointer"
-                style={{
-                  color: "#666666",
-                  background: "none",
-                  border: "none",
-                  fontSize: "16px",
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
+              <CheckCircle size={22} className="text-emerald-500" strokeWidth={2.5} />
             </div>
+
+            {/* Text */}
+            <div className="flex flex-col justify-center">
+              <p style={{ fontSize: "15px", fontWeight: 700, color: "#0F172A", lineHeight: 1.2, margin: 0 }}>
+                Success
+              </p>
+              <p style={{ fontSize: "13px", fontWeight: 500, color: "#64748B", marginTop: "3px", margin: 0 }}>
+                {toastMessage}
+              </p>
+            </div>
+
+            {/* Close button */}
+            <button
+              onClick={() => setShowToast(false)}
+              className="absolute top-1/2 -translate-y-1/2 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-md hover:bg-slate-100"
+              aria-label="Close notification"
+            >
+              <X size={18} strokeWidth={2.5} />
+            </button>
           </div>
-        )}
+        </div>
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
@@ -552,13 +552,13 @@ export default function ManageUsers() {
                     </span>
                   </div>
 
-                  {/* User Cards Grid for this Division */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {/* User Cards Flex Container for this Division */}
+                  <div className="flex overflow-x-auto gap-5 pb-4 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-slate-50 [&::-webkit-scrollbar-thumb]:bg-slate-200 hover:[&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full snap-x snap-mandatory">
                     {divisionUsers.map((user) => (
                       <div
                         key={user.id}
                         onClick={() => setViewingLogsUser(user)}
-                        className="group relative flex flex-col justify-between rounded-[24px] border border-slate-100 bg-white p-5 transition-all duration-300 hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)] hover:-translate-y-[2px] cursor-pointer"
+                        className="shrink-0 w-[300px] snap-start group relative flex flex-col justify-between rounded-[24px] border border-slate-100 bg-white p-5 transition-all duration-300 hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)] hover:-translate-y-[2px] cursor-pointer"
                         style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
                       >
                         {/* Avatar & User Details (Row) */}
