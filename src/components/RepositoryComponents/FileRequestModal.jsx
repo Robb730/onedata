@@ -11,6 +11,7 @@ export default function FileRequestModal({
   const [deadline, setDeadline] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const todayStr = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
 
   if (!isOpen) return null;
 
@@ -79,6 +80,7 @@ export default function FileRequestModal({
               type="date"
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
+              min={todayStr}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
             />
           </div>

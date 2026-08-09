@@ -27,6 +27,46 @@ const SUBFOLDER_CODE_REGISTRY = {
   "HRD/Leave": "LV",
 };
 
+// ── Avatar helpers ─────────────────────────────────────────────
+const AVATAR_COLORS = [
+  "bg-violet-500",
+  "bg-blue-500",
+  "bg-emerald-500",
+  "bg-amber-500",
+  "bg-rose-500",
+  "bg-cyan-500",
+  "bg-indigo-500",
+  "bg-pink-500",
+];
+function hashStr(str = "") {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h << 5) - h + str.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h);
+}
+function getAvatarColor(name) {
+  return AVATAR_COLORS[hashStr(name) % AVATAR_COLORS.length];
+}
+function getInitials(name = "") {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2)
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+function formatRelative(dateStr) {
+  if (!dateStr) return "";
+  const diffDays = Math.floor((new Date() - new Date(dateStr)) / 86400000);
+  if (diffDays <= 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 function getSubfoldersForSection(sectionName) {
   if (!sectionName) return [];
   return Object.keys(SUBFOLDER_CODE_REGISTRY)
@@ -114,7 +154,9 @@ export default function UploadFilesPage() {
         });
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isSectionScoped, userProfile?.section_id]);
 
   const [folderSearchQuery, setFolderSearchQuery] = useState("");
@@ -159,7 +201,7 @@ export default function UploadFilesPage() {
             year: "numeric",
           }),
         };
-      })
+      }),
     );
     setUploadsPage(1);
   };
@@ -168,11 +210,13 @@ export default function UploadFilesPage() {
     if (!userProfile?.section_id) return;
     const { data, error } = await supabase
       .from("file_requests")
-      .select(`
+      .select(
+        `
       id, file_name, description, deadline, status, created_at,
       requested_by,
       users:requested_by ( full_name, role )
-    `)
+    `,
+      )
       .eq("section_id", userProfile.section_id)
       .order("created_at", { ascending: false });
 
@@ -190,12 +234,13 @@ export default function UploadFilesPage() {
           id: r.id,
           fileName: r.file_name,
           message: r.description,
+          requestedOn: r.created_at, // ← add this line
           dueDate: r.deadline
             ? new Date(r.deadline).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })
             : "—",
           requestedBy: r.users?.full_name ?? "Unknown",
           requesterRole: getRoleDisplay(r.users?.role) ?? "",
@@ -218,10 +263,7 @@ export default function UploadFilesPage() {
     fetchFileRequests();
   }, [userProfile?.section_id]);
 
-
-
   // Near the top, after your state declarations
-
 
   const showFolderPanel = isAdmin || isDivisionFocal;
   const showFileRequestPanel = isSectionFocal || isSectionPersonnel;
@@ -326,7 +368,15 @@ export default function UploadFilesPage() {
 
     try {
       // 1. Upload file to Supabase Storage
-      const structuredTypes = ["enrollment", "classrooms", "seats", "teachers_inventory", "textbook_inventory", "cespes", "performance_indicators"];
+      const structuredTypes = [
+        "enrollment",
+        "classrooms",
+        "seats",
+        "teachers_inventory",
+        "textbook_inventory",
+        "cespes",
+        "performance_indicators",
+      ];
       const isStructured = structuredTypes.includes(uploadType);
       const bucket = isStructured ? "excel-files" : "repository-files";
       const { error: storageError } = await supabase.storage
@@ -365,7 +415,7 @@ export default function UploadFilesPage() {
           schoolYear,
           userProfile?.full_name,
           fileRow.id,
-          { uploaderId: userProfile?.uuid ?? userProfile?.id }
+          { uploaderId: userProfile?.uuid ?? userProfile?.id },
         );
       }
 
@@ -749,30 +799,49 @@ export default function UploadFilesPage() {
     }
   };
 
-  const handleFileUpload = async (fileName, schoolYear, uploadType, file) => {
-    setShowUploadModal(false);
-    setPendingFile(null);
-    setUploadToastStatus("uploading");
-    
-    try {
-      await addToUploads(fileName, schoolYear, uploadType, file);
-      setUploadToastStatus("success");
-    } catch (e) {
-      setUploadToastStatus("error");
-    }
-    
-    setTimeout(() => {
-      setUploadToastStatus((prev) => prev !== "uploading" ? null : prev);
-    }, 4000);
-  };
+  const handleFileUpload = async (fileName, schoolYear, uploadType, file, linkedRequestId) => {
+  setShowUploadModal(false);
+  setPendingFile(null);
+  setUploadToastStatus("uploading");
 
-  const handleRequestFileUpload = async (fileName, schoolYear, uploadType, file) => {
+  try {
+    await addToUploads(fileName, schoolYear, uploadType, file);
+
+    if (linkedRequestId) {
+      const { error } = await supabase
+        .from("file_requests")
+        .update({ status: "completed", completed_at: new Date().toISOString() })
+        .eq("id", linkedRequestId);
+
+      if (error) {
+        console.error("Failed to complete linked request:", error);
+      } else {
+        await fetchFileRequests();
+      }
+    }
+
+    setUploadToastStatus("success");
+  } catch (e) {
+    setUploadToastStatus("error");
+  }
+
+  setTimeout(() => {
+    setUploadToastStatus((prev) => (prev !== "uploading" ? null : prev));
+  }, 4000);
+};
+
+  const handleRequestFileUpload = async (
+    fileName,
+    schoolYear,
+    uploadType,
+    file,
+  ) => {
     const req = pendingRequestUpload;
 
     setShowUploadModal(false);
     setPendingFile(null);
     setPendingRequestUpload(null);
-    
+
     setUploadToastStatus("uploading");
 
     try {
@@ -790,15 +859,15 @@ export default function UploadFilesPage() {
 
       await addToUploads(fileName, schoolYear, uploadType, file);
       await fetchFileRequests();
-      
+
       setUploadToastStatus("success");
     } catch (err) {
       console.error("Failed to update file request status or upload:", err);
       setUploadToastStatus("error");
     }
-    
+
     setTimeout(() => {
-      setUploadToastStatus((prev) => prev !== "uploading" ? null : prev);
+      setUploadToastStatus((prev) => (prev !== "uploading" ? null : prev));
     }, 4000);
   };
 
@@ -838,7 +907,9 @@ export default function UploadFilesPage() {
     <div className="rounded-[16px] border border-slate-100/80 bg-white p-6 shadow-[0_1px_4px_rgba(15,23,42,0.03)]">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <h2 className="text-[1.1rem] font-bold text-slate-900 tracking-tight">Upload Documents</h2>
+          <h2 className="text-[1.1rem] font-bold text-slate-900 tracking-tight">
+            Upload Documents
+          </h2>
           <div className="flex items-center gap-2">
             <span className="px-2 py-1 bg-orange-50 text-orange-700 rounded text-xs font-semibold">
               ● {pendingCount} Pending
@@ -870,10 +941,11 @@ export default function UploadFilesPage() {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`border-2 border-dashed rounded-xl p-10 text-center transition-all ${isDragging
-          ? "border-indigo-400 bg-indigo-50"
-          : "border-gray-300 hover:border-gray-400"
-          }`}
+        className={`border-2 border-dashed rounded-xl p-10 text-center transition-all ${
+          isDragging
+            ? "border-indigo-400 bg-indigo-50"
+            : "border-gray-300 hover:border-gray-400"
+        }`}
       >
         <div className="flex flex-col items-center justify-center">
           <div
@@ -903,102 +975,144 @@ export default function UploadFilesPage() {
   );
 
   // ── File Requests Panel ───────────────────────────────────────────────────
-  const renderFileRequestsPanel = () => (
-    <div className="rounded-[16px] border border-slate-100/80 bg-white p-6 shadow-[0_1px_4px_rgba(15,23,42,0.03)] h-full">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[1.1rem] font-bold text-slate-900 tracking-tight">File Requests</h3>
-        <div className="flex items-center gap-1 text-[0.75rem] flex-wrap justify-end">
-          {["All", "Pending", "Overdue", "Completed"].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFileRequestFilter(f)}
-              className={`px-2.5 py-1.5 rounded-full font-medium transition-colors ${fileRequestFilter === f
-                ? "bg-teal-500 text-white"
-                : "text-gray-600 hover:bg-gray-100"
+  const renderFileRequestsPanel = () => {
+  const counts = {
+    All: fileRequests.length,
+    Pending: fileRequests.filter((r) => r.status === "Pending").length,
+    Overdue: fileRequests.filter((r) => r.status === "Overdue").length,
+    Completed: fileRequests.filter((r) => r.status === "Completed" || r.status === "Completed Overdue").length,
+  };
+
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white shadow-sm h-full flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="px-5 pt-5 pb-4 border-b border-slate-100">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+            <FileText size={17} className="text-blue-600" />
+          </div>
+          <div>
+            <h3 className="text-[1rem] font-black text-slate-800 tracking-[-0.01em] leading-tight">File Requests</h3>
+            <p className="text-[0.7rem] text-slate-400 font-medium">From admin & division focal</p>
+          </div>
+        </div>
+
+        {/* Filter tabs */}
+        <div className="grid grid-cols-4 gap-1.5 mt-4">
+          {["All", "Pending", "Overdue", "Completed"].map((f) => {
+            const isActive = fileRequestFilter === f;
+            return (
+              <button
+                key={f}
+                onClick={() => setFileRequestFilter(f)}
+                className={`flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl text-[10.5px] font-bold transition-colors ${
+                  isActive
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-slate-50 text-slate-500 hover:bg-slate-100"
                 }`}
-            >
-              {f}
-            </button>
-          ))}
+              >
+                <span className="text-[13px] leading-none">{counts[f]}</span>
+                <span className="leading-none">{f}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
-      <div className="space-y-3">
+
+      {/* List */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {filteredRequests.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-6">
-            No requests found.
-          </p>
+          <div className="flex flex-col items-center justify-center py-14 text-center">
+            <div className="w-11 h-11 rounded-full bg-slate-50 flex items-center justify-center mb-3">
+              <FileText className="text-slate-300" size={20} strokeWidth={1.5} />
+            </div>
+            <p className="text-[0.8rem] font-semibold text-slate-500">No requests here</p>
+            <p className="text-[0.72rem] text-slate-400 mt-0.5">You're all caught up.</p>
+          </div>
         ) : (
-          filteredRequests.map((req) => (
-            <div
-              key={req.id}
-              className="p-4 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <div className="flex items-center gap-2">
-                  <FileText className="text-blue-500 flex-shrink-0" size={18} />
-                  <p className="text-sm font-semibold text-gray-900">
-                    {req.fileName}
-                  </p>
-                </div>
-                <span
-                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${getRequestStatusStyle(req.status)}`}
-                >
-                  {req.status}
-                </span>
-              </div>
-              <div className="ml-6 grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
-                <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <User size={12} className="text-gray-400" />
-                  <span className="font-medium text-gray-700">
-                    {req.requestedBy}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <Clock size={12} className="text-gray-400" />
-                  <span>
-                    Due:{" "}
-                    <span
-                      className={`font-semibold ${req.status === "Overdue" ? "text-red-600" : "text-gray-700"}`}
-                    >
-                      {req.dueDate}
+          filteredRequests.map((req) => {
+            const isOverdue = req.status === "Overdue";
+            const isDone = req.status === "Completed" || req.status === "Completed Overdue";
+            const accent = isOverdue ? "bg-red-400" : isDone ? "bg-teal-400" : "bg-amber-400";
+            const avatarBg = getAvatarColor(req.requestedBy);
+
+            return (
+              <div
+                key={req.id}
+                className="relative flex rounded-2xl border border-slate-100 overflow-hidden bg-white hover:border-slate-200 hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)] transition-all"
+              >
+                <div className={`w-[3px] shrink-0 ${accent}`} />
+                <div className="flex-1 p-4">
+                  {/* Title row */}
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                        <FileText size={13} className="text-blue-500" />
+                      </div>
+                      <p className="text-[13px] font-bold text-slate-800 truncate leading-tight">{req.fileName}</p>
+                    </div>
+                    <span className={`shrink-0 text-[9.5px] font-bold px-2 py-1 rounded-full ${getRequestStatusStyle(req.status)}`}>
+                      {req.status}
                     </span>
-                  </span>
-                </div>
-                <div className="text-xs text-gray-400">{req.requesterRole}</div>
-              </div>
-              {req.message && (
-                <p className="ml-6 mt-2 text-xs text-gray-500 italic">
-                  "{req.message}"
-                </p>
-              )}
-              {req.status !== "Completed" &&
-                req.status !== "Completed Overdue" && (
-                  <div className="flex justify-end mt-3">
+                  </div>
+
+                  {/* Requester + due date */}
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <div className={`w-7 h-7 ${avatarBg} rounded-full flex items-center justify-center shrink-0`}>
+                      <span className="text-[9.5px] font-bold text-white">{getInitials(req.requestedBy)}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11.5px] font-semibold text-slate-700 truncate leading-tight">{req.requestedBy}</p>
+                      <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{req.requesterRole} · {formatRelative(req.requestedOn)}</p>
+                    </div>
+                    <div className="text-right shrink-0 pl-2 border-l border-slate-100">
+                      <p className="text-[8.5px] font-bold uppercase tracking-wide text-slate-400">Due</p>
+                      <p className={`text-[11px] font-bold ${isOverdue ? "text-red-600" : "text-slate-600"}`}>{req.dueDate}</p>
+                    </div>
+                  </div>
+
+                  {/* Message */}
+                  {req.message && (
+                    <div className="flex items-start gap-1.5 bg-slate-50 rounded-lg px-2.5 py-2 mb-3">
+                      <span className="text-slate-300 text-[13px] leading-none mt-px">"</span>
+                      <p className="text-[11px] text-slate-500 italic leading-snug line-clamp-2">{req.message}</p>
+                    </div>
+                  )}
+
+                  {/* Action */}
+                  {!isDone && (
                     <button
                       onClick={() => handleRequestUpload(req)}
-                      className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+                      className="w-full flex items-center justify-center gap-1.5 text-[11.5px] font-semibold px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] transition-all"
                     >
                       <Upload size={12} /> Upload File
                     </button>
-                  </div>
-                )}
-            </div>
-          ))
+                  )}
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
     </div>
   );
+};
 
-  const totalUploadsPages = Math.max(1, Math.ceil(uploadedFiles.length / uploadsPerPage));
+  const totalUploadsPages = Math.max(
+    1,
+    Math.ceil(uploadedFiles.length / uploadsPerPage),
+  );
   const paginatedUploads = uploadedFiles.slice(
     (uploadsPage - 1) * uploadsPerPage,
-    uploadsPage * uploadsPerPage
+    uploadsPage * uploadsPerPage,
   );
 
   // ── Recent Uploads ────────────────────────────────────────────────────────
   const renderRecentUploads = () => (
     <div className="rounded-[16px] border border-slate-100/80 bg-white p-6 shadow-[0_1px_4px_rgba(15,23,42,0.03)]">
-      <h3 className="text-[1.1rem] font-bold text-slate-900 tracking-tight mb-4">Recent Uploads</h3>
+      <h3 className="text-[1.1rem] font-bold text-slate-900 tracking-tight mb-4">
+        Recent Uploads
+      </h3>
       {uploadedFiles.length === 0 ? (
         <p className="text-sm text-slate-400 text-center py-6 font-medium">
           No uploads yet this session.
@@ -1016,7 +1130,10 @@ export default function UploadFilesPage() {
                   className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50"
                 >
                   <div className="flex items-center gap-3">
-                    <FileText className="text-blue-500 flex-shrink-0" size={20} />
+                    <FileText
+                      className="text-blue-500 flex-shrink-0"
+                      size={20}
+                    />
                     <div>
                       <div className="flex items-center gap-2 mb-0.5">
                         {codeMatch && (
@@ -1047,8 +1164,14 @@ export default function UploadFilesPage() {
           {totalUploadsPages > 1 && (
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
               <p className="text-xs text-gray-400">
-                Page <span className="font-semibold text-gray-600">{uploadsPage}</span> of{" "}
-                <span className="font-semibold text-gray-600">{totalUploadsPages}</span>
+                Page{" "}
+                <span className="font-semibold text-gray-600">
+                  {uploadsPage}
+                </span>{" "}
+                of{" "}
+                <span className="font-semibold text-gray-600">
+                  {totalUploadsPages}
+                </span>
               </p>
               <div className="flex items-center gap-2">
                 <button
@@ -1061,7 +1184,9 @@ export default function UploadFilesPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setUploadsPage((p) => Math.min(totalUploadsPages, p + 1))}
+                  onClick={() =>
+                    setUploadsPage((p) => Math.min(totalUploadsPages, p + 1))
+                  }
                   disabled={uploadsPage === totalUploadsPages}
                   className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -1080,7 +1205,9 @@ export default function UploadFilesPage() {
     <div className="min-h-screen bg-slate-50/40">
       <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
         <div className="mb-8">
-          <h1 className="text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">Upload Files</h1>
+          <h1 className="text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
+            Upload Files
+          </h1>
           <p className="text-[0.78rem] text-slate-400 font-medium mt-1">
             {selectedFolderName
               ? `Uploading to: ${selectedFolderName}`
@@ -1099,7 +1226,9 @@ export default function UploadFilesPage() {
           <div className="lg:col-span-1">
             {showFolderPanel && (
               <div className="rounded-[16px] border border-slate-100/80 bg-white p-6 shadow-[0_1px_4px_rgba(15,23,42,0.03)] sticky top-8">
-                <h3 className="text-[1.05rem] font-bold text-slate-900 mb-1 tracking-tight">Selected Section</h3>
+                <h3 className="text-[1.05rem] font-bold text-slate-900 mb-1 tracking-tight">
+                  Selected Section
+                </h3>
                 <p className="text-[0.75rem] text-slate-400 font-medium mb-4">
                   Click to change the destination folder
                 </p>
@@ -1153,7 +1282,9 @@ export default function UploadFilesPage() {
           onSelect={handleFolderSelect}
           mode={isDivisionFocal ? "division" : "admin"}
           divisionId={isDivisionFocal ? userProfile?.division_id : null}
-          divisionName={isDivisionFocal ? (userProfile?.division?.name ?? "") : ""}
+          divisionName={
+            isDivisionFocal ? (userProfile?.division?.name ?? "") : ""
+          }
         />
 
         {showUploadModal && (
@@ -1173,6 +1304,10 @@ export default function UploadFilesPage() {
               pendingRequestUpload ? handleRequestFileUpload : handleFileUpload
             }
             subfolders={activeSubfolders}
+            pendingRequests={fileRequests.filter(
+              (r) => r.status === "Pending" || r.status === "Overdue",
+            )}
+            isRequestFulfillment={!!pendingRequestUpload}
           />
         )}
 
@@ -1187,11 +1322,18 @@ export default function UploadFilesPage() {
               fontFamily: "Poppins, sans-serif",
             }}
           >
-            <div style={{ 
-              width: "6px", 
-              backgroundColor: uploadToastStatus === "success" ? "#43D45B" : uploadToastStatus === "error" ? "#ef4444" : "#3b82f6", 
-              flexShrink: 0 
-            }} />
+            <div
+              style={{
+                width: "6px",
+                backgroundColor:
+                  uploadToastStatus === "success"
+                    ? "#43D45B"
+                    : uploadToastStatus === "error"
+                      ? "#ef4444"
+                      : "#3b82f6",
+                flexShrink: 0,
+              }}
+            />
 
             <div
               className="flex items-center flex-1 relative"
@@ -1203,29 +1345,76 @@ export default function UploadFilesPage() {
                   width: "34px",
                   height: "34px",
                   borderRadius: "50%",
-                  backgroundColor: uploadToastStatus === "success" ? "#43D45B" : uploadToastStatus === "error" ? "#ef4444" : "#3b82f6",
+                  backgroundColor:
+                    uploadToastStatus === "success"
+                      ? "#43D45B"
+                      : uploadToastStatus === "error"
+                        ? "#ef4444"
+                        : "#3b82f6",
                 }}
               >
                 {uploadToastStatus === "uploading" ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : uploadToastStatus === "error" ? (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#FFFFFF"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>
                   </svg>
                 ) : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#FFFFFF"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 )}
               </div>
 
               <div className="flex flex-col justify-center py-3">
-                <p style={{ fontSize: "15px", fontWeight: 700, color: "#1F1F2E", lineHeight: 1.2, margin: 0 }}>
-                  {uploadToastStatus === "uploading" ? "Uploading File" : uploadToastStatus === "error" ? "Upload Failed" : "Success"}
+                <p
+                  style={{
+                    fontSize: "15px",
+                    fontWeight: 700,
+                    color: "#1F1F2E",
+                    lineHeight: 1.2,
+                    margin: 0,
+                  }}
+                >
+                  {uploadToastStatus === "uploading"
+                    ? "Uploading File"
+                    : uploadToastStatus === "error"
+                      ? "Upload Failed"
+                      : "Success"}
                 </p>
-                <p style={{ fontSize: "12.5px", fontWeight: 500, color: "#666666", marginTop: "2px", margin: 0 }}>
-                  {uploadToastStatus === "uploading" ? "Please wait, your file is uploading..." : uploadToastStatus === "error" ? "An error occurred during upload." : "File uploaded successfully."}
+                <p
+                  style={{
+                    fontSize: "12.5px",
+                    fontWeight: 500,
+                    color: "#666666",
+                    marginTop: "2px",
+                    margin: 0,
+                  }}
+                >
+                  {uploadToastStatus === "uploading"
+                    ? "Please wait, your file is uploading..."
+                    : uploadToastStatus === "error"
+                      ? "An error occurred during upload."
+                      : "File uploaded successfully."}
                 </p>
               </div>
 
