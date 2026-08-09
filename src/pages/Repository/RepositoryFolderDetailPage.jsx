@@ -210,7 +210,7 @@ function PaginationBar({
   const pageNumbers = totalPages > 1 ? getPageNumbers() : [1];
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
       <div className="flex items-center gap-3 text-[11px] text-slate-400 font-medium">
         <span>
           Showing{" "}
@@ -1668,6 +1668,22 @@ export default function RepositoryFolderDetailPage() {
           </div>
         )}
 
+
+        {/* ── Pagination (Moved to Top) ─────────────────────── */}
+        {!loading && filtered.length > 0 && (
+          <PaginationBar
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filtered.length}
+            pageSize={viewMode === "list" ? pageSizeList : pageSizeGrid}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+            pageSizeOptions={viewMode === "list" ? PAGE_SIZE_OPTIONS_LIST : PAGE_SIZE_OPTIONS_GRID}
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+          />
+        )}
+
         {/* ── File list / grid ──────────────────────────────── */}
         {loading ? (
           <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
@@ -1694,7 +1710,7 @@ export default function RepositoryFolderDetailPage() {
           </div>
         ) : viewMode === "list" ? (
           /* ── LIST VIEW ───────────────────────────────────── */
-          <div className="bg-white rounded-2xl border border-slate-100 overflow-visible shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-100 overflow-x-hidden shadow-sm">
             {/* TABLE using real <table> for perfect alignment */}
             <table className="w-full border-collapse table-fixed">
               <thead>
@@ -2032,18 +2048,6 @@ export default function RepositoryFolderDetailPage() {
               </tbody>
             </table>
 
-            {/* Pagination */}
-            <PaginationBar
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={filtered.length}
-              pageSize={pageSizeList}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
-              pageSizeOptions={PAGE_SIZE_OPTIONS_LIST}
-              rangeStart={rangeStart}
-              rangeEnd={rangeEnd}
-            />
           </div>
         ) : (
           /* ── GRID VIEW ───────────────────────────────────── */
@@ -2198,18 +2202,6 @@ export default function RepositoryFolderDetailPage() {
               })}
             </div>
 
-            {/* Pagination */}
-            <PaginationBar
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={filtered.length}
-              pageSize={pageSizeGrid}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
-              pageSizeOptions={PAGE_SIZE_OPTIONS_GRID}
-              rangeStart={rangeStart}
-              rangeEnd={rangeEnd}
-            />
           </div>
         )}
       </div>

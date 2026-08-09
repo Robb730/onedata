@@ -130,7 +130,7 @@ function ActionConfirmModal({ open, kind, request, onClose, onConfirm, isWorking
               rows={2}
               maxLength={150}
               placeholder="e.g. This division's folder is limited to its own personnel"
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-[13px] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/25 focus:border-violet-400 resize-none"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-[13px] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 resize-none"
             />
           </div>
         )}
@@ -189,7 +189,7 @@ function RequestCard({ request, onApprove, onDeny, onRevoke }) {
         {request.message && (
           <button
             onClick={() => setReasonOpen((v) => !v)}
-            className="text-[11px] font-semibold text-violet-600 hover:text-violet-700"
+            className="text-[11px] font-semibold text-blue-600 hover:text-blue-700"
           >
             {reasonOpen ? "Hide note" : "View note"}
           </button>
@@ -331,26 +331,40 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
             : `davSidebarSlideOut ${SIDEBAR_TRANSITION_MS}ms cubic-bezier(0.4, 0, 1, 1) forwards`,
         }}
       >
-        <div className="h-1 w-full bg-gradient-to-r from-violet-500 to-fuchsia-500 shrink-0" />
+        <div className="h-1.5 w-full bg-blue-600 shrink-0" />
 
-        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
-              <Users size={14} className="text-white" />
+        <div className="flex items-center justify-between px-6 pt-7 pb-5 border-b border-slate-100 shrink-0 bg-gradient-to-b from-slate-50/80 to-white relative overflow-hidden">
+          {/* Subtle background glow */}
+          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-blue-100/50 via-transparent to-transparent pointer-events-none" />
+          
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="relative w-[52px] h-[52px] rounded-2xl bg-white shadow-[0_8px_24px_rgba(37,99,235,0.12)] border border-blue-50 flex items-center justify-center shrink-0">
+              {/* Inner glow behind the animated icon */}
+              <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full" />
+              
+              <lord-icon
+                src="/wired-outline-2722-logo-myspace-in-reveal.json"
+                trigger="in"
+                delay="100"
+                stroke="bold"
+                state="in-reveal"
+                colors="primary:#2563eb,secondary:#2563eb"
+                style={{ width: "36px", height: "36px", zIndex: 1 }}
+              ></lord-icon>
             </div>
             <div>
-              <h2 className="text-[0.95rem] font-black text-slate-800 tracking-[-0.01em] leading-tight">
+              <h2 className="text-[1.15rem] font-black text-slate-800 tracking-[-0.02em] leading-tight drop-shadow-sm">
                 Division Access Requests
               </h2>
               {pending.length > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-amber-600 mt-0.5">
-                  <Clock size={9} /> {pending.length} awaiting review
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-600 mt-1 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100/50">
+                  <Clock size={10} /> {pending.length} awaiting review
                 </span>
               )}
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-            <X size={16} />
+          <button onClick={onClose} className="relative z-10 p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+            <X size={18} strokeWidth={2.5} />
           </button>
         </div>
 
@@ -364,13 +378,13 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
               key={t.key}
               onClick={() => setTab(t.key)}
               className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12.5px] font-bold transition-colors ${
-                tab === t.key ? "bg-violet-50 text-violet-600" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                tab === t.key ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
               }`}
             >
               {t.label}
               <span
                 className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ${
-                  tab === t.key ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-500"
+                  tab === t.key ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
                 }`}
               >
                 {t.count}
@@ -381,9 +395,9 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
         <div className="h-px bg-slate-100 mx-5 mt-3 shrink-0" />
 
         <div className="px-5 pt-3 shrink-0">
-          <div className="flex items-start gap-2 rounded-xl bg-violet-50/70 border border-violet-100 px-3.5 py-2.5">
-            <ShieldCheck size={13} className="text-violet-500 shrink-0 mt-0.5" />
-            <p className="text-[11px] text-violet-700 leading-relaxed">
+          <div className="flex items-start gap-2 rounded-xl bg-blue-50/70 border border-blue-100 px-3.5 py-2.5">
+            <ShieldCheck size={13} className="text-blue-500 shrink-0 mt-0.5" />
+            <p className="text-[11px] text-blue-700 leading-relaxed">
               Approving only lets the requester open this division's folder. It does not
               grant access to sections or files inside it — those are reviewed separately.
             </p>
@@ -393,7 +407,7 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-sm text-slate-400 gap-2">
-              <div className="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
               Loading requests…
             </div>
           ) : visible.length === 0 ? (
@@ -424,7 +438,7 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
             </div>
             <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-300"
+                className="h-full bg-blue-600 transition-all duration-300"
                 style={{ width: `${reviewedPct}%` }}
               />
             </div>

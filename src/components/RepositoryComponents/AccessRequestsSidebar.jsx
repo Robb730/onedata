@@ -594,27 +594,42 @@ export default function AccessRequestsSidebar({ isOpen, onClose, userProfile }) 
         }}
       >
         {/* Top accent bar */}
-        <div className="h-1 w-full bg-gradient-to-r from-blue-500 to-violet-500 shrink-0" />
+        <div className="h-1.5 w-full bg-blue-600 shrink-0" />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
-              <FileText size={14} className="text-white" />
+        <div className="flex items-center justify-between px-6 pt-7 pb-5 border-b border-slate-100 shrink-0 bg-gradient-to-b from-slate-50/80 to-white relative overflow-hidden">
+          {/* Subtle background glow */}
+          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-blue-100/50 via-transparent to-transparent pointer-events-none" />
+          
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="relative w-[52px] h-[52px] rounded-2xl bg-white shadow-[0_8px_24px_rgba(37,99,235,0.12)] border border-blue-50 flex items-center justify-center shrink-0">
+              {/* Inner glow behind the animated icon */}
+              <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full" />
+              
+              {/* Lordicon Animated Icon */}
+              <lord-icon
+                src="/wired-outline-966-file-policy-in-reveal.json"
+                trigger="in"
+                delay="100"
+                stroke="bold"
+                state="in-reveal"
+                colors="primary:#2563eb,secondary:#2563eb"
+                style={{ width: "36px", height: "36px", zIndex: 1 }}
+              ></lord-icon>
             </div>
             <div>
-              <h2 className="text-[0.95rem] font-black text-slate-800 tracking-[-0.01em] leading-tight">
+              <h2 className="text-[1.15rem] font-black text-slate-800 tracking-[-0.02em] leading-tight drop-shadow-sm">
                 Access Requests
               </h2>
               {pending.length > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-amber-600 mt-0.5">
-                  <Clock size={9} /> {pending.length} awaiting review
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-600 mt-1 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100/50">
+                  <Clock size={10} /> {pending.length} awaiting review
                 </span>
               )}
             </div>
           </div>
-          <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-            <X size={16} />
+          <button onClick={handleClose} className="relative z-10 p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+            <X size={18} strokeWidth={2.5} />
           </button>
         </div>
 
@@ -716,7 +731,7 @@ export default function AccessRequestsSidebar({ isOpen, onClose, userProfile }) 
             </div>
             <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-300"
+                className="h-full bg-blue-600 transition-all duration-300"
                 style={{ width: `${reviewedPct}%` }}
               />
             </div>

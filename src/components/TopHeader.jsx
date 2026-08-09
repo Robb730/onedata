@@ -1,9 +1,10 @@
 import React from "react";
-import { Search, Bell, Menu, LogOut, FolderOpen, Settings } from "lucide-react";
+import { Bell, Menu, LogOut, FolderOpen, Settings } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 // Adjust this relative path to match TopHeader's location in your tree
 // (this mirrors the import used in ManageUsers.jsx).
 import { useUser } from "../contexts/UserContext.jsx";
+import NotificationsPanel from "./NotificationsPanel.jsx";
 
 /**
  * TopHeader — Persistent top bar with search, notifications, and user profile.
@@ -109,10 +110,17 @@ export function TopHeader({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(4);
+  const notificationsRef = useRef(null);
+
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setDropdownOpen(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+        setNotificationsOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -136,34 +144,40 @@ export function TopHeader({
         <Menu size={18} />
       </button>
 
-      {/* Search bar */}
-      <div className="relative flex-1 max-w-[480px]">
-        <Search
-          size={15}
-          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-        />
-        <input
-          id="global-search"
-          type="text"
-          placeholder="Search documents, users, files..."
-          className="w-full rounded-[10px] border border-slate-200/80 bg-slate-50/50 py-[8px] pl-10 pr-4 text-[0.78rem] text-slate-700
-                     placeholder:text-slate-400 outline-none transition-all duration-200
-                     focus:border-blue-300/80 focus:bg-white focus:ring-[3px] focus:ring-blue-500/8"
-        />
-      </div>
+
 
       {/* Right side */}
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-2 relative" ref={notificationsRef}>
         {/* Notifications */}
-        <button
-          id="notifications-btn"
-          className="relative flex h-9 w-9 items-center justify-center rounded-[10px] text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-all cursor-pointer"
-          aria-label="Notifications"
-        >
-          <Bell size={17} strokeWidth={1.8} />
-          {/* Badge dot */}
-          <span className="absolute top-[7px] right-[7px] h-[7px] w-[7px] rounded-full bg-rose-500 ring-[2px] ring-white" />
-        </button>
+        <div>
+          <button
+            id="notifications-btn"
+            onClick={() => {
+              setNotificationsOpen(!notificationsOpen);
+              setDropdownOpen(false);
+            }}
+            className={`relative flex h-9 w-9 items-center justify-center rounded-[10px] transition-all cursor-pointer ${
+              notificationsOpen 
+                ? "bg-blue-50 text-blue-600" 
+                : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+            }`}
+            aria-label="Notifications"
+          >
+            <Bell size={17} strokeWidth={1.8} fill={notificationsOpen ? "currentColor" : "none"} />
+            {/* Badge dot with number */}
+            {unreadCount > 0 && (
+              <span className="absolute top-[2px] right-[2px] flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 ring-[2px] ring-white text-[9px] font-bold text-white">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+        </div>
+        
+        <NotificationsPanel 
+          isOpen={notificationsOpen} 
+          onClose={() => setNotificationsOpen(false)} 
+          onUnreadChange={setUnreadCount}
+        />
 
         {/* Divider */}
         <div className="h-7 w-px bg-slate-200/70 mx-1 hidden sm:block" />
@@ -171,7 +185,10 @@ export function TopHeader({
         {/* User profile */}
         <div className="relative" ref={dropdownRef}>
           <div
-            onClick={() => setDropdownOpen((prev) => !prev)}
+            onClick={() => {
+              setDropdownOpen((prev) => !prev);
+              setNotificationsOpen(false);
+            }}
             className="flex items-center gap-2.5 rounded-[10px] px-2 py-1.5 cursor-pointer group hover:bg-slate-50 transition-all"
           >
             <div className="hidden sm:block text-right max-w-[220px]">
@@ -218,15 +235,18 @@ export function TopHeader({
           </div>
 
           {/* Dropdown / profile details card */}
-          {dropdownOpen && (
-            <div
-              className="absolute right-0 top-full mt-2 w-64 rounded-xl bg-white py-1 z-50 overflow-hidden"
-              style={{
-                border: "1px solid rgba(203,213,225,0.6)",
-                boxShadow: "0 8px 24px rgba(15,23,42,0.10)",
-              }}
-            >
-              {/* Header block — mirrors the "manage users" user card layout */}
+          <div
+            className={`absolute right-0 top-full mt-2 w-64 rounded-xl bg-white py-1 z-50 overflow-hidden transition-all duration-300 origin-top-right ${
+              dropdownOpen
+                ? "opacity-100 scale-100 visible pointer-events-auto"
+                : "opacity-0 scale-95 invisible pointer-events-none"
+            }`}
+            style={{
+              border: "1px solid rgba(203,213,225,0.6)",
+              boxShadow: "0 8px 24px rgba(15,23,42,0.10)",
+            }}
+          >
+            {/* Header block — mirrors the "manage users" user card layout */}
               <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100">
                 <div
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white text-[0.7rem] font-bold ring-[2.5px] ring-white"
@@ -313,7 +333,6 @@ export function TopHeader({
               </button>
               </div>
             </div>
-          )}
         </div>
       </div>
     </header>
