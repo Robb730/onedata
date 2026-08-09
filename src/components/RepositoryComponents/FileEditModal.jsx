@@ -10,6 +10,8 @@ import {
   Eye,
   Maximize2,
   Minimize2,
+  Download,
+  FileType,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { parseAndSyncStructuredData } from "../../utils/structuredDataSync";
@@ -95,12 +97,15 @@ export default function FileEditModal({
 
   const [pdfUrl, setPdfUrl] = useState(null);
   const pdfUrlRef = useRef(null); // so cleanup can revoke it even after state resets
+  const [pdfLoaded, setPdfLoaded] = useState(false); // true once the iframe has actually painted the PDF
 
   function isPdfFile(f) {
     if (!f) return false;
     if (f.type === "PDF") return true; // matches your inferType() output
     return f.name?.toLowerCase().endsWith(".pdf");
   }
+
+  const fileIsPdf = isPdfFile(file);
 
   useEffect(() => {
     if (isOpen) return;
@@ -125,7 +130,10 @@ export default function FileEditModal({
       setSavePrepError(null);
       setSheets({});
       setMode("view");
-      setIsFullScreen(false);
+      // PDFs open straight into an immersive full-screen reader; every
+      // other file type keeps the normal windowed view.
+      setIsFullScreen(isPdfFile(file));
+      setPdfLoaded(false);
       setIsDirty(false);
       editSnapshotRef.current = null;
       setDiscardIntent(null);
@@ -258,19 +266,20 @@ export default function FileEditModal({
   }, [activeSheet]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Escape key: exit fullscreen first if active, otherwise let the normal
-  // close (with discard-confirmation) handle it.
+  // close (with discard-confirmation) handle it. For PDFs, fullscreen IS
+  // the viewer, so Escape just closes the modal outright.
   useEffect(() => {
     if (!isOpen) return;
     function onKeyDown(e) {
       if (e.key !== "Escape") return;
-      if (isFullScreen) {
+      if (isFullScreen && !fileIsPdf) {
         e.stopPropagation();
         setIsFullScreen(false);
       }
     }
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [isOpen, isFullScreen]);
+  }, [isOpen, isFullScreen, fileIsPdf]);
 
   // Reset scroll position whenever the visible sheet changes.
   useEffect(() => {
@@ -331,6 +340,16 @@ export default function FileEditModal({
     } else {
       onClose();
     }
+  }
+
+  function handleDownloadPdf() {
+    if (!pdfUrl || !file) return;
+    const a = document.createElement("a");
+    a.href = pdfUrl;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   }
 
   function confirmDiscard() {
@@ -422,6 +441,99 @@ export default function FileEditModal({
 
   if (!isOpen || !file) return null;
 
+  // ─────────────────────────────────────────────────────────────
+  // ── PDF VIEWER — dedicated immersive layout ────────────────────
+  // ─────────────────────────────────────────────────────────────
+  if (fileIsPdf) {
+    return (
+      <div className="fixed inset-0 z-50 bg-[#0b0d12] flex flex-col">
+        {/* Slim dark toolbar */}
+        <div className="flex items-center justify-between gap-4 px-5 py-3 bg-[#15181f] border-b border-white/10 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center shrink-0">
+              <FileType size={16} className="text-red-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-white truncate max-w-md leading-tight">
+                {file.name}
+              </p>
+              <p className="text-[10.5px] text-white/40 mt-0.5">
+                PDF document{file.size ? ` · ${file.size}` : ""}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={handleDownloadPdf}
+              disabled={!pdfUrl}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-semibold transition-colors disabled:opacity-40"
+              title="Download"
+            >
+              <Download size={13} />
+              <span className="hidden sm:inline">Download</span>
+            </button>
+            <button
+              onClick={() => window.open(pdfUrl, "_blank", "noopener,noreferrer")}
+              disabled={!pdfUrl}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-semibold transition-colors disabled:opacity-40"
+              title="Open in new tab"
+            >
+              <Maximize2 size={13} />
+              <span className="hidden sm:inline">New Tab</span>
+            </button>
+            <div className="w-px h-5 bg-white/10 mx-1" />
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+              title="Close"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* PDF surface */}
+        <div className="flex-1 min-h-0 relative bg-[#0b0d12]">
+          {error ? (
+            <div className="absolute inset-0 flex items-center justify-center px-8">
+              <div className="flex items-center gap-2 text-red-400 text-sm text-center max-w-md">
+                <AlertTriangle size={16} className="shrink-0" /> {error}
+              </div>
+            </div>
+          ) : (
+            <>
+              {(!pdfUrl || !pdfLoaded) && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-3 text-white/50">
+                    <Loader2 className="animate-spin" size={22} />
+                    <span className="text-xs font-medium">
+                      Preparing preview…
+                    </span>
+                  </div>
+                </div>
+              )}
+              {pdfUrl && (
+                <iframe
+                  src={pdfUrl}
+                  title={file.name}
+                  onLoad={() => setPdfLoaded(true)}
+                  className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${
+                    pdfLoaded ? "opacity-100" : "opacity-0"
+                  }`}
+                  style={{ border: "none" }}
+                />
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // ── SPREADSHEET / DEFAULT VIEWER ───────────────────────────────
+  // ─────────────────────────────────────────────────────────────
   return (
     <div
       className={`fixed inset-0 bg-black/50 flex items-center justify-center z-50 ${isFullScreen ? "p-0" : "p-4"}`}
@@ -452,19 +564,17 @@ export default function FileEditModal({
               </span>
             </div>
             <p className="text-xs text-gray-400 mt-0.5">
-              {isPdfFile(file)
-                ? "PDF preview"
-                : mode === "edit"
-                  ? file.data_category && file.data_category !== "general"
-                    ? "Saving will re-sync the dashboard data for this file."
-                    : "General file — saving only updates the stored spreadsheet."
-                  : canEdit
-                    ? 'Read-only view. Click "Edit File" to make changes.'
-                    : "Read-only view. You don't have edit access to this file."}
+              {mode === "edit"
+                ? file.data_category && file.data_category !== "general"
+                  ? "Saving will re-sync the dashboard data for this file."
+                  : "General file — saving only updates the stored spreadsheet."
+                : canEdit
+                  ? 'Read-only view. Click "Edit File" to make changes.'
+                  : "Read-only view. You don't have edit access to this file."}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {mode === "view" && canEdit && !isPdfFile(file) && (
+            {mode === "view" && canEdit && (
               <button
                 onClick={enterEditMode}
                 disabled={loading || !!error}
@@ -492,7 +602,7 @@ export default function FileEditModal({
         </div>
 
         {/* Sheet tabs */}
-        {!isPdfFile(file) && sheetNames.length > 1 && (
+        {sheetNames.length > 1 && (
           <div className="flex items-center gap-1 px-6 pt-3 border-b border-gray-100 shrink-0 overflow-x-auto">
             {sheetNames.map((name) => (
               <button
@@ -520,18 +630,6 @@ export default function FileEditModal({
             <div className="flex items-center justify-center h-full text-red-500 gap-2 text-sm text-center px-8">
               <AlertTriangle size={16} className="shrink-0" /> {error}
             </div>
-          ) : isPdfFile(file) ? (
-            pdfUrl ? (
-              <iframe
-                src={pdfUrl}
-                title={file.name}
-                className="flex-1 min-h-0 w-full rounded-lg border border-gray-200 bg-white shadow-sm"
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-400 gap-2">
-                <Loader2 className="animate-spin" size={18} /> Preparing preview…
-              </div>
-            )
           ) : sheetLoading ? (
             <div className="flex items-center justify-center h-full text-gray-400 gap-2">
               <Loader2 className="animate-spin" size={18} /> Loading sheet…
