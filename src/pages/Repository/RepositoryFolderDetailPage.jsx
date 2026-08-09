@@ -870,13 +870,13 @@ export default function RepositoryFolderDetailPage() {
   // Section personnel can never verify, even if they have "full" edit
   // access to this section.
   const canRequestFile =
-    userProfile?.role === "admin" ||
+    userProfile?.role === "administrator" ||
     (userProfile?.role === "division_focal" &&
       !!section &&
       userProfile?.division_id === section.division_id);
 
   const canVerify =
-    userProfile?.role === "admin" ||
+    userProfile?.role === "administrator" ||
     (userProfile?.role === "division_focal" &&
       !!section &&
       userProfile?.division_id === section.division_id) ||
@@ -1225,7 +1225,7 @@ export default function RepositoryFolderDetailPage() {
   // Verify/unverify toggle
   async function confirmVerify() {
     const file = verifyTarget;
-    if (!file) return;
+    if (!file || isVerifying) return; // guard: one verification in flight per click, no double-submit
     setIsVerifying(true);
     try {
       const isCurrentlyVerified = file.status === "Verified";
@@ -1236,7 +1236,6 @@ export default function RepositoryFolderDetailPage() {
         updatePayload.verified_by_name = userProfile?.full_name ?? null;
         updatePayload.verified_at = new Date().toISOString();
       } else {
-        // Going back to unverified — the old stamped PDF is no longer valid
         updatePayload.verified_pdf_path = null;
         updatePayload.verified_by_name = null;
         updatePayload.verified_at = null;
@@ -1246,11 +1245,9 @@ export default function RepositoryFolderDetailPage() {
         .from("files")
         .update(updatePayload)
         .eq("id", file.id);
-        
+
       if (error) throw new Error(error.message);
-      if (!isCurrentlyVerified === false && file.verifiedPdfPath) {
-        // (keeping this readable below instead)
-      }
+
       if (isCurrentlyVerified && file.verifiedPdfPath) {
         const { error: removeErr } = await supabase.storage
           .from("verified-pdfs")
@@ -1306,6 +1303,13 @@ export default function RepositoryFolderDetailPage() {
             : f,
         ),
       );
+
+      // Unselect the file once its verification state has been changed
+      setSelectedIds((prev) => {
+        const n = new Set(prev);
+        n.delete(file.id);
+        return n;
+      });
 
       const action = newStatus === "Verified" ? "Verify" : "Unverify";
       await logAudit(
@@ -1690,18 +1694,11 @@ export default function RepositoryFolderDetailPage() {
           </div>
         </div>
 
-        {/* ── File count + bulk bar ─────────────────────────── */}
+        {/* ── Bulk bar anchor + audit note ─────────────────────────── */}
         <div
           id="repo-file-list-anchor"
-          className="flex items-center justify-between mb-3 scroll-mt-6"
+          className="flex items-center justify-end mb-3 scroll-mt-6"
         >
-          <p className="text-[13px] text-slate-500 font-medium">
-            Showing{" "}
-            <span className="font-semibold text-slate-700">
-              {filtered.length === 0 ? 0 : rangeStart}–{rangeEnd}
-            </span>{" "}
-            of {filtered.length} files
-          </p>
           {allFiles.length > 0 && (
             <p className="text-[11px] text-slate-400">
               ○ All actions are audit-logged
@@ -1710,65 +1707,6 @@ export default function RepositoryFolderDetailPage() {
         </div>
 
         {/* ── Bulk action bar (Verify/Unverify only) ─────────── */}
-        {someSelected && canVerify && (
-          <div className="mb-3 flex items-center gap-3 px-4 py-3 rounded-2xl border border-blue-200 bg-blue-50">
-            <span className="text-[13px] font-semibold text-blue-700">
-              {selectedIds.size} file{selectedIds.size > 1 ? "s" : ""} selected
-            </span>
-            <div className="flex items-center gap-2 ml-1">
-              {/* Determine if all selected are verified */}
-              {(() => {
-                const selectedFiles = filtered.filter((f) =>
-                  selectedIds.has(f.id),
-                );
-                const allVerified = selectedFiles.every(
-                  (f) => f.status === "Verified",
-                );
-                const anyUnverified = selectedFiles.some(
-                  (f) => f.status !== "Verified",
-                );
-                return (
-                  <>
-                    {anyUnverified && (
-                      <button
-                        onClick={() => {
-                          const first = filtered.find(
-                            (f) =>
-                              selectedIds.has(f.id) && f.status !== "Verified",
-                          );
-                          if (first) setVerifyTarget(first);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold transition-colors"
-                      >
-                        <ShieldCheck size={12} /> Verify Selected
-                      </button>
-                    )}
-                    {allVerified && (
-                      <button
-                        onClick={() => {
-                          const first = filtered.find(
-                            (f) =>
-                              selectedIds.has(f.id) && f.status === "Verified",
-                          );
-                          if (first) setVerifyTarget(first);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-[11px] font-semibold transition-colors"
-                      >
-                        <XCircle size={12} /> Unverify
-                      </button>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
-            <button
-              onClick={clearSelection}
-              className="ml-auto p-1.5 rounded-lg hover:bg-blue-100 text-blue-400 hover:text-blue-600 transition-colors"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        )}
 
         {someSelected && !canEdit && (
           <div className="mb-3 flex items-center gap-3 px-4 py-3 rounded-2xl border border-blue-200 bg-blue-50">
@@ -1802,7 +1740,6 @@ export default function RepositoryFolderDetailPage() {
           </div>
         )}
 
-
         {/* ── Pagination (Moved to Top) ─────────────────────── */}
         {!loading && filtered.length > 0 && (
           <PaginationBar
@@ -1812,7 +1749,11 @@ export default function RepositoryFolderDetailPage() {
             pageSize={viewMode === "list" ? pageSizeList : pageSizeGrid}
             onPageChange={handlePageChange}
             onPageSizeChange={handlePageSizeChange}
-            pageSizeOptions={viewMode === "list" ? PAGE_SIZE_OPTIONS_LIST : PAGE_SIZE_OPTIONS_GRID}
+            pageSizeOptions={
+              viewMode === "list"
+                ? PAGE_SIZE_OPTIONS_LIST
+                : PAGE_SIZE_OPTIONS_GRID
+            }
             rangeStart={rangeStart}
             rangeEnd={rangeEnd}
           />
@@ -1909,7 +1850,12 @@ export default function RepositoryFolderDetailPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                toggleSelect(file.id);
+                                if (canVerify) {
+                                  if (isVerifying) return;
+                                  setVerifyTarget(file);
+                                } else {
+                                  toggleSelect(file.id);
+                                }
                               }}
                               className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${
                                 isSelected
@@ -1993,12 +1939,30 @@ export default function RepositoryFolderDetailPage() {
 
                       {/* Status badge — clickable to open verify modal (verify-eligible roles only) */}
                       <td className="px-3 py-3.5 w-32">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!canVerify || isVerifying) return;
+                            setVerifyTarget(file);
+                          }}
+                          disabled={!canVerify || isVerifying}
+                          title={
+                            canVerify
+                              ? isVerified
+                                ? "Click to unverify"
+                                : "Click to verify"
+                              : undefined
+                          }
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${
                             isVerified
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : "bg-slate-100 text-slate-500 border-slate-200"
-                          } cursor-default`}
+                          } ${
+                            canVerify
+                              ? "cursor-pointer hover:brightness-95"
+                              : "cursor-default"
+                          } disabled:opacity-60 disabled:cursor-not-allowed`}
                         >
                           {isVerified ? (
                             <>
@@ -2010,7 +1974,7 @@ export default function RepositoryFolderDetailPage() {
                               Unverified
                             </>
                           )}
-                        </span>
+                        </button>
                       </td>
 
                       {/* Size */}
@@ -2181,7 +2145,6 @@ export default function RepositoryFolderDetailPage() {
                 })}
               </tbody>
             </table>
-
           </div>
         ) : (
           /* ── GRID VIEW ───────────────────────────────────── */
@@ -2203,8 +2166,17 @@ export default function RepositoryFolderDetailPage() {
                     }`}
                   >
                     {/* Checkbox */}
+                    {/* Checkbox */}
                     <button
-                      onClick={() => toggleSelect(file.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (canVerify) {
+                          if (isVerifying) return;
+                          setVerifyTarget(file);
+                        } else {
+                          toggleSelect(file.id);
+                        }
+                      }}
                       className={`absolute top-3 left-3 w-5 h-5 rounded border flex items-center justify-center transition-all ${
                         isSelected
                           ? "bg-blue-600 border-blue-600 text-white opacity-100"
@@ -2231,12 +2203,30 @@ export default function RepositoryFolderDetailPage() {
 
                     {/* Status + verify (verify-eligible roles only) */}
                     <div className="flex justify-end mb-3">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!canVerify || isVerifying) return;
+                          setVerifyTarget(file);
+                        }}
+                        disabled={!canVerify || isVerifying}
+                        title={
+                          canVerify
+                            ? isVerified
+                              ? "Click to unverify"
+                              : "Click to verify"
+                            : undefined
+                        }
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border transition-colors ${
                           isVerified
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : "bg-slate-100 text-slate-500 border-slate-200"
-                        } cursor-default`}
+                        } ${
+                          canVerify
+                            ? "cursor-pointer hover:brightness-95"
+                            : "cursor-default"
+                        } disabled:opacity-60 disabled:cursor-not-allowed`}
                       >
                         {isVerified ? (
                           <>
@@ -2247,7 +2237,7 @@ export default function RepositoryFolderDetailPage() {
                             <XCircle size={8} /> Unverified
                           </>
                         )}
-                      </span>
+                      </button>
                     </div>
 
                     <div
@@ -2335,7 +2325,6 @@ export default function RepositoryFolderDetailPage() {
                 );
               })}
             </div>
-
           </div>
         )}
       </div>
