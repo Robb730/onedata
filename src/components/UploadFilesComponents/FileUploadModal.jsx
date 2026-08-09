@@ -1,11 +1,36 @@
 // eslint-disable-next-line no-unused-vars
-import { X, FileText, Calendar, FolderOpen, Loader, Tag, Sparkles, FolderPlus, ArrowRight, ArrowLeft, CheckCircle, Link2 } from "lucide-react";
+import { X, FileText, Calendar, FolderOpen, Loader, Tag, Sparkles, FolderPlus, ArrowRight, ArrowLeft, CheckCircle, Link2, Image as ImageIcon, Video, Music, FileJson, FileSpreadsheet, FileArchive, FileType, File } from "lucide-react";
 import { useState, useEffect, useRef, Fragment } from "react";
 import { getUploadableSchoolYears } from "../../utils/schoolYearsApi";
 
 function buildCodedFilename(originalName, code, year) {
   return `${code.toUpperCase()}-${year}-${originalName}`;
 }
+
+const getFileIconAndColor = (filename) => {
+  if (!filename) return { icon: File, color: "text-gray-500", bg: "bg-gray-100" };
+  const ext = filename.split(".").pop().toLowerCase();
+  switch (ext) {
+    case "jpg": case "jpeg": case "png": case "gif": case "svg": case "webp":
+      return { icon: ImageIcon, color: "text-blue-500", bg: "bg-blue-50" };
+    case "mp4": case "mov": case "avi": case "webm":
+      return { icon: Video, color: "text-purple-500", bg: "bg-purple-50" };
+    case "mp3": case "wav": case "ogg":
+      return { icon: Music, color: "text-pink-500", bg: "bg-pink-50" };
+    case "pdf":
+      return { icon: FileText, color: "text-red-500", bg: "bg-red-50" };
+    case "doc": case "docx":
+      return { icon: FileType, color: "text-blue-600", bg: "bg-blue-50" };
+    case "xls": case "xlsx": case "csv":
+      return { icon: FileSpreadsheet, color: "text-emerald-500", bg: "bg-emerald-50" };
+    case "json": case "txt": case "md":
+      return { icon: FileJson, color: "text-amber-500", bg: "bg-amber-50" };
+    case "zip": case "rar": case "7z": case "tar": case "gz":
+      return { icon: FileArchive, color: "text-amber-600", bg: "bg-amber-50" };
+    default:
+      return { icon: File, color: "text-gray-500", bg: "bg-gray-100" };
+  }
+};
 
 const STEP_LABELS = {
   details: "File Details",
@@ -30,7 +55,7 @@ export default function FileUploadModal({
   const [schoolYear, setSchoolYear] = useState("");
   const [yearsLoading, setYearsLoading] = useState(true);
   const [yearsError, setYearsError] = useState(null);
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [selectedSubfolder, setSelectedSubfolder] = useState(null);
   const [linkedRequestId, setLinkedRequestId] = useState(null);
   const [uploadType, setUploadType] = useState("general");
@@ -70,8 +95,9 @@ export default function FileUploadModal({
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStepIndex(0);
-    setFileName(initialFileName);
-    setSelectedFile(initialFile || null);
+    const initFiles = initialFile ? (Array.isArray(initialFile) ? initialFile : [initialFile]) : [];
+    setSelectedFiles(initFiles);
+    setFileName(initFiles.length > 1 ? "Multiple files selected" : initialFileName);
     setSelectedSubfolder(null);
     setLinkedRequestId(null);
     setUploadType("general");
@@ -118,10 +144,14 @@ export default function FileUploadModal({
   if (!isOpen) return null;
 
   const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      setFileName(file.name);
+    if (e.target.files && e.target.files.length > 0) {
+      const filesArray = Array.from(e.target.files);
+      setSelectedFiles(filesArray);
+      if (filesArray.length === 1) {
+        setFileName(filesArray[0].name);
+      } else {
+        setFileName(`${filesArray.length} files selected`);
+      }
     }
   };
 
@@ -132,12 +162,12 @@ export default function FileUploadModal({
     setIsUploading(true);
     const finalName = codedName ?? fileName;
     try {
-      await onUpload(finalName, schoolYear, uploadType, selectedFile, linkedRequestId);
+      await onUpload(finalName, schoolYear, uploadType, selectedFiles, linkedRequestId);
     } finally {
       setIsUploading(false);
       setStepIndex(0);
       setFileName("");
-      setSelectedFile(null);
+      setSelectedFiles([]);
       setSelectedSubfolder(null);
       setLinkedRequestId(null);
       setUploadType("general");
@@ -146,7 +176,8 @@ export default function FileUploadModal({
 
   const handleStep1Submit = async (e) => {
     e.preventDefault();
-    if (!fileName || !schoolYear || !selectedFile) return;
+    if (selectedFiles.length === 0 || !schoolYear) return;
+    if (selectedFiles.length === 1 && !fileName) return;
     if (isMultiStep) goNext();
     else await submitUpload();
   };
@@ -159,7 +190,7 @@ export default function FileUploadModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl mx-4 overflow-hidden">
 
         <div className="h-1.5 w-full" style={{ background: accentStyle }} />
 
@@ -230,7 +261,8 @@ export default function FileUploadModal({
             </div>
           </div>
         ) : (
-          <>
+          <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-200 min-h-[500px]">
+            <div className="w-full md:w-[50%] flex flex-col bg-white overflow-y-auto max-h-[75vh]">
             {/* ── STEP: File Details ── */}
             {currentStep === "details" && (
               <form onSubmit={handleStep1Submit} className="px-6 py-5 space-y-5">
@@ -253,7 +285,14 @@ export default function FileUploadModal({
                     <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <select
                       value={uploadType}
-                      onChange={(e) => setUploadType(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setUploadType(val);
+                        if (val !== "general" && selectedFiles.length > 1) {
+                          setSelectedFiles([selectedFiles[0]]);
+                          setFileName(selectedFiles[0].name);
+                        }
+                      }}
                       className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm appearance-none bg-white"
                     >
                       <option value="general">General (Store file only)</option>
@@ -281,13 +320,14 @@ export default function FileUploadModal({
                     className="flex items-center gap-2 w-full py-2.5 px-3 text-sm border border-gray-300 rounded-lg bg-white cursor-pointer hover:bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500"
                   >
                     <FileText size={16} className="text-gray-400 flex-shrink-0" />
-                    <span className={`truncate ${selectedFile ? "text-gray-800" : "text-gray-400"}`}>
-                      {selectedFile ? selectedFile.name : "Choose file"}
+                    <span className={`truncate ${selectedFiles.length > 0 ? "text-gray-800" : "text-gray-400"}`}>
+                      {selectedFiles.length === 0 ? "Choose file" : selectedFiles.length === 1 ? selectedFiles[0].name : `${selectedFiles.length} files selected`}
                     </span>
-                    <input id="file-upload-input" type="file" onChange={handleFileChange} className="hidden" required />
+                    <input id="file-upload-input" type="file" onChange={handleFileChange} className="hidden" multiple={uploadType === "general"} required={selectedFiles.length === 0} />
                   </label>
                 </div>
 
+                {selectedFiles.length <= 1 && (
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                     File Name <span className="text-red-500">*</span>
@@ -304,6 +344,7 @@ export default function FileUploadModal({
                     />
                   </div>
                 </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">
@@ -421,7 +462,7 @@ export default function FileUploadModal({
                   <FileText size={16} className="text-gray-400 flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="text-xs text-gray-400 font-medium">File</p>
-                    <p className="text-sm font-semibold text-gray-800 truncate">{fileName}</p>
+                    <p className="text-sm font-semibold text-gray-800 truncate">{selectedFiles.length > 1 ? `${selectedFiles.length} files selected` : fileName}</p>
                   </div>
                   <div className="ml-auto text-right flex-shrink-0">
                     <p className="text-xs text-gray-400 font-medium">School Year</p>
@@ -540,7 +581,7 @@ export default function FileUploadModal({
                   <FileText size={16} className="text-gray-400 flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="text-xs text-gray-400 font-medium">File</p>
-                    <p className="text-sm font-semibold text-gray-800 truncate">{codedName ?? fileName}</p>
+                    <p className="text-sm font-semibold text-gray-800 truncate">{selectedFiles.length > 1 ? `${selectedFiles.length} files selected` : (codedName ?? fileName)}</p>
                   </div>
                   <div className="ml-auto text-right flex-shrink-0">
                     <p className="text-xs text-gray-400 font-medium">School Year</p>
@@ -636,7 +677,63 @@ export default function FileUploadModal({
                 </div>
               </div>
             )}
-          </>
+            </div>
+            
+            {/* Right Pane: Preview */}
+            <div className="w-full md:w-[50%] bg-gray-50 p-6 flex flex-col overflow-y-auto max-h-[75vh]">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">File Preview</h3>
+              
+              {selectedFiles.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-center opacity-50 select-none py-10">
+                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
+                    <FileText size={28} className="text-gray-500" />
+                  </div>
+                  <h4 className="text-sm font-semibold text-gray-700">No files selected</h4>
+                  <p className="text-xs text-gray-500 mt-1 max-w-[200px]">
+                    Choose one or more files to see their details here.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      {selectedFiles.length} {selectedFiles.length === 1 ? "File" : "Files"} Staged
+                    </span>
+                    {uploadType !== "general" && selectedFiles.length > 1 && (
+                      <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-semibold">
+                        Only first file parsed
+                      </span>
+                    )}
+                  </div>
+                  {selectedFiles.map((file, idx) => {
+                    const { icon: FileIcon, color, bg } = getFileIconAndColor(file.name);
+                    return (
+                    <div key={idx} className="group relative flex flex-col p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-200 transition-all">
+                      <div className="flex items-start gap-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${bg} ${color}`}>
+                          <FileIcon size={20} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-gray-900 truncate" title={file.name}>
+                            {file.name}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                            <span className="inline-flex items-center text-xs font-medium text-gray-500">
+                              {(file.size / 1024 / 1024).toFixed(2)} MB
+                            </span>
+                            <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-600 font-mono font-bold">
+                              {file.name.split('.').pop().toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>

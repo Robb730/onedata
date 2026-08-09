@@ -276,10 +276,18 @@ export default function UploadFilesPage() {
     typeof selectedFolder === "object" ? selectedFolder?.name : selectedFolder;
 
   // ── Upload handler ────────────────────────────────────────────────────────
-  const triggerUpload = (fileOrName) => {
-    const isFile = fileOrName instanceof File;
-    const fileName = isFile ? fileOrName.name : fileOrName;
-    const fileObj = isFile ? fileOrName : null;
+  const triggerUpload = (fileOrNameOrArray) => {
+    let fileName = "";
+    let fileObj = null;
+
+    if (Array.isArray(fileOrNameOrArray)) {
+      fileObj = fileOrNameOrArray;
+      fileName = fileOrNameOrArray.length === 1 ? fileOrNameOrArray[0].name : `${fileOrNameOrArray.length} files selected`;
+    } else {
+      const isFile = fileOrNameOrArray instanceof File;
+      fileName = isFile ? fileOrNameOrArray.name : fileOrNameOrArray;
+      fileObj = isFile ? fileOrNameOrArray : null;
+    }
 
     if (isSectionScoped) {
       // Folder is already auto-assigned; go straight to the upload modal.
@@ -307,7 +315,7 @@ export default function UploadFilesPage() {
       e.preventDefault();
       setIsDragging(false);
       const files = Array.from(e.dataTransfer.files);
-      if (files.length > 0) triggerUpload(files[0]);
+      if (files.length > 0) triggerUpload(files);
     },
     [selectedFolder, showFolderPanel],
   );
@@ -799,13 +807,19 @@ export default function UploadFilesPage() {
     }
   };
 
-  const handleFileUpload = async (fileName, schoolYear, uploadType, file, linkedRequestId) => {
+  const handleFileUpload = async (fileName, schoolYear, uploadType, fileOrFiles, linkedRequestId) => {
   setShowUploadModal(false);
   setPendingFile(null);
   setUploadToastStatus("uploading");
 
   try {
-    await addToUploads(fileName, schoolYear, uploadType, file);
+    if (Array.isArray(fileOrFiles)) {
+      for (const file of fileOrFiles) {
+        await addToUploads(file.name, schoolYear, uploadType, file);
+      }
+    } else {
+      await addToUploads(fileName, schoolYear, uploadType, fileOrFiles);
+    }
 
     if (linkedRequestId) {
       const { error } = await supabase
@@ -834,7 +848,7 @@ export default function UploadFilesPage() {
     fileName,
     schoolYear,
     uploadType,
-    file,
+    fileOrFiles,
   ) => {
     const req = pendingRequestUpload;
 
@@ -857,7 +871,13 @@ export default function UploadFilesPage() {
         throw error;
       }
 
-      await addToUploads(fileName, schoolYear, uploadType, file);
+      if (Array.isArray(fileOrFiles)) {
+        for (const file of fileOrFiles) {
+          await addToUploads(file.name, schoolYear, uploadType, file);
+        }
+      } else {
+        await addToUploads(fileName, schoolYear, uploadType, fileOrFiles);
+      }
       await fetchFileRequests();
 
       setUploadToastStatus("success");
