@@ -29,7 +29,7 @@ import {
   Shield,
   X,
   Clock,
-  Inbox
+  Inbox,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import RepositoryBackButton from "../../components/RepositoryComponents/RepositoryBackButton";
@@ -169,8 +169,6 @@ function formatRelativeDate(dateStr) {
     return { relative: `${diffDays}d ago`, time: timeStr, full: fullStr };
   return { relative: fullStr, time: timeStr, full: fullStr };
 }
-
-
 
 // ─────────────────────────────────────────────────────────────────
 // ── MODALS ────────────────────────────────────────────────────────
@@ -508,14 +506,14 @@ function LastModifiedInfoCard({ rawDate, uploaderInfo }) {
   // Format full datetime string
   const fullDate = rawDate
     ? new Date(rawDate).toLocaleString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    })
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
     : "—";
 
   return (
@@ -577,6 +575,8 @@ export default function RepositoryFolderDetailPage() {
   const [showFileRequestModal, setShowFileRequestModal] = useState(false);
   const [isSubmittingFileRequest, setIsSubmittingFileRequest] = useState(false);
   const [myFileRequests, setMyFileRequests] = useState([]);
+
+  const [loadingFileRequests, setLoadingFileRequests] = useState(false); // ← add this
   const [showFileRequestsPanel, setShowFileRequestsPanel] = useState(false);
   const [showFileRequestToast, setShowFileRequestToast] = useState(false);
 
@@ -702,9 +702,13 @@ export default function RepositoryFolderDetailPage() {
         if (cancelled || error || !data) return;
         setSchoolYears(data);
         const active = data.find((y) => y.status === "active");
-        setSelectedSchoolYear((prev) => prev || active?.label || data[0]?.label || "");
+        setSelectedSchoolYear(
+          (prev) => prev || active?.label || data[0]?.label || "",
+        );
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -739,6 +743,12 @@ export default function RepositoryFolderDetailPage() {
   //     (section.id === their section_id)
   // Section personnel can never verify, even if they have "full" edit
   // access to this section.
+  const canRequestFile =
+    userProfile?.role === "admin" ||
+    (userProfile?.role === "division_focal" &&
+      !!section &&
+      userProfile?.division_id === section.division_id);
+
   const canVerify =
     userProfile?.role === "admin" ||
     (userProfile?.role === "division_focal" &&
@@ -885,19 +895,61 @@ export default function RepositoryFolderDetailPage() {
   }
 
   async function fetchMyFileRequests() {
-    if (!userProfile?.id || !section?.id) return;
+    if (!section?.id) return;
+    setLoadingFileRequests(true); // ← add
     const { data, error } = await supabase
       .from("file_requests")
-      .select("*")
-      .eq("requested_by", userProfile.id)
+      .select(
+        `
+      id, file_name, description, deadline, status, created_at,
+      requested_by,
+      users:requested_by ( full_name, role )
+    `,
+      )
       .eq("section_id", section.id)
       .order("created_at", { ascending: false });
-    if (!error) setMyFileRequests(data || []);
+
+    if (error) {
+      console.error("Failed to fetch file requests:", error); // if this fires, it's RLS or a bad join — check the console
+      setLoadingFileRequests(false); // ← add
+      return;
+    }
+
+    const today = new Date();
+    setMyFileRequests(
+      (data || []).map((r) => {
+        const isOverdue =
+          r.status === "pending" && r.deadline && new Date(r.deadline) < today;
+        return {
+          id: r.id,
+          fileName: r.file_name,
+          message: r.description,
+          requestedOn: r.created_at,
+          dueDate: r.deadline
+            ? new Date(r.deadline).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })
+            : "—",
+          requestedBy: r.users?.full_name ?? "Unknown",
+          requesterRole: getRoleDisplay(r.users?.role) ?? "",
+          isOwnRequest: r.requested_by === userProfile?.id,
+          status:
+            r.status === "completed"
+              ? "Completed"
+              : isOverdue
+                ? "Overdue"
+                : "Pending",
+        };
+      }),
+    );
+    setLoadingFileRequests(false); // ← add
   }
 
   useEffect(() => {
-    if (section?.id && userProfile?.id) fetchMyFileRequests();
-  }, [section?.id, userProfile?.id]);
+    if (section?.id) fetchMyFileRequests();
+  }, [section?.id]);
 
   async function submitFileRequest({ fileName, deadline, message }) {
     setIsSubmittingFileRequest(true);
@@ -1099,7 +1151,8 @@ export default function RepositoryFolderDetailPage() {
           file.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           file.uploader.toLowerCase().includes(searchQuery.toLowerCase());
         const matchType = activeType === "All" || file.type === activeType;
-        const matchYear = !selectedSchoolYear || file.school_year === selectedSchoolYear;
+        const matchYear =
+          !selectedSchoolYear || file.school_year === selectedSchoolYear;
         return matchSearch && matchType && matchYear;
       })
       .sort((a, b) => {
@@ -1116,7 +1169,6 @@ export default function RepositoryFolderDetailPage() {
     selectedSchoolYear,
   ]);
 
-
   const yearFilteredFiles = selectedSchoolYear
     ? allFiles.filter((f) => f.school_year === selectedSchoolYear)
     : allFiles;
@@ -1129,7 +1181,9 @@ export default function RepositoryFolderDetailPage() {
     return acc;
   }, {});
 
-  const verifiedCount = yearFilteredFiles.filter((f) => f.status === "Verified").length;
+  const verifiedCount = yearFilteredFiles.filter(
+    (f) => f.status === "Verified",
+  ).length;
   const backTarget = division
     ? `/repository/divisions/${division.id}`
     : "/repository";
@@ -1210,7 +1264,7 @@ export default function RepositoryFolderDetailPage() {
                 : `${yearFilteredFiles.length} files · ${verifiedCount} verified`}
             </p>
           </div>
-          {canEdit && (
+          {canRequestFile && (
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => {
@@ -1220,7 +1274,7 @@ export default function RepositoryFolderDetailPage() {
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-all"
               >
                 <Inbox size={15} />
-                My Requests
+                Files Requested
                 {myFileRequests.length > 0 && (
                   <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
                     {myFileRequests.length}
@@ -1308,21 +1362,27 @@ export default function RepositoryFolderDetailPage() {
             <div className="flex items-center gap-2 flex-wrap">
               {FILE_TYPE_TABS.map((tab) => {
                 const isActive = activeType === tab;
-                
-                let activeColors = "bg-blue-600 text-white border-blue-600 shadow-sm";
+
+                let activeColors =
+                  "bg-blue-600 text-white border-blue-600 shadow-sm";
                 if (isActive) {
-                  if (tab === "PDF") activeColors = "bg-red-500 text-white border-red-500 shadow-sm";
-                  else if (tab === "Excel") activeColors = "bg-emerald-500 text-white border-emerald-500 shadow-sm";
+                  if (tab === "PDF")
+                    activeColors =
+                      "bg-red-500 text-white border-red-500 shadow-sm";
+                  else if (tab === "Excel")
+                    activeColors =
+                      "bg-emerald-500 text-white border-emerald-500 shadow-sm";
                 }
 
                 return (
                   <button
                     key={tab}
                     onClick={() => setActiveType(tab)}
-                    className={`px-3.5 py-1.5 text-[11px] font-semibold rounded-full transition-all border ${isActive
-                      ? activeColors
-                      : "text-slate-500 hover:bg-slate-50 border-slate-200 bg-white"
-                      }`}
+                    className={`px-3.5 py-1.5 text-[11px] font-semibold rounded-full transition-all border ${
+                      isActive
+                        ? activeColors
+                        : "text-slate-500 hover:bg-slate-50 border-slate-200 bg-white"
+                    }`}
                   >
                     {tab}
                     <span
@@ -1522,11 +1582,10 @@ export default function RepositoryFolderDetailPage() {
                   return (
                     <tr
                       key={file.id}
-                      className={`group relative transition-colors ${isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
-                        }`}
+                      className={`group relative transition-colors ${
+                        isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
+                      }`}
                     >
-
-
                       {/* File cell — with hover popover */}
                       <td className="px-3 py-3.5 min-w-[220px]">
                         <div
@@ -1540,13 +1599,19 @@ export default function RepositoryFolderDetailPage() {
                                 e.stopPropagation();
                                 toggleSelect(file.id);
                               }}
-                              className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${isSelected
-                                ? "bg-blue-50 border border-blue-200 text-blue-600"
-                                : `border border-transparent group-hover:bg-slate-100 group-hover:border-slate-200 group-hover:text-slate-400 ${bg}`
-                                }`}
+                              className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                                isSelected
+                                  ? "bg-blue-50 border border-blue-200 text-blue-600"
+                                  : `border border-transparent group-hover:bg-slate-100 group-hover:border-slate-200 group-hover:text-slate-400 ${bg}`
+                              }`}
                             >
                               {isSelected ? (
-                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                <svg
+                                  width="12"
+                                  height="12"
+                                  viewBox="0 0 12 12"
+                                  fill="none"
+                                >
                                   <path
                                     d="M2 6l3 3 5-5"
                                     stroke="currentColor"
@@ -1592,10 +1657,11 @@ export default function RepositoryFolderDetailPage() {
                           </div>
                           {/* File hover popover */}
                           <div
-                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${isFileHovered
-                              ? "opacity-100 visible scale-100 pointer-events-auto"
-                              : "opacity-0 invisible scale-95 pointer-events-none"
-                              }`}
+                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
+                              isFileHovered
+                                ? "opacity-100 visible scale-100 pointer-events-auto"
+                                : "opacity-0 invisible scale-95 pointer-events-none"
+                            }`}
                           >
                             <FileInfoCard
                               file={file}
@@ -1616,10 +1682,11 @@ export default function RepositoryFolderDetailPage() {
                       {/* Status badge — clickable to open verify modal (verify-eligible roles only) */}
                       <td className="px-3 py-3.5 w-32">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${isVerified
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : "bg-slate-100 text-slate-500 border-slate-200"
-                            } cursor-default`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                            isVerified
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-slate-100 text-slate-500 border-slate-200"
+                          } cursor-default`}
                         >
                           {isVerified ? (
                             <>
@@ -1673,10 +1740,11 @@ export default function RepositoryFolderDetailPage() {
                           {/* User hover popover */}
                           {uploaderInfo && (
                             <div
-                              className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${isUserHovered
-                                ? "opacity-100 visible scale-100 pointer-events-auto"
-                                : "opacity-0 invisible scale-95 pointer-events-none"
-                                }`}
+                              className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
+                                isUserHovered
+                                  ? "opacity-100 visible scale-100 pointer-events-auto"
+                                  : "opacity-0 invisible scale-95 pointer-events-none"
+                              }`}
                             >
                               <UserInfoCard info={uploaderInfo} />
                             </div>
@@ -1711,10 +1779,11 @@ export default function RepositoryFolderDetailPage() {
                           </div>
                           {/* Last Modified hover popover */}
                           <div
-                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${hoveredModifiedId === file.id
-                              ? "opacity-100 visible scale-100 pointer-events-auto"
-                              : "opacity-0 invisible scale-95 pointer-events-none"
-                              }`}
+                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
+                              hoveredModifiedId === file.id
+                                ? "opacity-100 visible scale-100 pointer-events-auto"
+                                : "opacity-0 invisible scale-95 pointer-events-none"
+                            }`}
                           >
                             <LastModifiedInfoCard
                               rawDate={file.rawUpdatedAt || file.rawCreatedAt}
@@ -1805,7 +1874,8 @@ export default function RepositoryFolderDetailPage() {
             {/* Table footer */}
             <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
               <p className="text-[11px] text-slate-400">
-                {yearFilteredFiles.length} file{yearFilteredFiles.length !== 1 ? "s" : ""}
+                {yearFilteredFiles.length} file
+                {yearFilteredFiles.length !== 1 ? "s" : ""}
               </p>
               <p className="text-[11px] text-slate-400">
                 ○ All actions are audit-logged
@@ -1824,18 +1894,20 @@ export default function RepositoryFolderDetailPage() {
               return (
                 <div
                   key={file.id}
-                  className={`relative bg-white rounded-2xl border p-4 transition-all cursor-pointer group ${isSelected
-                    ? "border-blue-300 shadow-md ring-1 ring-blue-100"
-                    : "border-slate-100 hover:shadow-md hover:border-slate-200 shadow-sm"
-                    }`}
+                  className={`relative bg-white rounded-2xl border p-4 transition-all cursor-pointer group ${
+                    isSelected
+                      ? "border-blue-300 shadow-md ring-1 ring-blue-100"
+                      : "border-slate-100 hover:shadow-md hover:border-slate-200 shadow-sm"
+                  }`}
                 >
                   {/* Checkbox */}
                   <button
                     onClick={() => toggleSelect(file.id)}
-                    className={`absolute top-3 left-3 w-5 h-5 rounded border flex items-center justify-center transition-all ${isSelected
-                      ? "bg-blue-600 border-blue-600 text-white opacity-100"
-                      : "bg-white border-slate-300 text-transparent opacity-0 group-hover:opacity-100 hover:border-blue-400"
-                      }`}
+                    className={`absolute top-3 left-3 w-5 h-5 rounded border flex items-center justify-center transition-all ${
+                      isSelected
+                        ? "bg-blue-600 border-blue-600 text-white opacity-100"
+                        : "bg-white border-slate-300 text-transparent opacity-0 group-hover:opacity-100 hover:border-blue-400"
+                    }`}
                   >
                     {isSelected && (
                       <svg
@@ -1858,10 +1930,11 @@ export default function RepositoryFolderDetailPage() {
                   {/* Status + verify (verify-eligible roles only) */}
                   <div className="flex justify-end mb-3">
                     <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${isVerified
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-slate-100 text-slate-500 border-slate-200"
-                        } cursor-default`}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                        isVerified
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-slate-100 text-slate-500 border-slate-200"
+                      } cursor-default`}
                     >
                       {isVerified ? (
                         <>
@@ -2002,10 +2075,11 @@ export default function RepositoryFolderDetailPage() {
       />
 
       <FileRequestsPanel
-        isOpen={showFileRequestsPanel}
-        onClose={() => setShowFileRequestsPanel(false)}
-        requests={myFileRequests}
-      />
+  isOpen={showFileRequestsPanel}
+  onClose={() => setShowFileRequestsPanel(false)}
+  requests={myFileRequests}
+  isLoading={loadingFileRequests}
+/>
 
       <FileAccessRequestModal
         isOpen={!!requestModalFiles}
@@ -2138,7 +2212,9 @@ export default function RepositoryFolderDetailPage() {
             fontFamily: "Poppins, sans-serif",
           }}
         >
-          <div style={{ width: 6, backgroundColor: "#43D45B", flexShrink: 0 }} />
+          <div
+            style={{ width: 6, backgroundColor: "#43D45B", flexShrink: 0 }}
+          />
           <div
             className="flex items-center flex-1 relative"
             style={{ padding: "0 14px", gap: 12 }}
@@ -2169,17 +2245,40 @@ export default function RepositoryFolderDetailPage() {
               </svg>
             </div>
             <div>
-              <p style={{ fontSize: 15, fontWeight: 700, color: "#1F1F2E", lineHeight: 1.2, margin: 0 }}>
+              <p
+                style={{
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: "#1F1F2E",
+                  lineHeight: 1.2,
+                  margin: 0,
+                }}
+              >
                 Success
               </p>
-              <p style={{ fontSize: 12.5, fontWeight: 500, color: "#666", marginTop: 2, margin: 0 }}>
+              <p
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: 500,
+                  color: "#666",
+                  marginTop: 2,
+                  margin: 0,
+                }}
+              >
                 File request submitted.
               </p>
             </div>
             <button
               onClick={() => setShowFileRequestToast(false)}
               className="absolute top-2 right-2.5"
-              style={{ color: "#666", background: "none", border: "none", fontSize: 16, lineHeight: 1, cursor: "pointer" }}
+              style={{
+                color: "#666",
+                background: "none",
+                border: "none",
+                fontSize: 16,
+                lineHeight: 1,
+                cursor: "pointer",
+              }}
             >
               ×
             </button>

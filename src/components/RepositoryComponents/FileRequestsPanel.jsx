@@ -1,128 +1,223 @@
-import { useState } from "react";
-import { X, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, FileText, Inbox, Calendar, User2, MessageSquareText } from "lucide-react";
 
-function getStatusBadge(req) {
-  const isOverdue =
-    req.status === "pending" &&
-    req.deadline &&
-    new Date(req.deadline) < new Date();
-
-  if (req.status === "completed")
-    return {
-      label: "Completed",
-      cls: "bg-teal-50 text-teal-700 border-teal-200",
-      Icon: CheckCircle2,
-    };
-  if (isOverdue)
-    return {
-      label: "Overdue",
-      cls: "bg-red-50 text-red-700 border-red-200",
-      Icon: AlertCircle,
-    };
-  return {
-    label: "Pending",
-    cls: "bg-orange-50 text-orange-700 border-orange-200",
-    Icon: Clock,
-  };
+const AVATAR_COLORS = ["bg-violet-500","bg-blue-500","bg-emerald-500","bg-amber-500","bg-rose-500","bg-cyan-500","bg-indigo-500","bg-pink-500"];
+function hashStr(str = "") {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) { h = (h << 5) - h + str.charCodeAt(i); h |= 0; }
+  return Math.abs(h);
+}
+function getAvatarColor(name) { return AVATAR_COLORS[hashStr(name) % AVATAR_COLORS.length]; }
+function getInitials(name = "") {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+function getStatusStyle(status) {
+  if (status === "Overdue") return "text-red-600 bg-red-50 border-red-200";
+  if (status === "Completed") return "text-teal-600 bg-teal-50 border-teal-200";
+  return "text-amber-600 bg-amber-50 border-amber-200";
+}
+function getAccent(status) {
+  if (status === "Overdue") return "bg-red-400";
+  if (status === "Completed") return "bg-teal-400";
+  return "bg-amber-400";
 }
 
-export default function FileRequestsPanel({ isOpen, onClose, requests }) {
-  const [page, setPage] = useState(1);
-  const perPage = 5;
+const FILTERS = [
+  { key: "all", label: "All" },
+  { key: "mine", label: "Mine" },
+];
 
-  if (!isOpen) return null;
+export default function FileRequestsPanel({ isOpen, onClose, requests = [], isLoading = false }) {
+  // Keep the panel mounted while the exit animation plays.
+  const [shouldRender, setShouldRender] = useState(isOpen);
+  const [animateIn, setAnimateIn] = useState(false);
+  const [filter, setFilter] = useState("all");
 
-  const totalPages = Math.max(1, Math.ceil(requests.length / perPage));
-  const paginated = requests.slice((page - 1) * perPage, page * perPage);
+  useEffect(() => {
+    let raf1, raf2, t2;
+    if (isOpen) {
+      setShouldRender(true);
+      // Double rAF: the first rAF still fires before the browser has painted
+      // the initial (off-screen) state in some cases, which skips the
+      // transition entirely. Waiting a full extra frame guarantees a paint
+      // happens with animateIn=false before we flip it to true.
+      raf1 = requestAnimationFrame(() => {
+        raf2 = requestAnimationFrame(() => setAnimateIn(true));
+      });
+    } else {
+      setAnimateIn(false);
+      t2 = setTimeout(() => setShouldRender(false), 320);
+    }
+    return () => {
+      if (raf1) cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
+      if (t2) clearTimeout(t2);
+    };
+  }, [isOpen]);
 
-  function handleClose() {
-    setPage(1);
-    onClose();
-  }
+  if (!shouldRender) return null;
+
+  const filtered = filter === "mine" ? requests.filter((r) => r.isOwnRequest) : requests;
+  const mineCount = requests.filter((r) => r.isOwnRequest).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
-      <div className="w-full max-w-lg max-h-[80vh] flex flex-col rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)] overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 shrink-0">
-          <h2 className="text-lg font-bold text-slate-900">My File Requests</h2>
-          <button
-            onClick={handleClose}
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
-          >
-            <X size={18} />
-          </button>
+    <div
+      className={`fixed inset-0 z-50 flex justify-end transition-colors duration-300 ease-out ${
+        animateIn ? "bg-slate-950/40 backdrop-blur-[2px]" : "bg-slate-950/0"
+      }`}
+      onClick={onClose}
+    >
+      <div
+        className={`w-full max-w-md h-full bg-white shadow-[-24px_0_60px_rgba(15,23,42,0.18)] flex flex-col transform transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          animateIn ? "translate-x-0" : "translate-x-full"
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 border-b border-slate-100 shrink-0 bg-gradient-to-b from-slate-50/80 to-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center shadow-sm shadow-blue-200">
+                <Inbox size={18} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-[1.1rem] font-black text-slate-800 tracking-[-0.01em] leading-tight">
+                  Files Requested
+                </h2>
+                <p className="text-[0.72rem] text-slate-400 font-medium mt-0.5">
+                  {requests.length} request{requests.length !== 1 ? "s" : ""} for this section
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Filter pills */}
+          <div className="mt-4 inline-flex items-center gap-1 p-1 rounded-full bg-slate-100/80 border border-slate-200/60">
+            {FILTERS.map((f) => {
+              const active = filter === f.key;
+              const count = f.key === "mine" ? mineCount : requests.length;
+              return (
+                <button
+                  key={f.key}
+                  onClick={() => setFilter(f.key)}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11.5px] font-bold transition-all ${
+                    active
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  {f.label}
+                  <span
+                    className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-full ${
+                      active ? "bg-blue-50 text-blue-600" : "bg-slate-200/70 text-slate-500"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-          {requests.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-10">
-              No file requests yet.
-            </p>
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-3 bg-slate-50/30">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16 gap-2 text-sm text-slate-400">
+              <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+              Loading requests…
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-12 h-12 rounded-full bg-white border border-slate-100 flex items-center justify-center mb-3 shadow-sm">
+                <FileText className="text-slate-300" size={20} strokeWidth={1.5} />
+              </div>
+              <p className="text-[0.85rem] font-semibold text-slate-500">
+                {filter === "mine" ? "You haven't requested any files" : "No file requests yet"}
+              </p>
+              <p className="text-[0.75rem] text-slate-400 mt-0.5 max-w-[240px]">
+                {filter === "mine"
+                  ? "Files you request will show up here."
+                  : "Requests made for this section will show up here."}
+              </p>
+            </div>
           ) : (
-            paginated.map((req) => {
-              const { label, cls, Icon } = getStatusBadge(req);
+            filtered.map((req, i) => {
+              const isOverdue = req.status === "Overdue";
+              const accent = getAccent(req.status);
+              const avatarBg = getAvatarColor(req.requestedBy);
+
               return (
                 <div
                   key={req.id}
-                  className="p-4 rounded-xl border border-slate-200"
+                  style={{ transitionDelay: animateIn ? `${Math.min(i, 8) * 40}ms` : "0ms" }}
+                  className={`relative flex rounded-2xl border overflow-hidden bg-white shadow-sm hover:shadow-md transition-all duration-300 ease-out ${
+                    animateIn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+                  } ${req.isOwnRequest ? "border-blue-100 ring-1 ring-blue-50" : "border-slate-100"}`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-sm font-semibold text-slate-800">
-                      {req.file_name}
-                    </p>
-                    <span
-                      className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${cls}`}
-                    >
-                      <Icon size={10} /> {label}
-                    </span>
+                  <div className={`w-[3px] shrink-0 ${accent}`} />
+                  <div className="flex-1 p-4">
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                          <FileText size={13} className="text-blue-500" />
+                        </div>
+                        <p className="text-[13px] font-bold text-slate-800 truncate">{req.fileName}</p>
+                      </div>
+                      <span
+                        className={`shrink-0 text-[9.5px] font-bold px-2 py-1 rounded-full border ${getStatusStyle(
+                          req.status,
+                        )}`}
+                      >
+                        {req.status}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 mb-2.5">
+                      <div className={`w-7 h-7 ${avatarBg} rounded-full flex items-center justify-center shrink-0`}>
+                        <span className="text-[9.5px] font-bold text-white">{getInitials(req.requestedBy)}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11.5px] font-semibold text-slate-700 truncate leading-tight flex items-center gap-1.5">
+                          {req.requestedBy}
+                          {req.isOwnRequest && (
+                            <span className="inline-flex items-center gap-1 text-[8.5px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600">
+                              <User2 size={8} /> You
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{req.requesterRole}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-[8.5px] font-bold uppercase tracking-wide text-slate-400 flex items-center gap-1 justify-end">
+                          <Calendar size={9} /> Due
+                        </p>
+                        <p className={`text-[11px] font-bold ${isOverdue ? "text-red-600" : "text-slate-600"}`}>
+                          {req.dueDate}
+                        </p>
+                      </div>
+                    </div>
+
+                    {req.message && (
+                      <div className="flex items-start gap-1.5 bg-slate-50 rounded-lg px-2.5 py-2 border border-slate-100">
+                        <MessageSquareText size={11} className="text-slate-400 mt-0.5 shrink-0" />
+                        <p className="text-[11px] text-slate-500 italic leading-snug">{req.message}</p>
+                      </div>
+                    )}
                   </div>
-                  {req.description && (
-                    <p className="text-[12px] text-slate-500 mt-1.5">
-                      {req.description}
-                    </p>
-                  )}
-                  <p className="text-[11px] text-slate-400 mt-2">
-                    Due:{" "}
-                    {req.deadline
-                      ? new Date(req.deadline).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })
-                      : "—"}
-                  </p>
                 </div>
               );
             })
           )}
         </div>
-
-        {requests.length > perPage && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 shrink-0">
-            <p className="text-[11px] text-slate-400">
-              Page <span className="font-semibold text-slate-600">{page}</span> of{" "}
-              <span className="font-semibold text-slate-600">{totalPages}</span>
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Prev
-              </button>
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
