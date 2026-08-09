@@ -45,6 +45,8 @@ import { RepositorySearchBar } from "../../components/RepositoryComponents";
 import FileRequestModal from "../../components/RepositoryComponents/FileRequestModal";
 import FileRequestsPanel from "../../components/RepositoryComponents/FileRequestsPanel";
 
+import DownloadOptionsMenu from "../../components/RepositoryComponents/DownloadOptionsMenu";
+
 // ── Role map ────────────────────────────────────────────────────
 const roleDisplayMap = {
   division_focal: "Division Focal Person",
@@ -747,6 +749,8 @@ export default function RepositoryFolderDetailPage() {
   const [schoolYears, setSchoolYears] = useState([]);
   const [selectedSchoolYear, setSelectedSchoolYear] = useState("");
 
+  const [downloadMenuTarget, setDownloadMenuTarget] = useState(null); // { file, x, y }
+
   function hasFileAccess(file) {
     return canEdit || fileAccessMap[file.id] === "approved";
   }
@@ -986,6 +990,9 @@ export default function RepositoryFolderDetailPage() {
       path: f.file_path,
       data_category: f.data_category,
       school_year: f.school_year,
+      verifiedPdfPath: f.verified_pdf_path ?? null, // new
+      verifiedByName: f.verified_by_name ?? null, // new
+      verifiedAt: f.verified_at ?? null, // new
     }));
 
     setAllFiles(mapped);
@@ -1181,6 +1188,12 @@ export default function RepositoryFolderDetailPage() {
           .remove([file.path]);
         if (storageErr) throw new Error(storageErr.message);
       }
+
+      if (file.verifiedPdfPath) {
+        await supabase.storage
+          .from("verified-pdfs")
+          .remove([file.verifiedPdfPath]);
+      }
       const { error: dbErr } = await supabase
         .from("files")
         .delete()
@@ -1218,29 +1231,146 @@ export default function RepositoryFolderDetailPage() {
       const isCurrentlyVerified = file.status === "Verified";
       const newStatus = isCurrentlyVerified ? "Unverified" : "Verified";
 
+      const updatePayload = { status: newStatus };
+      if (newStatus === "Verified") {
+        updatePayload.verified_by_name = userProfile?.full_name ?? null;
+        updatePayload.verified_at = new Date().toISOString();
+      } else {
+        // Going back to unverified — the old stamped PDF is no longer valid
+        updatePayload.verified_pdf_path = null;
+        updatePayload.verified_by_name = null;
+        updatePayload.verified_at = null;
+      }
+
       const { error } = await supabase
         .from("files")
-        .update({ status: newStatus })
+        .update(updatePayload)
         .eq("id", file.id);
+        
       if (error) throw new Error(error.message);
+      if (!isCurrentlyVerified === false && file.verifiedPdfPath) {
+        // (keeping this readable below instead)
+      }
+      if (isCurrentlyVerified && file.verifiedPdfPath) {
+        const { error: removeErr } = await supabase.storage
+          .from("verified-pdfs")
+          .remove([file.verifiedPdfPath]);
+        if (removeErr)
+          console.error("Failed to remove old verified PDF:", removeErr);
+      }
+
+      let verifiedPdfPath = null;
+      let pdfGenerationFailed = false;
+
+      if (newStatus === "Verified") {
+        try {
+          const resp = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-verified-pdf`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              },
+              body: JSON.stringify({ id: file.id }),
+            },
+          );
+          const json = await resp.json();
+          if (resp.ok && json.success && json.path) {
+            verifiedPdfPath = json.path;
+          } else {
+            pdfGenerationFailed = true;
+            console.error("Verified PDF generation failed:", json.error);
+          }
+        } catch (genErr) {
+          pdfGenerationFailed = true;
+          console.error("Verified PDF generation request failed:", genErr);
+        }
+      }
 
       setAllFiles((prev) =>
-        prev.map((f) => (f.id === file.id ? { ...f, status: newStatus } : f)),
+        prev.map((f) =>
+          f.id === file.id
+            ? {
+                ...f,
+                status: newStatus,
+                verifiedPdfPath:
+                  newStatus === "Verified" ? verifiedPdfPath : null,
+                verifiedByName:
+                  newStatus === "Verified"
+                    ? updatePayload.verified_by_name
+                    : null,
+                verifiedAt:
+                  newStatus === "Verified" ? updatePayload.verified_at : null,
+              }
+            : f,
+        ),
       );
 
       const action = newStatus === "Verified" ? "Verify" : "Unverify";
       await logAudit(
         action,
         file.name,
-        `${action}d in ${section?.name}`,
+        pdfGenerationFailed
+          ? `${action}d in ${section?.name} (verified PDF generation failed)`
+          : `${action}d in ${section?.name}`,
         "Success",
       );
+
+      if (pdfGenerationFailed) {
+        alert(
+          "File verified, but the stamped PDF couldn't be generated. You can retry by unverifying and verifying again.",
+        );
+      }
+
       setVerifyTarget(null);
     } catch (err) {
       console.error(err);
       alert(err.message);
     } finally {
       setIsVerifying(false);
+    }
+  }
+
+  async function handleDownloadVerifiedPdf(file) {
+    if (!file.verifiedPdfPath) return;
+    setDownloadingId(file.id);
+    try {
+      const baseName = file.name.replace(/\.[^./]+$/, "");
+      const { data, error } = await supabase.storage
+        .from("verified-pdfs")
+        .createSignedUrl(file.verifiedPdfPath, 60, {
+          download: `${baseName} (Verified).pdf`,
+        });
+      if (error) throw new Error(error.message);
+
+      const a = document.createElement("a");
+      a.href = data.signedUrl;
+      a.download = `${baseName} (Verified).pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      await logAudit(
+        "Download",
+        file.name,
+        `Downloaded verified PDF from ${section?.name}`,
+        "Success",
+      );
+    } catch (err) {
+      console.error(err);
+      await logAudit("Download", file.name, err.message, "Failed");
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
+  function handleDownloadClick(e, file) {
+    if (file.status === "Verified" && file.verifiedPdfPath) {
+      e.stopPropagation();
+      setDownloadMenuTarget({ file, x: e.clientX, y: e.clientY });
+    } else {
+      handleDownloadFile(file);
     }
   }
 
@@ -1333,7 +1463,8 @@ export default function RepositoryFolderDetailPage() {
     return filtered.slice(start, start + pageSize);
   }, [filtered, currentPage, pageSize]);
 
-  const rangeStart = filtered.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const rangeStart =
+    filtered.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const rangeEnd = Math.min(currentPage * pageSize, filtered.length);
 
   function handlePageChange(page) {
@@ -1560,7 +1691,10 @@ export default function RepositoryFolderDetailPage() {
         </div>
 
         {/* ── File count + bulk bar ─────────────────────────── */}
-        <div id="repo-file-list-anchor" className="flex items-center justify-between mb-3 scroll-mt-6">
+        <div
+          id="repo-file-list-anchor"
+          className="flex items-center justify-between mb-3 scroll-mt-6"
+        >
           <p className="text-[13px] text-slate-500 font-medium">
             Showing{" "}
             <span className="font-semibold text-slate-700">
@@ -1967,7 +2101,7 @@ export default function RepositoryFolderDetailPage() {
                               <Eye size={14} />
                             </button>
                             <button
-                              onClick={() => handleDownloadFile(file)}
+                              onClick={(e) => handleDownloadClick(e, file)}
                               disabled={downloadingId === file.id}
                               className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-300 hover:text-blue-600 transition-colors disabled:opacity-40"
                               title="Download"
@@ -1999,7 +2133,7 @@ export default function RepositoryFolderDetailPage() {
                               <Eye size={14} />
                             </button>
                             <button
-                              onClick={() => handleDownloadFile(file)}
+                              onClick={(e) => handleDownloadClick(e, file)}
                               disabled={downloadingId === file.id}
                               title="Download"
                               className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-300 hover:text-blue-600 transition-colors disabled:opacity-40"
@@ -2253,11 +2387,11 @@ export default function RepositoryFolderDetailPage() {
       />
 
       <FileRequestsPanel
-  isOpen={showFileRequestsPanel}
-  onClose={() => setShowFileRequestsPanel(false)}
-  requests={myFileRequests}
-  isLoading={loadingFileRequests}
-/>
+        isOpen={showFileRequestsPanel}
+        onClose={() => setShowFileRequestsPanel(false)}
+        requests={myFileRequests}
+        isLoading={loadingFileRequests}
+      />
 
       <FileAccessRequestModal
         isOpen={!!requestModalFiles}
@@ -2273,6 +2407,18 @@ export default function RepositoryFolderDetailPage() {
         onSubmit={submitAccessRequest}
         isSubmitting={isSubmittingRequest}
       />
+
+      {downloadMenuTarget && (
+        <DownloadOptionsMenu
+          x={downloadMenuTarget.x}
+          y={downloadMenuTarget.y}
+          onDownloadRaw={() => handleDownloadFile(downloadMenuTarget.file)}
+          onDownloadVerified={() =>
+            handleDownloadVerifiedPdf(downloadMenuTarget.file)
+          }
+          onClose={() => setDownloadMenuTarget(null)}
+        />
+      )}
 
       {canEdit && (
         <>
