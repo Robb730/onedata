@@ -19,6 +19,7 @@ import {
   XCircle,
   MoreHorizontal,
   ChevronRight,
+  ChevronLeft,
   Upload,
   FileUp,
   Tag,
@@ -99,6 +100,10 @@ function LockedFileButton({ Icon, label, onClick }) {
 
 const FILE_TYPE_TABS = ["All", "PDF", "Excel", "Word", "Image"];
 
+// ── Pagination options ─────────────────────────────────────────
+const PAGE_SIZE_OPTIONS_LIST = [10, 25, 50, 100];
+const PAGE_SIZE_OPTIONS_GRID = [12, 24, 48, 96];
+
 function inferType(mimeType, fileName) {
   if (!mimeType && !fileName) return "Other";
   const ext = fileName?.split(".").pop()?.toLowerCase();
@@ -168,6 +173,117 @@ function formatRelativeDate(dateStr) {
   if (diffDays < 7)
     return { relative: `${diffDays}d ago`, time: timeStr, full: fullStr };
   return { relative: fullStr, time: timeStr, full: fullStr };
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ── PAGINATION CONTROLS ────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+function PaginationBar({
+  currentPage,
+  totalPages,
+  totalItems,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+  pageSizeOptions,
+  rangeStart,
+  rangeEnd,
+}) {
+  if (totalItems === 0) return null;
+
+  // Build a compact list of page numbers with ellipses
+  function getPageNumbers() {
+    const pages = [];
+    const delta = 1;
+    const left = Math.max(2, currentPage - delta);
+    const right = Math.min(totalPages - 1, currentPage + delta);
+
+    pages.push(1);
+    if (left > 2) pages.push("ellipsis-left");
+    for (let i = left; i <= right; i++) pages.push(i);
+    if (right < totalPages - 1) pages.push("ellipsis-right");
+    if (totalPages > 1) pages.push(totalPages);
+
+    return pages;
+  }
+
+  const pageNumbers = totalPages > 1 ? getPageNumbers() : [1];
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
+      <div className="flex items-center gap-3 text-[11px] text-slate-400 font-medium">
+        <span>
+          Showing{" "}
+          <span className="font-semibold text-slate-600">
+            {rangeStart}–{rangeEnd}
+          </span>{" "}
+          of <span className="font-semibold text-slate-600">{totalItems}</span>
+        </span>
+        <div className="hidden sm:flex items-center gap-1.5">
+          <span className="text-slate-300">·</span>
+          <label className="flex items-center gap-1.5">
+            <span>Show</span>
+            <select
+              value={pageSize}
+              onChange={(e) => onPageSizeChange(Number(e.target.value))}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
+            >
+              {pageSizeOptions.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            aria-label="Previous page"
+          >
+            <ChevronLeft size={14} />
+          </button>
+
+          {pageNumbers.map((p, i) =>
+            typeof p === "number" ? (
+              <button
+                key={p}
+                onClick={() => onPageChange(p)}
+                className={`min-w-[28px] h-[28px] px-2 rounded-lg text-[11px] font-bold transition-colors ${
+                  p === currentPage
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                }`}
+              >
+                {p}
+              </button>
+            ) : (
+              <span
+                key={p + i}
+                className="w-6 text-center text-[11px] text-slate-300 select-none"
+              >
+                …
+              </span>
+            ),
+          )}
+
+          <button
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            aria-label="Next page"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -599,6 +715,12 @@ export default function RepositoryFolderDetailPage() {
   const [downloadingId, setDownloadingId] = useState(null);
   const [fileToDelete, setFileToDelete] = useState(null);
   const [showDeleteToast, setShowDeleteToast] = useState(false);
+
+  // ── Pagination state ──────────────────────────────────────────
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSizeList, setPageSizeList] = useState(25);
+  const [pageSizeGrid, setPageSizeGrid] = useState(24);
+  const pageSize = viewMode === "list" ? pageSizeList : pageSizeGrid;
 
   // ── Selection ──────────────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -1189,6 +1311,46 @@ export default function RepositoryFolderDetailPage() {
     : "/repository";
   const backLabel = division?.name ?? "Repository";
 
+  // ── Pagination derived state ────────────────────────────────────
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+
+  // Clamp current page whenever the filtered set, page size, or view
+  // mode changes (e.g. a search narrows the results below the current page).
+  useEffect(() => {
+    setCurrentPage((prev) => {
+      const maxPage = Math.max(1, Math.ceil(filtered.length / pageSize));
+      return prev > maxPage ? maxPage : prev;
+    });
+  }, [filtered.length, pageSize]);
+
+  // Reset to page 1 whenever the active filters/search/sort change.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeType, sortBy, selectedSchoolYear, viewMode]);
+
+  const paginated = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, currentPage, pageSize]);
+
+  const rangeStart = filtered.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const rangeEnd = Math.min(currentPage * pageSize, filtered.length);
+
+  function handlePageChange(page) {
+    const clamped = Math.min(Math.max(1, page), totalPages);
+    setCurrentPage(clamped);
+    // Scroll the file list back into view so pagination is legible after
+    // jumping from the bottom of a long list.
+    const el = document.getElementById("repo-file-list-anchor");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function handlePageSizeChange(size) {
+    if (viewMode === "list") setPageSizeList(size);
+    else setPageSizeGrid(size);
+    setCurrentPage(1);
+  }
+
   // ── Popover helpers ────────────────────────────────────────────
   function handleFileMouseEnter(fileId) {
     clearTimeout(fileHoverTimer.current);
@@ -1398,13 +1560,13 @@ export default function RepositoryFolderDetailPage() {
         </div>
 
         {/* ── File count + bulk bar ─────────────────────────── */}
-        <div className="flex items-center justify-between mb-3">
+        <div id="repo-file-list-anchor" className="flex items-center justify-between mb-3 scroll-mt-6">
           <p className="text-[13px] text-slate-500 font-medium">
             Showing{" "}
             <span className="font-semibold text-slate-700">
-              {filtered.length}
+              {filtered.length === 0 ? 0 : rangeStart}–{rangeEnd}
             </span>{" "}
-            of {yearFilteredFiles.length} files
+            of {filtered.length} files
           </p>
           {allFiles.length > 0 && (
             <p className="text-[11px] text-slate-400">
@@ -1559,10 +1721,10 @@ export default function RepositoryFolderDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {filtered.map((file, index) => {
+                {paginated.map((file, index) => {
                   const isNearBottom =
-                    index >= Math.ceil(filtered.length / 2) &&
-                    filtered.length > 2;
+                    index >= Math.ceil(paginated.length / 2) &&
+                    paginated.length > 2;
                   const verticalPos = isNearBottom
                     ? "bottom-[-10px]"
                     : "top-[-10px]";
@@ -1870,168 +2032,184 @@ export default function RepositoryFolderDetailPage() {
               </tbody>
             </table>
 
-            {/* Table footer */}
-            {/* Table footer */}
-            <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
-              <p className="text-[11px] text-slate-400">
-                {yearFilteredFiles.length} file
-                {yearFilteredFiles.length !== 1 ? "s" : ""}
-              </p>
-              <p className="text-[11px] text-slate-400">
-                ○ All actions are audit-logged
-              </p>
-            </div>
+            {/* Pagination */}
+            <PaginationBar
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filtered.length}
+              pageSize={pageSizeList}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+              pageSizeOptions={PAGE_SIZE_OPTIONS_LIST}
+              rangeStart={rangeStart}
+              rangeEnd={rangeEnd}
+            />
           </div>
         ) : (
           /* ── GRID VIEW ───────────────────────────────────── */
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {filtered.map((file) => {
-              const { Icon, color, bg } = getFileIcon(file.type);
-              const isSelected = selectedIds.has(file.id);
-              const isVerified = file.status === "Verified";
-              const uploaded = formatRelativeDate(file.rawCreatedAt);
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4">
+              {paginated.map((file) => {
+                const { Icon, color, bg } = getFileIcon(file.type);
+                const isSelected = selectedIds.has(file.id);
+                const isVerified = file.status === "Verified";
+                const uploaded = formatRelativeDate(file.rawCreatedAt);
 
-              return (
-                <div
-                  key={file.id}
-                  className={`relative bg-white rounded-2xl border p-4 transition-all cursor-pointer group ${
-                    isSelected
-                      ? "border-blue-300 shadow-md ring-1 ring-blue-100"
-                      : "border-slate-100 hover:shadow-md hover:border-slate-200 shadow-sm"
-                  }`}
-                >
-                  {/* Checkbox */}
-                  <button
-                    onClick={() => toggleSelect(file.id)}
-                    className={`absolute top-3 left-3 w-5 h-5 rounded border flex items-center justify-center transition-all ${
+                return (
+                  <div
+                    key={file.id}
+                    className={`relative bg-white rounded-2xl border p-4 transition-all cursor-pointer group ${
                       isSelected
-                        ? "bg-blue-600 border-blue-600 text-white opacity-100"
-                        : "bg-white border-slate-300 text-transparent opacity-0 group-hover:opacity-100 hover:border-blue-400"
+                        ? "border-blue-300 shadow-md ring-1 ring-blue-100"
+                        : "border-slate-100 hover:shadow-md hover:border-slate-200 shadow-sm"
                     }`}
                   >
-                    {isSelected && (
-                      <svg
-                        width="10"
-                        height="10"
-                        viewBox="0 0 12 12"
-                        fill="none"
-                      >
-                        <path
-                          d="M2 6l3 3 5-5"
-                          stroke="white"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    )}
-                  </button>
-
-                  {/* Status + verify (verify-eligible roles only) */}
-                  <div className="flex justify-end mb-3">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${
-                        isVerified
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : "bg-slate-100 text-slate-500 border-slate-200"
-                      } cursor-default`}
-                    >
-                      {isVerified ? (
-                        <>
-                          <CheckCircle2 size={8} /> Verified
-                        </>
-                      ) : (
-                        <>
-                          <XCircle size={8} /> Unverified
-                        </>
-                      )}
-                    </span>
-                  </div>
-
-                  <div
-                    className={`w-11 h-11 ${bg} rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-105`}
-                  >
-                    <Icon size={22} className={color} />
-                  </div>
-                  <p className="text-[12px] font-semibold text-slate-800 leading-tight mb-1 line-clamp-2">
-                    {file.name}
-                  </p>
-                  <p className="text-[10px] text-slate-400 mb-3">
-                    {file.size} · {uploaded.relative}
-                  </p>
-
-                  {canEdit ? (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownloadFile(file);
-                        }}
-                        disabled={downloadingId === file.id}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
-                      >
-                        <Download size={11} /> Download
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingFile(file);
-                        }}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
-                      >
-                        <Eye size={11} /> Preview
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteFile(file);
-                        }}
-                        disabled={deletingId === file.id}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors text-[10px] font-medium disabled:opacity-40"
-                      >
-                        <Trash2 size={11} /> Delete
-                      </button>
-                    </div>
-                  ) : hasFileAccess(file) ? (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownloadFile(file);
-                        }}
-                        disabled={downloadingId === file.id}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
-                      >
-                        <Download size={11} /> Download
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingFile(file);
-                        }}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
-                      >
-                        <Eye size={11} /> Preview
-                      </button>
-                    </div>
-                  ) : fileRequestStatus(file) === "pending" ? (
-                    <div className="flex items-center justify-center gap-1 py-1.5 text-[10px] font-semibold text-amber-600">
-                      <Clock size={11} /> Requested
-                    </div>
-                  ) : (
+                    {/* Checkbox */}
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openRequestModal(file);
-                      }}
-                      className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
+                      onClick={() => toggleSelect(file.id)}
+                      className={`absolute top-3 left-3 w-5 h-5 rounded border flex items-center justify-center transition-all ${
+                        isSelected
+                          ? "bg-blue-600 border-blue-600 text-white opacity-100"
+                          : "bg-white border-slate-300 text-transparent opacity-0 group-hover:opacity-100 hover:border-blue-400"
+                      }`}
                     >
-                      <Lock size={11} /> Request Access
+                      {isSelected && (
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 12 12"
+                          fill="none"
+                        >
+                          <path
+                            d="M2 6l3 3 5-5"
+                            stroke="white"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
                     </button>
-                  )}
-                </div>
-              );
-            })}
+
+                    {/* Status + verify (verify-eligible roles only) */}
+                    <div className="flex justify-end mb-3">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                          isVerified
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-slate-100 text-slate-500 border-slate-200"
+                        } cursor-default`}
+                      >
+                        {isVerified ? (
+                          <>
+                            <CheckCircle2 size={8} /> Verified
+                          </>
+                        ) : (
+                          <>
+                            <XCircle size={8} /> Unverified
+                          </>
+                        )}
+                      </span>
+                    </div>
+
+                    <div
+                      className={`w-11 h-11 ${bg} rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-105`}
+                    >
+                      <Icon size={22} className={color} />
+                    </div>
+                    <p className="text-[12px] font-semibold text-slate-800 leading-tight mb-1 line-clamp-2">
+                      {file.name}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mb-3">
+                      {file.size} · {uploaded.relative}
+                    </p>
+
+                    {canEdit ? (
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownloadFile(file);
+                          }}
+                          disabled={downloadingId === file.id}
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
+                        >
+                          <Download size={11} /> Download
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingFile(file);
+                          }}
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
+                        >
+                          <Eye size={11} /> Preview
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteFile(file);
+                          }}
+                          disabled={deletingId === file.id}
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors text-[10px] font-medium disabled:opacity-40"
+                        >
+                          <Trash2 size={11} /> Delete
+                        </button>
+                      </div>
+                    ) : hasFileAccess(file) ? (
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownloadFile(file);
+                          }}
+                          disabled={downloadingId === file.id}
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
+                        >
+                          <Download size={11} /> Download
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingFile(file);
+                          }}
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
+                        >
+                          <Eye size={11} /> Preview
+                        </button>
+                      </div>
+                    ) : fileRequestStatus(file) === "pending" ? (
+                      <div className="flex items-center justify-center gap-1 py-1.5 text-[10px] font-semibold text-amber-600">
+                        <Clock size={11} /> Requested
+                      </div>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openRequestModal(file);
+                        }}
+                        className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
+                      >
+                        <Lock size={11} /> Request Access
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination */}
+            <PaginationBar
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filtered.length}
+              pageSize={pageSizeGrid}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+              pageSizeOptions={PAGE_SIZE_OPTIONS_GRID}
+              rangeStart={rangeStart}
+              rangeEnd={rangeEnd}
+            />
           </div>
         )}
       </div>
