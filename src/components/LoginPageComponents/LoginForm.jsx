@@ -91,22 +91,40 @@ export function LoginForm() {
       setEmailError(true);
       setPasswordError(true);
 
-      if (authError.message.toLowerCase().includes("invalid login credentials")) {
-        triggerError("Incorrect email or password. Please verify your details and try again.");
+      if (
+        authError.message.toLowerCase().includes("invalid login credentials")
+      ) {
+        triggerError(
+          "Incorrect email or password. Please verify your details and try again.",
+        );
       } else {
-        triggerError(authError.message || "Failed to log in. Please check your credentials.");
+        triggerError(
+          authError.message ||
+            "Failed to log in. Please check your credentials.",
+        );
       }
       return;
     }
 
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("id, full_name, role, must_change_password")
+      .select("id, full_name, role, must_change_password, is_active")
       .eq("id", data.user.id)
       .single();
 
     if (userError) {
       triggerError(userError.message || "Error retrieving user profile.");
+      setLoading(false);
+      return;
+    }
+
+    if (!userData.is_active) {
+      await supabase.auth.signOut();
+      triggerError(
+        "This account has been deactivated. Please contact your administrator.",
+      );
+      setEmailError(true);
+      setPasswordError(true);
       setLoading(false);
       return;
     }

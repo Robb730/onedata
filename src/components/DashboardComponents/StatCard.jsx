@@ -2,16 +2,19 @@ import React from "react";
 
 /**
  * StatCard — KPI card with icon (top-left), trend badge (top-right),
- * large value, and uppercase label below.
+ * large value, uppercase label below, and an optional compare line.
  *
- * @param {string}          label       — e.g. "Total Enrollment"
- * @param {string}          value       — e.g. "44,948"
- * @param {React.ReactNode} icon        — Lucide icon element
- * @param {string}          iconColor   — Tailwind text-color class (fallback without gradient)
- * @param {string}          iconBg      — Tailwind bg class (fallback without gradient)
- * @param {string}          [gradient]  — CSS gradient string for icon circle background
- * @param {string}          [trend]     — e.g. "+2.3%"
- * @param {boolean}         [trendUp]   — true = green ↗, false = red ▼
+ * @param {string}          label         — e.g. "Total Enrollment"
+ * @param {string}          value         — e.g. "44,948"
+ * @param {React.ReactNode} icon          — Lucide icon element
+ * @param {string}          iconColor     — Tailwind text-color class (fallback without gradient)
+ * @param {string}          iconBg        — Tailwind bg class (fallback without gradient)
+ * @param {string}          [gradient]    — CSS gradient string for icon circle background
+ * @param {string}          [trend]       — e.g. "+2.3%" (hidden while comparing)
+ * @param {boolean}         [trendUp]     — true = green ↗, false = red ▼
+ * @param {string}          [compareValue] — e.g. "42,110" or "N/A" — the compare year's value
+ * @param {string}          [delta]       — e.g. "2,838" — absolute difference, pre-formatted
+ * @param {boolean}         [deltaUp]     — true = compare year is higher (emerald), false = lower (rose)
  */
 export function StatCard({
   label,
@@ -22,7 +25,12 @@ export function StatCard({
   gradient,
   trend,
   trendUp = true,
+  compareValue,
+  delta,
+  deltaUp = true,
 }) {
+  const isComparing = compareValue !== undefined && compareValue !== null;
+
   const iconClasses = gradient
     ? "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white transition-transform duration-300 group-hover:scale-105"
     : `flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-transform duration-300 group-hover:scale-105 ${iconBg} ${iconColor}`;
@@ -42,8 +50,9 @@ export function StatCard({
           {icon}
         </div>
 
-        {/* Trend badge */}
-        {trend && (
+        {/* Trend badge — suppressed while comparing so it doesn't
+            compete visually with the compare delta chip below */}
+        {trend && !isComparing && (
           <span
             className={`inline-flex items-center gap-0.5 text-[0.65rem] font-bold px-2 py-1 rounded-full ${
               trendUp
@@ -54,10 +63,22 @@ export function StatCard({
             {trendUp ? "↗" : "▼"} {trend}
           </span>
         )}
+
+        {isComparing && (
+          <span className="inline-flex items-center gap-1 text-[0.62rem] font-bold px-2 py-1 rounded-full bg-slate-50 text-slate-400">
+            <span className="h-[5px] w-[5px] rounded-full bg-blue-500" />
+            vs
+            <span className="h-[5px] w-[5px] rounded-full bg-orange-500" />
+          </span>
+        )}
       </div>
 
       {/* ── Value ─────────────────────────────────────────── */}
-      <p className="text-[1.55rem] font-black text-slate-800 tracking-tight leading-none mb-1.5">
+      <p
+        className={`font-black text-slate-800 tracking-tight leading-none mb-1.5 ${
+          isComparing ? "text-[1.3rem]" : "text-[1.55rem]"
+        }`}
+      >
         {value}
       </p>
 
@@ -65,6 +86,28 @@ export function StatCard({
       <p className="text-[0.6rem] font-bold text-slate-400 uppercase tracking-[0.08em]">
         {label}
       </p>
+
+      {/* ── Compare line ──────────────────────────────────── */}
+      {isComparing && (
+        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+          <span className="flex items-center gap-1.5 text-[0.78rem] font-bold text-orange-600 tabular-nums">
+            <span className="h-[6px] w-[6px] rounded-full bg-orange-500 shrink-0" />
+            {compareValue}
+          </span>
+
+          {delta !== null && delta !== undefined && (
+            <span
+              className={`flex items-center gap-0.5 text-[0.65rem] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                deltaUp
+                  ? "bg-emerald-50 text-emerald-600"
+                  : "bg-rose-50 text-rose-500"
+              }`}
+            >
+              {deltaUp ? "↗" : "↘"} {delta}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
