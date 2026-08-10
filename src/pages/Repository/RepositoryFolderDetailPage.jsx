@@ -1785,7 +1785,7 @@ export default function RepositoryFolderDetailPage() {
           </div>
         ) : viewMode === "list" ? (
           /* ── LIST VIEW ───────────────────────────────────── */
-          <div className="bg-white rounded-2xl border border-slate-100 overflow-x-hidden shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
             {/* TABLE using real <table> for perfect alignment */}
             <table className="w-full border-collapse table-fixed">
               <thead>

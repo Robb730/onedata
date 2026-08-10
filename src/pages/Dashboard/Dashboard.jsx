@@ -14,6 +14,8 @@ import {
   ChevronDown,
   ArrowLeftRight,
   Download,
+  X,
+  Clock,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import {
@@ -50,6 +52,107 @@ const enrollmentTrendStatic = [
   { year: "25-2026*", public: 9200, private: 4100 },
 ];
 
+// ─── Helper: compute enrollment totals from raw rows ─────────
+// Extracted so both the primary-year fetch and the compare-year
+// fetch can share the exact same aggregation logic.
+function computeEnrollmentTotals(data) {
+  const publicTotal = data
+    .filter((row) => row.category === "PUBLIC")
+    .reduce((acc, row) => acc + (row.grand_total ?? 0), 0);
+
+  const privateTotal = data
+    .filter((row) => row.category === "PRIVATE")
+    .reduce((acc, row) => acc + (row.grand_total ?? 0), 0);
+
+  return {
+    public: publicTotal,
+    private: privateTotal,
+    total: publicTotal + privateTotal,
+  };
+}
+
+async function fetchResourcesForYear(year) {
+  // 1. Teachers
+  const { data: tKes } = await supabase.from("teachers_kes").select("*").eq("school_year", year);
+  const { data: tJhs } = await supabase.from("teachers_jhs").select("*").eq("school_year", year);
+  const { data: tShs } = await supabase.from("teachers_shs").select("*").eq("school_year", year);
+
+  const tKesTotal = tKes?.reduce((acc, r) => acc + (r.prev_total_teachers_inventory || 0), 0) || 0;
+  const tJhsTotal = tJhs?.reduce((acc, r) => acc + (r.prev_total_teachers_inventory || 0), 0) || 0;
+  const tShsTotal = tShs?.reduce((acc, r) => acc + (r.prev_total_teachers_inventory || 0), 0) || 0;
+
+  const tKesNeeds = tKes?.reduce((acc, r) => acc + (r.kinder_needs || 0) + (r.g1g6_needs || 0) + (r.sned_needs || 0), 0) || 0;
+  const tJhsNeeds = tJhs?.reduce((acc, r) => acc + (r.teacher_needs || 0), 0) || 0;
+  const tShsNeeds = tShs?.reduce((acc, r) => acc + (r.teacher_needs || 0), 0) || 0;
+
+  // 2. Classrooms
+  const { data: cKes } = await supabase.from("classrooms_kes").select("*").eq("school_year", year);
+  const { data: cJhs } = await supabase.from("classrooms_jhs").select("*").eq("school_year", year);
+  const { data: cShs } = await supabase.from("classrooms_shs").select("*").eq("school_year", year);
+
+  const cKesTotal = cKes?.reduce((acc, r) => acc + (r.prev_total_classroom_inventory || 0), 0) || 0;
+  const cJhsTotal = cJhs?.reduce((acc, r) => acc + (r.total_classroom || 0), 0) || 0;
+  const cShsTotal = cShs?.reduce((acc, r) => acc + (r.total_classroom || 0), 0) || 0;
+
+  const cKesNeeds = cKes?.reduce((acc, r) => acc + (r.kinder_needs || 0) + (r.g1g6_needs || 0) + (r.sned_needs || 0), 0) || 0;
+  const cJhsNeeds = cJhs?.reduce((acc, r) => acc + (r.classroom_needs || 0), 0) || 0;
+  const cShsNeeds = cShs?.reduce((acc, r) => acc + (r.classroom_needs || 0), 0) || 0;
+
+  // 3. Seats
+  const { data: sKes } = await supabase.from("seats_kes").select("*").eq("school_year", year);
+  const { data: sJhs } = await supabase.from("seats_jhs").select("*").eq("school_year", year);
+  const { data: sShs } = await supabase.from("seats_shs").select("*").eq("school_year", year);
+
+  const sKesTotal = sKes?.reduce((acc, r) => acc + (r.prev_total_seats_inventory || 0), 0) || 0;
+  const sJhsTotal = sJhs?.reduce((acc, r) => acc + (r.total_jhs_seats || 0), 0) || 0;
+  const sShsTotal = sShs?.reduce((acc, r) => acc + (r.total_shs_seats || 0), 0) || 0;
+
+  const sKesNeeds = sKes?.reduce((acc, r) => acc + (r.kinder_needs || 0) + (r.g1g6_needs || 0) + (r.sned_needs || 0), 0) || 0;
+  const sJhsNeeds = sJhs?.reduce((acc, r) => acc + (r.seat_needs || 0), 0) || 0;
+  const sShsNeeds = sShs?.reduce((acc, r) => acc + (r.seat_needs || 0), 0) || 0;
+
+  // 4. Textbooks
+  const { data: txKes } = await supabase.from("textbooks_kes").select("*").eq("school_year", year);
+  const { data: txJhs } = await supabase.from("textbooks_jhs").select("*").eq("school_year", year);
+  const { data: txShs } = await supabase.from("textbooks_shs").select("*").eq("school_year", year);
+
+  const txKesNeeds = txKes?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
+  const txJhsNeeds = txJhs?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
+  const txShsNeeds = txShs?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
+
+  return {
+    teachers: {
+      total: tKesTotal + tJhsTotal + tShsTotal,
+      needs: tKesNeeds + tJhsNeeds + tShsNeeds,
+      breakdown: { Elementary: tKesTotal, JHS: tJhsTotal, SHS: tShsTotal },
+      needsBreakdown: { Elementary: tKesNeeds, JHS: tJhsNeeds, SHS: tShsNeeds },
+      data: { Elementary: tKes, JHS: tJhs, SHS: tShs },
+      loading: false,
+    },
+    classrooms: {
+      total: cKesTotal + cJhsTotal + cShsTotal,
+      needs: cKesNeeds + cJhsNeeds + cShsNeeds,
+      breakdown: { Elementary: cKesTotal, JHS: cJhsTotal, SHS: cShsTotal },
+      needsBreakdown: { Elementary: cKesNeeds, JHS: cJhsNeeds, SHS: cShsNeeds },
+      data: { Elementary: cKes, JHS: cJhs, SHS: cShs },
+      loading: false,
+    },
+    seats: {
+      total: sKesTotal + sJhsTotal + sShsTotal,
+      needs: sKesNeeds + sJhsNeeds + sShsNeeds,
+      breakdown: { Elementary: sKesTotal, JHS: sJhsTotal, SHS: sShsTotal },
+      needsBreakdown: { Elementary: sKesNeeds, JHS: sJhsNeeds, SHS: sShsNeeds },
+      data: { Elementary: sKes, JHS: sJhs, SHS: sShs },
+      loading: false,
+    },
+    textbooks: {
+      needs: txKesNeeds + txJhsNeeds + txShsNeeds,
+      breakdown: { Elementary: txKesNeeds, JHS: txJhsNeeds, SHS: txShsNeeds },
+      data: { Elementary: txKes, JHS: txJhs, SHS: txShs },
+      loading: false,
+    },
+  };
+}
 
 // ─── Component ──────────────────────────────────────────────
 
@@ -57,10 +160,9 @@ export default function Dashboard() {
   const [selectedYear, setSelectedYear] = useState(null);
   const [rateView, setRateView] = useState("Dropout");
   const [enrollmentView, setEnrollmentView] = useState("Summary");
-  
+
   const [schoolYears, setSchoolYears] = useState([]);
   const [yearsLoading, setYearsLoading] = useState(true);
- 
 
   // ── Crucial Resources State ────────────────────────────────
   const [resourceView, setResourceView] = useState("Summary");
@@ -101,62 +203,264 @@ export default function Dashboard() {
   });
   const [activeCespesTab, setActiveCespesTab] = useState("Operations");
 
+  const [compareCespes, setCompareCespes] = useState({
+    operations: [],
+    supportOperations: [],
+    generalAdmin: [],
+    individualPerformance: [],
+    innovation: [],
+    loading: false,
+  });
+
+  const [compareResources, setCompareResources] = useState({
+  teachers: { total: 0, needs: 0, breakdown: {}, loading: false },
+  classrooms: { total: 0, needs: 0, breakdown: {}, loading: false },
+  seats: { total: 0, needs: 0, breakdown: {}, loading: false },
+  textbooks: { needs: 0, excess: 0, breakdown: {}, loading: false },
+});
+const [compareResourcesLoading, setCompareResourcesLoading] = useState(false);
+
   // ── Year Dropdown State ─────────────────────────────────────
   const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
   const yearDropdownRef = useRef(null);
 
+  // ── Compare Mode State ──────────────────────────────────────
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareYear, setCompareYear] = useState(null);
+  const [isCompareYearDropdownOpen, setIsCompareYearDropdownOpen] =
+    useState(false);
+  const compareYearDropdownRef = useRef(null);
+
+  const [compareEnrollmentSummary, setCompareEnrollmentSummary] = useState({
+    public: 0,
+    private: 0,
+    total: 0,
+  });
+  const [compareEnrollmentRows, setCompareEnrollmentRows] = useState([]);
+  const [compareLoading, setCompareLoading] = useState(false);
+
   useEffect(() => {
     function handleClickOutside(event) {
-      if (yearDropdownRef.current && !yearDropdownRef.current.contains(event.target)) {
+      if (
+        yearDropdownRef.current &&
+        !yearDropdownRef.current.contains(event.target)
+      ) {
         setIsYearDropdownOpen(false);
+      }
+      if (
+        compareYearDropdownRef.current &&
+        !compareYearDropdownRef.current.contains(event.target)
+      ) {
+        setIsCompareYearDropdownOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ── Resolve the default (active) school year once on mount ──
   useEffect(() => {
+  if (!compareMode || !compareYear) {
+    setCompareResources({
+      teachers: { total: 0, needs: 0, breakdown: {}, loading: false },
+      classrooms: { total: 0, needs: 0, breakdown: {}, loading: false },
+      seats: { total: 0, needs: 0, breakdown: {}, loading: false },
+      textbooks: { needs: 0, excess: 0, breakdown: {}, loading: false },
+    });
+    setCompareResourcesLoading(false);
+    return;
+  }
+
   let cancelled = false;
 
-  async function initYear() {
+  async function fetchCompareResources() {
+    setCompareResourcesLoading(true);
     try {
-      // 1. Get the active year first — this is the one thing that
-      //    actually determines what data loads, so resolve it before
-      //    anything else touches state.
-      const { data: activeRow, error: activeErr } = await supabase
-        .from("school_years")
-        .select("label")
-        .eq("status", "active")
-        .maybeSingle();
-
-      if (cancelled) return;
-
-      // 2. Get the full list for the dropdown (doesn't block selection)
-      const yearsData = await getAllSchoolYearsForSelector();
-      if (cancelled) return;
-
-      setSchoolYears(yearsData);
-
-      if (yearsData.length > 0) {
-        // Default to the latest year
-        setSelectedYear(yearsData[0].year);
-      } else if (!activeErr && activeRow?.label) {
-        // Fallback to active year if yearsData is empty for some reason
-        setSelectedYear(activeRow.label);
-      }
-    } catch (err) { 
-      console.error("Error initializing school year:", err);
+      const result = await fetchResourcesForYear(compareYear);
+      if (!cancelled) setCompareResources(result);
+    } catch (error) {
+      console.error("Error fetching compare crucial resources:", error);
     } finally {
-      if (!cancelled) setYearsLoading(false);
+      if (!cancelled) setCompareResourcesLoading(false);
     }
   }
 
-  initYear();
+  fetchCompareResources();
   return () => {
     cancelled = true;
   };
-}, []);
+}, [compareMode, compareYear]);
+
+function ResourcesChartsPanel({ color, year, ongoing, resources }) {
+  const isBlue = color === "blue";
+  const dotColor = isBlue ? "bg-blue-500" : "bg-orange-500";
+  const textColor = isBlue ? "text-blue-600" : "text-orange-600";
+  const borderColor = isBlue ? "border-blue-100" : "border-orange-100";
+  const bgTint = isBlue ? "bg-blue-50/20" : "bg-orange-50/20";
+
+  const teachersData = Object.entries(resources.teachers.breakdown || {}).map(
+    ([level, val]) => ({
+      level,
+      inventory: val,
+      needs: resources.teachers.needsBreakdown?.[level] || 0,
+    }),
+  );
+  const classroomsData = Object.entries(
+    resources.classrooms.breakdown || {},
+  ).map(([level, val]) => ({
+    level,
+    inventory: val,
+    needs: resources.classrooms.needsBreakdown?.[level] || 0,
+  }));
+  const seatsData = Object.entries(resources.seats.breakdown || {}).map(
+    ([level, val]) => ({
+      level,
+      inventory: val,
+      needs: resources.seats.needsBreakdown?.[level] || 0,
+    }),
+  );
+  const textbooksData = Object.entries(resources.textbooks.breakdown || {}).map(
+    ([level, val]) => ({ level, shortage: val }),
+  );
+
+  const hasAnyData =
+    teachersData.some((d) => d.inventory > 0 || d.needs > 0) ||
+    classroomsData.some((d) => d.inventory > 0 || d.needs > 0) ||
+    seatsData.some((d) => d.inventory > 0 || d.needs > 0) ||
+    textbooksData.some((d) => d.shortage > 0);
+
+  return (
+    <div className={`rounded-[12px] border ${borderColor} ${bgTint} p-4`}>
+      <div className="flex items-center justify-between mb-3">
+        <p className={`flex items-center gap-1.5 text-[0.72rem] font-bold ${textColor}`}>
+          <span className={`h-[6px] w-[6px] rounded-full ${dotColor}`} />
+          SY {year}
+          {ongoing && <Clock size={11} className="text-orange-400" />}
+        </p>
+        {!hasAnyData && (
+          <span className="text-[0.6rem] font-semibold text-slate-400 italic">
+            No data yet
+          </span>
+        )}
+      </div>
+
+      {!hasAnyData ? (
+        <div className="flex items-center justify-center py-8 text-center">
+          <p className="text-[0.72rem] text-slate-400 italic max-w-[280px]">
+            No resource data uploaded for SY {year} yet.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <DashboardGrid cols={2}>
+            <ResourcesInventoryChart
+              title="Teachers · Inventory vs Needs"
+              data={teachersData}
+            />
+            <ResourcesInventoryChart
+              title="Classrooms · Inventory vs Needs"
+              data={classroomsData}
+            />
+          </DashboardGrid>
+          <DashboardGrid cols={2}>
+            <ResourcesInventoryChart
+              title="Seats · Inventory vs Needs"
+              data={seatsData}
+            />
+            <TextbooksChart data={textbooksData} />
+          </DashboardGrid>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function renderBreakdownRows(resourceType, resourcesState) {
+  const resKey = resourceType.toLowerCase();
+  const resource = resourcesState[resKey];
+  const breakdown = resource.breakdown || {};
+  const needsBreakdown = resource.needsBreakdown || {};
+  const total = resource.total || 1;
+
+  return Object.entries(breakdown).map(([level, val]) => {
+    const percentage = (val / total) * 100;
+    let color = "bg-blue-500";
+
+    if (resKey === "classrooms") color = "bg-emerald-500";
+    else if (resKey === "seats") color = "bg-amber-500";
+    else if (resKey === "textbooks") color = "bg-rose-500";
+
+    const needs = needsBreakdown[level] || 0;
+    const displayValue = val.toLocaleString();
+    const countText = needs > 0 ? `${needs.toLocaleString()} needs` : "No needs";
+
+    if (resKey === "textbooks") {
+      const totalNeeds = resource.needs || 1;
+      return (
+        <MetricProgress
+          key={level}
+          label={level}
+          display={`${val.toLocaleString()} shortage`}
+          value={(val / totalNeeds) * 100}
+          color="bg-rose-500"
+        />
+      );
+    }
+
+    return (
+      <MetricProgress
+        key={level}
+        label={level}
+        display={displayValue}
+        count={countText}
+        value={percentage}
+        color={color}
+      />
+    );
+  });
+}
+
+  // ── Resolve the default (active) school year once on mount ──
+  useEffect(() => {
+    let cancelled = false;
+
+    async function initYear() {
+      try {
+        // 1. Get the active year first — this is the one thing that
+        //    actually determines what data loads, so resolve it before
+        //    anything else touches state.
+        const { data: activeRow, error: activeErr } = await supabase
+          .from("school_years")
+          .select("label")
+          .eq("status", "active")
+          .maybeSingle();
+
+        if (cancelled) return;
+
+        // 2. Get the full list for the dropdown (doesn't block selection)
+        const yearsData = await getAllSchoolYearsForSelector();
+        if (cancelled) return;
+
+        setSchoolYears(yearsData);
+
+        if (yearsData.length > 0) {
+          // Default to the latest year
+          setSelectedYear(yearsData[0].year);
+        } else if (!activeErr && activeRow?.label) {
+          // Fallback to active year if yearsData is empty for some reason
+          setSelectedYear(activeRow.label);
+        }
+      } catch (err) {
+        console.error("Error initializing school year:", err);
+      } finally {
+        if (!cancelled) setYearsLoading(false);
+      }
+    }
+
+    initYear();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!selectedYear) return; // wait until the active year is resolved
@@ -179,15 +483,23 @@ export default function Dashboard() {
       }
 
       // Fetch all enrollment data for trend chart
-      const { data: allEnrollment } = await supabase.from("enrollment_data").select("school_year, category, grand_total");
+      const { data: allEnrollment } = await supabase
+        .from("enrollment_data")
+        .select("school_year, category, grand_total");
       if (allEnrollment) {
-        const trendYears = [...new Set(allEnrollment.map(d => d.school_year))].sort();
-        const trendData = trendYears.map(year => {
-          const yData = allEnrollment.filter(d => d.school_year === year);
+        const trendYears = [
+          ...new Set(allEnrollment.map((d) => d.school_year)),
+        ].sort();
+        const trendData = trendYears.map((year) => {
+          const yData = allEnrollment.filter((d) => d.school_year === year);
           return {
             year,
-            public: yData.filter(d => d.category === "PUBLIC").reduce((acc, row) => acc + (row.grand_total ?? 0), 0),
-            private: yData.filter(d => d.category === "PRIVATE").reduce((acc, row) => acc + (row.grand_total ?? 0), 0),
+            public: yData
+              .filter((d) => d.category === "PUBLIC")
+              .reduce((acc, row) => acc + (row.grand_total ?? 0), 0),
+            private: yData
+              .filter((d) => d.category === "PRIVATE")
+              .reduce((acc, row) => acc + (row.grand_total ?? 0), 0),
           };
         });
         if (trendData.length > 0) setEnrollmentTrend(trendData);
@@ -196,13 +508,8 @@ export default function Dashboard() {
       setEnrollmentRows(data);
 
       // ── Enrollment by category ──────────────────────────────
-      const publicTotal = data
-        .filter((row) => row.category === "PUBLIC")
-        .reduce((acc, row) => acc + (row.grand_total ?? 0), 0);
-
-      const privateTotal = data
-        .filter((row) => row.category === "PRIVATE")
-        .reduce((acc, row) => acc + (row.grand_total ?? 0), 0);
+      const { public: publicTotal, private: privateTotal } =
+        computeEnrollmentTotals(data);
 
       // ── Gender totals split by public / private ─────────────
       let malePublic = 0,
@@ -257,159 +564,13 @@ export default function Dashboard() {
     }
 
     async function fetchCrucialResources() {
-      try {
-        // ── FIX: every resource query below now filters by the selected
-        // school year. Previously these ran `.select("*")` with no year
-        // filter at all, so the Crucial Resources section always showed
-        // the same totals across every table row in the DB regardless of
-        // which school year was selected in the dropdown. ──
-
-        // 1. Fetch Teachers
-        const { data: tKes } = await supabase
-          .from("teachers_kes")
-          .select("*")
-          .eq("school_year", selectedYear);
-        const { data: tJhs } = await supabase
-          .from("teachers_jhs")
-          .select("*")
-          .eq("school_year", selectedYear);
-        const { data: tShs } = await supabase
-          .from("teachers_shs")
-          .select("*")
-          .eq("school_year", selectedYear);
-
-        const tKesTotal =
-          tKes?.reduce(
-            (acc, r) => acc + (r.prev_total_teachers_inventory || 0),
-            0,
-          ) || 0;
-        const tJhsTotal =
-          tJhs?.reduce(
-            (acc, r) => acc + (r.prev_total_teachers_inventory || 0),
-            0,
-          ) || 0;
-        const tShsTotal =
-          tShs?.reduce(
-            (acc, r) => acc + (r.prev_total_teachers_inventory || 0),
-            0,
-          ) || 0;
-
-        const tKesNeeds =
-          tKes?.reduce(
-            (acc, r) =>
-              acc +
-              (r.kinder_needs || 0) +
-              (r.g1g6_needs || 0) +
-              (r.sned_needs || 0),
-            0,
-          ) || 0;
-        const tJhsNeeds =
-          tJhs?.reduce((acc, r) => acc + (r.teacher_needs || 0), 0) || 0;
-        const tShsNeeds =
-          tShs?.reduce((acc, r) => acc + (r.teacher_needs || 0), 0) || 0;
-
-        // 2. Fetch Classrooms
-        const { data: cKes } = await supabase.from("classrooms_kes").select("*");
-        const { data: cJhs } = await supabase.from("classrooms_jhs").select("*");
-        const { data: cShs } = await supabase.from("classrooms_shs").select("*");
-
-        const cKesTotal = cKes?.reduce((acc, r) => acc + (r.prev_total_classroom_inventory || 0), 0) || 0;
-        const cJhsTotal = cJhs?.reduce((acc, r) => acc + (r.total_classroom || 0), 0) || 0;
-        const cShsTotal = cShs?.reduce((acc, r) => acc + (r.total_classroom || 0), 0) || 0;
-
-        const cKesNeeds = cKes?.reduce((acc, r) => acc + (r.kinder_needs || 0) + (r.g1g6_needs || 0) + (r.sned_needs || 0), 0) || 0;
-        const cJhsNeeds = cJhs?.reduce((acc, r) => acc + (r.classroom_needs || 0), 0) || 0;
-        const cShsNeeds = cShs?.reduce((acc, r) => acc + (r.classroom_needs || 0), 0) || 0;
-
-        // 3. Fetch Seats
-        // seats_kes: prev_total_seats_inventory for total, kinder_needs/g1g6_needs/sned_needs for needs
-        // seats_jhs: total_jhs_seats for total, seat_needs for needs
-        // seats_shs: total_shs_seats for total, seat_needs for needs
-        const { data: sKes } = await supabase.from("seats_kes").select("*");
-        const { data: sJhs } = await supabase.from("seats_jhs").select("*");
-        const { data: sShs } = await supabase.from("seats_shs").select("*");
-
-        const sKesTotal = sKes?.reduce((acc, r) => acc + (r.prev_total_seats_inventory || 0), 0) || 0;
-        const sJhsTotal = sJhs?.reduce((acc, r) => acc + (r.total_jhs_seats || 0), 0) || 0;
-        const sShsTotal = sShs?.reduce((acc, r) => acc + (r.total_shs_seats || 0), 0) || 0;
-
-        const sKesNeeds = sKes?.reduce((acc, r) => acc + (r.kinder_needs || 0) + (r.g1g6_needs || 0) + (r.sned_needs || 0), 0) || 0;
-        const sJhsNeeds = sJhs?.reduce((acc, r) => acc + (r.seat_needs || 0), 0) || 0;
-        const sShsNeeds = sShs?.reduce((acc, r) => acc + (r.seat_needs || 0), 0) || 0;
-
-        // 4. Fetch Textbooks
-        const { data: txKes } = await supabase.from("textbooks_kes").select("*");
-        const { data: txJhs } = await supabase.from("textbooks_jhs").select("*");
-        const { data: txShs } = await supabase.from("textbooks_shs").select("*");
-
-        const txKesNeeds = txKes?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
-        const txJhsNeeds = txJhs?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
-        const txShsNeeds = txShs?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
-
-        setResources({
-          teachers: {
-            total: tKesTotal + tJhsTotal + tShsTotal,
-            needs: tKesNeeds + tJhsNeeds + tShsNeeds,
-            breakdown: {
-              Elementary: tKesTotal,
-              JHS: tJhsTotal,
-              SHS: tShsTotal,
-            },
-            needsBreakdown: {
-              Elementary: tKesNeeds,
-              JHS: tJhsNeeds,
-              SHS: tShsNeeds,
-            },
-            data: { Elementary: tKes, JHS: tJhs, SHS: tShs },
-            loading: false,
-          },
-          classrooms: {
-            total: cKesTotal + cJhsTotal + cShsTotal,
-            needs: cKesNeeds + cJhsNeeds + cShsNeeds,
-            breakdown: {
-              Elementary: cKesTotal,
-              JHS: cJhsTotal,
-              SHS: cShsTotal,
-            },
-            needsBreakdown: {
-              Elementary: cKesNeeds,
-              JHS: cJhsNeeds,
-              SHS: cShsNeeds,
-            },
-            data: { Elementary: cKes, JHS: cJhs, SHS: cShs },
-            loading: false,
-          },
-          seats: {
-            total: sKesTotal + sJhsTotal + sShsTotal,
-            needs: sKesNeeds + sJhsNeeds + sShsNeeds,
-            breakdown: {
-              Elementary: sKesTotal,
-              JHS: sJhsTotal,
-              SHS: sShsTotal,
-            },
-            needsBreakdown: {
-              Elementary: sKesNeeds,
-              JHS: sJhsNeeds,
-              SHS: sShsNeeds,
-            },
-            data: { Elementary: sKes, JHS: sJhs, SHS: sShs },
-            loading: false,
-          },
-          textbooks: {
-            needs: txKesNeeds + txJhsNeeds + txShsNeeds,
-            breakdown: {
-              Elementary: txKesNeeds,
-              JHS: txJhsNeeds,
-              SHS: txShsNeeds,
-            },
-            data: { Elementary: txKes, JHS: txJhs, SHS: txShs },
-            loading: false,
-          },
-        });
-      } catch (error) {
-        console.error("Error fetching crucial resources:", error);
-      }
-    }
+  try {
+    const result = await fetchResourcesForYear(selectedYear);
+    setResources(result);
+  } catch (error) {
+    console.error("Error fetching crucial resources:", error);
+  }
+}
 
     async function fetchCespes() {
       try {
@@ -450,7 +611,9 @@ export default function Dashboard() {
     }
 
     async function fetchPerformanceIndicators() {
-      const { data, error } = await supabase.from("performance_indicators_data").select("*");
+      const { data, error } = await supabase
+        .from("performance_indicators_data")
+        .select("*");
       if (!error && data) {
         setKpiData(data);
       }
@@ -462,75 +625,373 @@ export default function Dashboard() {
     fetchPerformanceIndicators();
   }, [selectedYear]);
 
+  // ── Fetch enrollment data for the compare year ───────────────
+  // Runs independently of the primary fetch above so toggling compare
+  // mode never re-triggers the primary-year queries.
+  useEffect(() => {
+    if (!compareMode || !compareYear) {
+      setCompareEnrollmentSummary({ public: 0, private: 0, total: 0 });
+      setCompareEnrollmentRows([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchCompareEnrollment() {
+      setCompareLoading(true);
+      const { data, error } = await supabase
+        .from("enrollment_data")
+        .select(
+          "category, grand_total, school_name, elementary_data, junior_high_data, senior_high_s1_data, senior_high_s2_data",
+        )
+        .eq("school_year", compareYear);
+
+      if (cancelled) return;
+
+      if (!error && data) {
+        setCompareEnrollmentRows(data);
+        setCompareEnrollmentSummary(computeEnrollmentTotals(data));
+      } else if (error) {
+        console.error("Error fetching compare enrollment:", error);
+      }
+      setCompareLoading(false);
+    }
+
+    fetchCompareEnrollment();
+    return () => {
+      cancelled = true;
+    };
+  }, [compareMode, compareYear]);
+
+  useEffect(() => {
+    if (!compareMode || !compareYear) {
+      setCompareCespes({
+        operations: [],
+        supportOperations: [],
+        generalAdmin: [],
+        individualPerformance: [],
+        innovation: [],
+        loading: false,
+      });
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchCompareCespes() {
+      setCompareCespes((prev) => ({ ...prev, loading: true }));
+      try {
+        const [ops, support, admin, perf, innov] = await Promise.all([
+          supabase
+            .from("cespes_operations")
+            .select("*")
+            .eq("school_year", compareYear),
+          supabase
+            .from("cespes_support_operations")
+            .select("*")
+            .eq("school_year", compareYear),
+          supabase
+            .from("cespes_general_admin")
+            .select("*")
+            .eq("school_year", compareYear),
+          supabase
+            .from("cespes_individual_performance")
+            .select("*")
+            .eq("school_year", compareYear),
+          supabase
+            .from("cespes_innovation")
+            .select("*")
+            .eq("school_year", compareYear),
+        ]);
+        if (cancelled) return;
+        setCompareCespes({
+          operations: ops.data || [],
+          supportOperations: support.data || [],
+          generalAdmin: admin.data || [],
+          individualPerformance: perf.data || [],
+          innovation: innov.data || [],
+          loading: false,
+        });
+      } catch (err) {
+        console.error("Error fetching compare CESPES:", err);
+        if (!cancelled)
+          setCompareCespes((prev) => ({ ...prev, loading: false }));
+      }
+    }
+
+    fetchCompareCespes();
+    return () => {
+      cancelled = true;
+    };
+  }, [compareMode, compareYear]);
+
   // ── Derived KPI Calculations ───────────────────────────────
   const getKpiRate = (yearData, sheetName, headerSubstring) => {
-    const sheet = yearData.find((r) => r.sheet_name.trim() === sheetName.trim());
+    const sheet = yearData.find(
+      (r) => r.sheet_name.trim() === sheetName.trim(),
+    );
     if (!sheet) return 0;
-    const idx = sheet.headers_main.findIndex((h) => h && h.toString().includes(headerSubstring));
-    if (idx !== -1 && sheet.total_row[idx] !== undefined && sheet.total_row[idx] !== null) {
+    const idx = sheet.headers_main.findIndex(
+      (h) => h && h.toString().includes(headerSubstring),
+    );
+    if (
+      idx !== -1 &&
+      sheet.total_row[idx] !== undefined &&
+      sheet.total_row[idx] !== null
+    ) {
       return parseFloat(sheet.total_row[idx]) * 100;
     }
     return 0;
   };
 
   const currentKpi = kpiData.filter((d) => d.school_year === selectedYear);
+  const currentKpiCompare = compareYear
+    ? kpiData.filter((d) => d.school_year === compareYear)
+    : [];
+  const compareHasData = currentKpiCompare.length > 0;
 
-  const elemDropout = getKpiRate(currentKpi, "G1toG6 SLR_DR", "Ave. School Leaver Rate");
-  const jhsDropout = getKpiRate(currentKpi, "JHS School Leaver Rate", "Ave. School Leaver Rate");
-  const shsDropout = getKpiRate(currentKpi, " JHS to SHS SLR_DR", "Ave. School Leaver Rate");
+  // Best-effort "is this year still in progress" check. Assumes the
+  // school-year selector returns years ordered newest-first, so the
+  // first entry is the active/ongoing year. Adjust if your data shape
+  // exposes an explicit `status`/`archived` flag instead.
+  const isOngoing = (year) =>
+    !!year && schoolYears.length > 0 && year === schoolYears[0].year;
+
+  const elemDropout = getKpiRate(
+    currentKpi,
+    "G1toG6 SLR_DR",
+    "Ave. School Leaver Rate",
+  );
+  const jhsDropout = getKpiRate(
+    currentKpi,
+    "JHS School Leaver Rate",
+    "Ave. School Leaver Rate",
+  );
+  const shsDropout = getKpiRate(
+    currentKpi,
+    " JHS to SHS SLR_DR",
+    "Ave. School Leaver Rate",
+  );
   const overallDropout = (elemDropout + jhsDropout + shsDropout) / 3;
 
+  const elemDropoutCompare = getKpiRate(
+    currentKpiCompare,
+    "G1toG6 SLR_DR",
+    "Ave. School Leaver Rate",
+  );
+  const jhsDropoutCompare = getKpiRate(
+    currentKpiCompare,
+    "JHS School Leaver Rate",
+    "Ave. School Leaver Rate",
+  );
+  const shsDropoutCompare = getKpiRate(
+    currentKpiCompare,
+    " JHS to SHS SLR_DR",
+    "Ave. School Leaver Rate",
+  );
+  const overallDropoutCompare =
+    (elemDropoutCompare + jhsDropoutCompare + shsDropoutCompare) / 3;
+
   const dropoutByLevel = [
-    { label: "Overall", display: overallDropout.toFixed(2) + "%", value: overallDropout, color: "bg-rose-500" },
-    { label: "Kinder", display: "—", value: 0, note: "Grouped with Elem K-G6 · See Elementary", color: "bg-gray-300" },
-    { label: "Elementary", display: elemDropout.toFixed(2) + "%", value: elemDropout, color: "bg-amber-500" },
-    { label: "JHS", display: jhsDropout.toFixed(2) + "%", value: jhsDropout, color: "bg-violet-500" },
-    { label: "SHS", display: shsDropout.toFixed(2) + "%", value: shsDropout, color: "bg-emerald-500" },
+    {
+      label: "Overall",
+      display: overallDropout.toFixed(2) + "%",
+      value: overallDropout,
+      color: "bg-rose-500",
+    },
+    {
+      label: "Kinder",
+      display: "—",
+      value: 0,
+      note: "Grouped with Elem K-G6 · See Elementary",
+      color: "bg-gray-300",
+    },
+    {
+      label: "Elementary",
+      display: elemDropout.toFixed(2) + "%",
+      value: elemDropout,
+      color: "bg-amber-500",
+    },
+    {
+      label: "JHS",
+      display: jhsDropout.toFixed(2) + "%",
+      value: jhsDropout,
+      color: "bg-violet-500",
+    },
+    {
+      label: "SHS",
+      display: shsDropout.toFixed(2) + "%",
+      value: shsDropout,
+      color: "bg-emerald-500",
+    },
   ];
 
-  const elemPromo = getKpiRate(currentKpi, "G1toG6  Promo & Grad", "Ave. Promotion Rate");
-  const jhsPromo = getKpiRate(currentKpi, "JHS Promo & Grad", "Ave. Promotion Rate");
-  const shsPromo = getKpiRate(currentKpi, " JHS to SHS Promo & Grad", "Ave. Promotion Rate");
-  const promotionByLevel = [
-    { level: "Kinder", rate: 99.8 }, // Kept static if not available
-    { level: "Elementary", rate: elemPromo || 0 },
-    { level: "JHS", rate: jhsPromo || 0 },
-    { level: "SHS", rate: shsPromo || 0 },
+  // Mirrors dropoutByLevel above, but for the compare year. Shown side
+  // by side with dropoutByLevel when compare mode is active.
+  const dropoutByLevelCompare = [
+    {
+      label: "Overall",
+      display: compareHasData
+        ? overallDropoutCompare.toFixed(2) + "%"
+        : "N/A (ongoing)",
+      value: compareHasData ? overallDropoutCompare : 0,
+      color: "bg-orange-500",
+    },
+    {
+      label: "Kinder",
+      display: "—",
+      value: 0,
+      note: "Grouped with Elem K-G6 · See Elementary",
+      color: "bg-gray-300",
+    },
+    {
+      label: "Elementary",
+      display: compareHasData
+        ? elemDropoutCompare.toFixed(2) + "%"
+        : "N/A (ongoing)",
+      value: compareHasData ? elemDropoutCompare : 0,
+      color: "bg-orange-400",
+    },
+    {
+      label: "JHS",
+      display: compareHasData
+        ? jhsDropoutCompare.toFixed(2) + "%"
+        : "N/A (ongoing)",
+      value: compareHasData ? jhsDropoutCompare : 0,
+      color: "bg-orange-500",
+    },
+    {
+      label: "SHS",
+      display: compareHasData
+        ? shsDropoutCompare.toFixed(2) + "%"
+        : "N/A (ongoing)",
+      value: compareHasData ? shsDropoutCompare : 0,
+      color: "bg-orange-600",
+    },
   ];
+
+  const kToElemPromo = getKpiRate(
+  currentKpi,
+  "K to 6  Promo & Grad",
+  "Ave. Promotion Rate",
+);
+  const jhsPromo = getKpiRate(
+    currentKpi,
+    "JHS Promo & Grad",
+    "Ave. Promotion Rate",
+  );
+  const shsPromo = getKpiRate(
+    currentKpi,
+    " JHS to SHS Promo & Grad",
+    "Ave. Promotion Rate",
+  );
+  const promotionByLevel = [
+  { level: "Kinder", rate: kToElemPromo || 0 },
+  { level: "Elementary", rate: kToElemPromo || 0 },
+  { level: "JHS", rate: jhsPromo || 0 },
+  { level: "SHS", rate: shsPromo || 0 },
+];
+
+  const kToElemPromoCompare = getKpiRate(
+  currentKpiCompare,
+  "K to 6  Promo & Grad",
+  "Ave. Promotion Rate",
+);
+  const jhsPromoCompare = getKpiRate(
+    currentKpiCompare,
+    "JHS Promo & Grad",
+    "Ave. Promotion Rate",
+  );
+  const shsPromoCompare = getKpiRate(
+    currentKpiCompare,
+    " JHS to SHS Promo & Grad",
+    "Ave. Promotion Rate",
+  );
+
+  const promotionByLevelCompare = [
+  { level: "Kinder", rate: compareHasData ? kToElemPromoCompare || 0 : 0 },
+  { level: "Elementary", rate: compareHasData ? kToElemPromoCompare || 0 : 0 },
+  { level: "JHS", rate: compareHasData ? jhsPromoCompare || 0 : 0 },
+  { level: "SHS", rate: compareHasData ? shsPromoCompare || 0 : 0 },
+];
 
   const kpiYears = [...new Set(kpiData.map((d) => d.school_year))].sort();
-  const dropoutTrend = kpiYears.length > 0 ? kpiYears.map((year) => {
-    const yData = kpiData.filter((d) => d.school_year === year);
-    const elem = getKpiRate(yData, "G1toG6 SLR_DR", "Ave. School Leaver Rate");
-    const jhs = getKpiRate(yData, "JHS School Leaver Rate", "Ave. School Leaver Rate");
-    const shs = getKpiRate(yData, " JHS to SHS SLR_DR", "Ave. School Leaver Rate");
-    return {
-      year,
-      overall: parseFloat(((elem + jhs + shs) / 3).toFixed(2)),
-      elementary: parseFloat(elem.toFixed(2)),
-      jhs: parseFloat(jhs.toFixed(2)),
-    };
-  }) : [{ year: selectedYear, overall: 0, elementary: 0, jhs: 0 }];
+  const dropoutTrend =
+    kpiYears.length > 0
+      ? kpiYears.map((year) => {
+          const yData = kpiData.filter((d) => d.school_year === year);
+          const elem = getKpiRate(
+            yData,
+            "G1toG6 SLR_DR",
+            "Ave. School Leaver Rate",
+          );
+          const jhs = getKpiRate(
+            yData,
+            "JHS School Leaver Rate",
+            "Ave. School Leaver Rate",
+          );
+          const shs = getKpiRate(
+            yData,
+            " JHS to SHS SLR_DR",
+            "Ave. School Leaver Rate",
+          );
+          return {
+            year,
+            overall: parseFloat(((elem + jhs + shs) / 3).toFixed(2)),
+            elementary: parseFloat(elem.toFixed(2)),
+            jhs: parseFloat(jhs.toFixed(2)),
+          };
+        })
+      : [{ year: selectedYear, overall: 0, elementary: 0, jhs: 0 }];
 
-  const cohortTrend = kpiYears.length > 0 ? kpiYears.map((year) => {
-    const yData = kpiData.filter((d) => d.school_year === year);
-    const elemCsr = getKpiRate(yData, "G1toG6 CSR & CompR", "CSR");
-    return {
-      year,
-      rate: parseFloat(elemCsr.toFixed(2)),
-    };
-  }) : [{ year: selectedYear, rate: 0 }];
+  const cohortTrend =
+    kpiYears.length > 0
+      ? kpiYears.map((year) => {
+          const yData = kpiData.filter((d) => d.school_year === year);
+          const elemCsr = getKpiRate(yData, "G1toG6 CSR & CompR", "CSR");
+          return {
+            year,
+            rate: parseFloat(elemCsr.toFixed(2)),
+          };
+        })
+      : [{ year: selectedYear, rate: 0 }];
+
+  const elemCsrCurrent = getKpiRate(currentKpi, "G1toG6 CSR & CompR", "CSR");
+  const elemCsrCompare = getKpiRate(
+    currentKpiCompare,
+    "G1toG6 CSR & CompR",
+    "CSR",
+  );
 
   const overviewData = {
     totalEnrollment: enrollmentSummary.total,
     overallDropout: overallDropout.toFixed(2) + "%",
-    elemPromotion: elemPromo.toFixed(2) + "%",
+    elemPromotion: kToElemPromo.toFixed(2) + "%",
     jhsDropout: jhsDropout.toFixed(2) + "%",
-    enrollmentTrend: "—", 
+    enrollmentTrend: "—",
     dropoutTrend: "—",
     promotionTrend: "—",
     jhsDropoutTrend: "—",
   };
+
+  // Passed to DashboardOverview only while actively comparing.
+  const compareOverviewData =
+    compareMode && compareYear
+      ? {
+          totalEnrollment: compareEnrollmentSummary.total,
+          overallDropout: compareHasData
+            ? overallDropoutCompare.toFixed(2) + "%"
+            : "N/A",
+          elemPromotion: compareHasData
+  ? kToElemPromoCompare.toFixed(2) + "%"
+  : "N/A",
+          jhsDropout: compareHasData
+            ? jhsDropoutCompare.toFixed(2) + "%"
+            : "N/A",
+        }
+      : null;
+
+  const isComparing = compareMode && !!compareYear;
 
   return (
     <div className="min-h-screen bg-slate-50/40">
@@ -547,20 +1008,19 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0 pt-1">
-            {/* Year selector */}
-            <div
-              ref={yearDropdownRef}
-              className="relative"
-            >
+            {/* Primary year selector */}
+            <div ref={yearDropdownRef} className="relative">
               <button
                 id="dashboard-year-select-btn"
-                onClick={() => !yearsLoading && setIsYearDropdownOpen(!isYearDropdownOpen)}
+                onClick={() =>
+                  !yearsLoading && setIsYearDropdownOpen(!isYearDropdownOpen)
+                }
                 className="relative flex items-center gap-2 h-[38px] rounded-[10px] border border-slate-200/80 bg-white pl-3 pr-8 hover:border-slate-300 transition-colors min-w-[130px] w-max shadow-sm cursor-pointer"
->
-  <CalendarDays size={14} className="text-blue-500 shrink-0" />
-  <span className="text-[0.82rem] font-bold text-slate-700 select-none whitespace-nowrap">
-    {yearsLoading ? "Loading…" : selectedYear || "Select Year"}
-  </span>
+              >
+                <span className="h-[7px] w-[7px] rounded-full shrink-0 bg-blue-500" />
+                <span className="text-[0.82rem] font-bold text-slate-700 select-none whitespace-nowrap">
+                  {yearsLoading ? "Loading…" : selectedYear || "Select Year"}
+                </span>
                 <ChevronDown
                   size={14}
                   strokeWidth={2.5}
@@ -572,20 +1032,25 @@ export default function Dashboard() {
 
               {/* Custom Dropdown Menu */}
               {isYearDropdownOpen && !yearsLoading && (
-                <div className="absolute top-[calc(100%+6px)] right-0 w-full min-w-[130px] bg-white border border-slate-200 rounded-[10px] shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute top-[calc(100%+6px)] right-0 w-full min-w-[150px] bg-white border border-slate-200 rounded-[10px] shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
                   {schoolYears.map(({ year }) => {
                     const isSelected = selectedYear === year;
+                    const isDisabled = compareMode && year === compareYear;
                     return (
                       <button
                         key={year}
+                        disabled={isDisabled}
                         onClick={() => {
+                          if (isDisabled) return;
                           setSelectedYear(year);
                           setIsYearDropdownOpen(false);
                         }}
                         className={`w-full flex items-center px-3.5 py-2 text-[0.82rem] font-semibold transition-colors ${
                           isSelected
                             ? "bg-blue-50 text-blue-700"
-                            : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                            : isDisabled
+                              ? "text-slate-300 cursor-not-allowed"
+                              : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                         }`}
                       >
                         {year}
@@ -599,21 +1064,153 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* Compare button */}
-            <button
-              id="dashboard-compare-btn"
-              onClick={() => {}}
-              className="flex items-center gap-1.5 rounded-[10px] bg-blue-500 px-4 py-[7px] text-[0.78rem] font-semibold text-white hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer"
-              style={{ boxShadow: "0 2px 8px rgba(59,130,246,0.28)" }}
-            >
-              <ArrowLeftRight size={13} />
-              Compare
-            </button>
+            {/* Compare mode: secondary year selector + exit button */}
+            {compareMode && (
+              <>
+                <span className="text-[0.75rem] font-semibold text-slate-400">
+                  vs
+                </span>
+
+                <div ref={compareYearDropdownRef} className="relative">
+                  <button
+                    id="dashboard-compare-year-select-btn"
+                    onClick={() => setIsCompareYearDropdownOpen((v) => !v)}
+                    className="relative flex items-center gap-2 h-[38px] rounded-[10px] border border-orange-200 bg-orange-50/60 pl-3 pr-8 hover:border-orange-300 transition-colors min-w-[130px] w-max shadow-sm cursor-pointer"
+                  >
+                    <span className="h-[7px] w-[7px] rounded-full shrink-0 bg-orange-500" />
+                    <span className="text-[0.82rem] font-bold text-orange-700 select-none whitespace-nowrap">
+                      {compareYear || "Select year"}
+                    </span>
+                    {compareYear && isOngoing(compareYear) && (
+                      <Clock size={12} className="text-orange-500 shrink-0" />
+                    )}
+                    <ChevronDown
+                      size={14}
+                      strokeWidth={2.5}
+                      className={`text-orange-400 pointer-events-none absolute right-3 transition-transform duration-200 ${
+                        isCompareYearDropdownOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {isCompareYearDropdownOpen && (
+                    <div className="absolute top-[calc(100%+6px)] right-0 w-full min-w-[150px] bg-white border border-slate-200 rounded-[10px] shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                      {schoolYears.map(({ year }) => {
+                        const isSelected = compareYear === year;
+                        const isDisabled = year === selectedYear;
+                        return (
+                          <button
+                            key={year}
+                            disabled={isDisabled}
+                            onClick={() => {
+                              if (isDisabled) return;
+                              setCompareYear(year);
+                              setIsCompareYearDropdownOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-1.5 px-3.5 py-2 text-[0.82rem] font-semibold transition-colors ${
+                              isSelected
+                                ? "bg-orange-50 text-orange-700"
+                                : isDisabled
+                                  ? "text-slate-300 cursor-not-allowed"
+                                  : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                            }`}
+                          >
+                            {year}
+                            {isOngoing(year) && (
+                              <Clock size={11} className="text-orange-400" />
+                            )}
+                            {isSelected && (
+                              <div className="ml-auto w-1.5 h-1.5 rounded-full bg-orange-500" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  id="dashboard-compare-exit-btn"
+                  onClick={() => {
+                    setCompareMode(false);
+                    setCompareYear(null);
+                    setIsCompareYearDropdownOpen(false);
+                  }}
+                  title="Exit compare"
+                  className="flex items-center justify-center h-[30px] w-[30px] rounded-full bg-rose-50 text-rose-400 hover:bg-rose-100 hover:text-rose-500 transition-colors cursor-pointer"
+                >
+                  <X size={14} strokeWidth={2.5} />
+                </button>
+              </>
+            )}
+
+            {/* Compare button (only when not already comparing) */}
+            {!compareMode && (
+              <button
+                id="dashboard-compare-btn"
+                onClick={() => setCompareMode(true)}
+                className="flex items-center gap-1.5 rounded-[10px] bg-blue-500 px-4 py-[7px] text-[0.78rem] font-semibold text-white hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer"
+                style={{ boxShadow: "0 2px 8px rgba(59,130,246,0.28)" }}
+              >
+                <ArrowLeftRight size={13} />
+                Compare
+              </button>
+            )}
           </div>
         </div>
 
+        {/* ── Comparing summary bar ───────────────────────── */}
+        {compareMode && compareYear && (
+          <div className="mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2.5 rounded-full border border-slate-200 bg-white px-3.5 py-2 shadow-sm w-max">
+                <span className="flex items-center gap-1.5 text-[0.75rem] font-bold text-blue-600">
+                  <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
+                  SY {selectedYear}
+                </span>
+                <span className="text-[0.7rem] font-medium text-slate-300">
+                  vs
+                </span>
+                <span className="flex items-center gap-1.5 text-[0.75rem] font-bold text-orange-600">
+                  <span className="h-[6px] w-[6px] rounded-full bg-orange-500" />
+                  SY {compareYear}
+                </span>
+                {isOngoing(compareYear) && (
+                  <span className="flex items-center gap-1 text-[0.65rem] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                    <Clock size={10} />
+                    Ongoing
+                  </span>
+                )}
+              </div>
+
+              <span className="flex items-center gap-1.5 rounded-full bg-orange-50 text-orange-600 px-3.5 py-1.5 text-[0.75rem] font-semibold">
+                <ArrowLeftRight size={12} />
+                Comparing
+              </span>
+            </div>
+
+            {isOngoing(compareYear) && (
+              <div className="flex items-start gap-2 rounded-[10px] border border-amber-100 bg-amber-50/70 px-4 py-3">
+                <Clock size={14} className="text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-[0.75rem] text-amber-800 leading-relaxed">
+                  <span className="font-bold">
+                    SY {compareYear} is currently ongoing.
+                  </span>{" "}
+                  Data shown are provisional and subject to change as the school
+                  year progresses.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Overview KPIs ───────────────────────────────── */}
-        <DashboardOverview data={overviewData} selectedYear={selectedYear} />
+        <DashboardOverview
+          data={overviewData}
+          selectedYear={selectedYear}
+          compareYear={isComparing ? compareYear : null}
+          compareData={compareOverviewData}
+        />
 
         {/* ── Data Categories header ──────────────────────── */}
         <div className="flex items-baseline justify-between mt-8 mb-4">
@@ -643,7 +1240,9 @@ export default function Dashboard() {
           accentBg="rgba(239,246,255,0.7)"
           defaultOpen
         >
-          {!loading && enrollmentSummary.total === 0 ? (
+          {!loading &&
+          enrollmentSummary.total === 0 &&
+          !(isComparing && compareEnrollmentSummary.total > 0) ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="mb-3 opacity-25 text-indigo-400">
                 <BarChart3 size={36} strokeWidth={1.5} />
@@ -652,7 +1251,9 @@ export default function Dashboard() {
                 className="text-[0.78rem] font-semibold"
                 style={{ color: "rgba(79,125,245,0.6)" }}
               >
-                No data available for SY {selectedYear}
+                {isComparing
+                  ? `No data available for SY ${selectedYear} or SY ${compareYear}`
+                  : `No data available for SY ${selectedYear}`}
               </p>
             </div>
           ) : (
@@ -663,70 +1264,97 @@ export default function Dashboard() {
                   <h4 className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
                     Overall Enrollment
                   </h4>
-                  <DashboardFilters
-                    options={["Summary", "By Level"]}
-                    active={enrollmentView}
-                    onChange={setEnrollmentView}
-                  />
+                  {!isComparing && (
+                    <DashboardFilters
+                      options={["Summary", "By Level"]}
+                      active={enrollmentView}
+                      onChange={setEnrollmentView}
+                    />
+                  )}
                 </div>
 
-                {enrollmentView === "Summary" && (
+                {isComparing ? (
+                  <div className="space-y-2">
+                    <ComparisonRow
+                      label="Public"
+                      primary={enrollmentSummary.public}
+                      secondary={compareEnrollmentSummary.public}
+                    />
+                    <ComparisonRow
+                      label="Private"
+                      primary={enrollmentSummary.private}
+                      secondary={compareEnrollmentSummary.private}
+                    />
+                    <ComparisonRow
+                      label="Total"
+                      primary={enrollmentSummary.total}
+                      secondary={compareEnrollmentSummary.total}
+                      bold
+                    />
+                  </div>
+                ) : (
                   <>
-                    <div className="grid grid-cols-3 gap-3">
-                      <DataSummaryCard
-                        label="Public"
-                        value={enrollmentSummary.public.toLocaleString()}
-                        accent="#4f7df5"
-                      />
-                      <DataSummaryCard
-                        label="Private"
-                        value={enrollmentSummary.private.toLocaleString()}
-                        accent="#10b981"
-                      />
-                      <DataSummaryCard
-                        label="Total"
-                        value={enrollmentSummary.total.toLocaleString()}
-                        accent="#334155"
-                      />
-                    </div>
+                    {enrollmentView === "Summary" && (
+                      <>
+                        <div className="grid grid-cols-3 gap-3">
+                          <DataSummaryCard
+                            label="Public"
+                            value={enrollmentSummary.public.toLocaleString()}
+                            accent="#4f7df5"
+                          />
+                          <DataSummaryCard
+                            label="Private"
+                            value={enrollmentSummary.private.toLocaleString()}
+                            accent="#10b981"
+                          />
+                          <DataSummaryCard
+                            label="Total"
+                            value={enrollmentSummary.total.toLocaleString()}
+                            accent="#334155"
+                          />
+                        </div>
 
-                    <div className="mt-3">
-                      <p className="text-[0.62rem] font-medium text-slate-300 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                        Gender
-                        <span className="normal-case tracking-normal font-normal text-slate-300">
-                          · hover to see public / private split
-                        </span>
-                      </p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <GenderCard
-                          label="Male"
-                          total={loading ? 0 : genderSummary.male.total}
-                          publicCount={loading ? 0 : genderSummary.male.public}
-                          privateCount={
-                            loading ? 0 : genderSummary.male.private
-                          }
-                          accent="#3b82f6"
-                          hoverAccent="#60a5fa"
-                        />
-                        <GenderCard
-                          label="Female"
-                          total={loading ? 0 : genderSummary.female.total}
-                          publicCount={
-                            loading ? 0 : genderSummary.female.public
-                          }
-                          privateCount={
-                            loading ? 0 : genderSummary.female.private
-                          }
-                          accent="#ec4899"
-                          hoverAccent="#f472b6"
-                        />
-                      </div>
-                    </div>
+                        <div className="mt-3">
+                          <p className="text-[0.62rem] font-medium text-slate-300 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                            Gender
+                            <span className="normal-case tracking-normal font-normal text-slate-300">
+                              · hover to see public / private split
+                            </span>
+                          </p>
+                          <div className="grid grid-cols-2 gap-3">
+                            <GenderCard
+                              label="Male"
+                              total={loading ? 0 : genderSummary.male.total}
+                              publicCount={
+                                loading ? 0 : genderSummary.male.public
+                              }
+                              privateCount={
+                                loading ? 0 : genderSummary.male.private
+                              }
+                              accent="#3b82f6"
+                              hoverAccent="#60a5fa"
+                            />
+                            <GenderCard
+                              label="Female"
+                              total={loading ? 0 : genderSummary.female.total}
+                              publicCount={
+                                loading ? 0 : genderSummary.female.public
+                              }
+                              privateCount={
+                                loading ? 0 : genderSummary.female.private
+                              }
+                              accent="#ec4899"
+                              hoverAccent="#f472b6"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {enrollmentView === "By Level" && (
+                      <EnrollmentByLevel rows={enrollmentRows} />
+                    )}
                   </>
-                )}
-
-                {enrollmentView === "By Level" && (
-                  <EnrollmentByLevel rows={enrollmentRows} />
                 )}
               </div>
 
@@ -745,21 +1373,105 @@ export default function Dashboard() {
                   />
                 </div>
 
-                {rateView === "Dropout" && (
-                  <PerformanceCard>
-                    <div className="space-y-0.5">
-                      {dropoutByLevel.map((d) => (
-                        <MetricProgress key={d.label} {...d} />
-                      ))}
+                {rateView === "Dropout" &&
+                  (isComparing ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-blue-600 mb-2">
+                          <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
+                          {selectedYear}
+                        </p>
+                        <PerformanceCard>
+                          <div className="space-y-0.5">
+                            {dropoutByLevel.map((d) => (
+                              <MetricProgress key={d.label} {...d} />
+                            ))}
+                          </div>
+                        </PerformanceCard>
+                      </div>
+                      <div>
+                        <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600 mb-2">
+                          <span className="h-[6px] w-[6px] rounded-full bg-orange-500" />
+                          {compareYear}
+                          {isOngoing(compareYear) && (
+                            <Clock size={11} className="text-orange-400" />
+                          )}
+                        </p>
+                        <PerformanceCard>
+                          <div className="space-y-0.5">
+                            {dropoutByLevelCompare.map((d) => (
+                              <MetricProgress key={d.label} {...d} />
+                            ))}
+                          </div>
+                        </PerformanceCard>
+                      </div>
                     </div>
-                  </PerformanceCard>
-                )}
+                  ) : (
+                    <PerformanceCard>
+                      <div className="space-y-0.5">
+                        {dropoutByLevel.map((d) => (
+                          <MetricProgress key={d.label} {...d} />
+                        ))}
+                      </div>
+                    </PerformanceCard>
+                  ))}
 
-                {rateView === "Promotion" && (
-                  <PromotionChart data={promotionByLevel} />
-                )}
+                {rateView === "Promotion" &&
+                  (isComparing ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-blue-600 mb-2">
+                          <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
+                          {selectedYear}
+                        </p>
+                        <PromotionChart data={promotionByLevel} />
+                      </div>
+                      <div>
+                        <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600 mb-2">
+                          <span className="h-[6px] w-[6px] rounded-full bg-orange-500" />
+                          {compareYear}
+                          {isOngoing(compareYear) && (
+                            <Clock size={11} className="text-orange-400" />
+                          )}
+                        </p>
+                        {compareHasData ? (
+                          <PromotionChart data={promotionByLevelCompare} />
+                        ) : (
+                          <div className="flex items-center justify-center h-[220px] rounded-[10px] border border-dashed border-orange-100 bg-orange-50/30 text-[0.75rem] text-orange-400 font-medium text-center px-4">
+                            No promotion data yet for SY {compareYear}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <PromotionChart data={promotionByLevel} />
+                  ))}
 
-                {rateView === "Cohort" && <CohortChart data={cohortTrend} />}
+                {rateView === "Cohort" && (
+                  <div>
+                    {isComparing && (
+                      <div className="mb-3">
+                        <ComparisonRow
+                          label="Elementary Cohort Survival Rate"
+                          primary={parseFloat(elemCsrCurrent.toFixed(2))}
+                          secondary={
+                            compareHasData
+                              ? parseFloat(elemCsrCompare.toFixed(2))
+                              : 0
+                          }
+                          suffix="%"
+                        />
+                        {!compareHasData && (
+                          <p className="mt-1.5 text-[0.68rem] text-amber-600 font-medium px-1">
+                            SY {compareYear} cohort data isn't fully reported
+                            yet — shown as 0% until available.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    <CohortChart data={cohortTrend} />
+                  </div>
+                )}
               </div>
 
               <SectionDivider />
@@ -771,13 +1483,38 @@ export default function Dashboard() {
               </DashboardGrid>
 
               {/* Insight */}
+              {/* Insight */}
               <div className="mt-4">
-                <InsightCard
-                  icon={<Info size={14} />}
-                  variant="info"
-                  title="Dropout trend improving"
-                  message="The overall dropout rate has decreased by 0.28% over the past three years, indicating positive retention outcomes."
-                />
+                {isComparing && compareHasData ? (
+                  <InsightCard
+                    icon={<Info size={14} />}
+                    variant={
+                      overallDropoutCompare <= overallDropout
+                        ? "info"
+                        : "warning"
+                    }
+                    title={
+                      overallDropoutCompare <= overallDropout
+                        ? "Dropout rate improved"
+                        : "Dropout rate increased"
+                    }
+                    message={`Overall dropout moved from ${overallDropout.toFixed(2)}% in SY ${selectedYear} to ${overallDropoutCompare.toFixed(2)}% in SY ${compareYear}, a ${Math.abs(overallDropoutCompare - overallDropout).toFixed(2)} pt ${overallDropoutCompare <= overallDropout ? "decrease" : "increase"}.`}
+                  />
+                ) : isComparing && !compareHasData ? (
+                  <InsightCard
+                    icon={<Clock size={14} />}
+                    variant="warning"
+                    title="Comparison data incomplete"
+                    message={`SY ${compareYear} performance indicators haven't been fully submitted yet, so comparison figures may show as 0% or N/A.`}
+                  />
+                ) : (
+                  <InsightCard
+                    icon={<Info size={14} />}
+                    variant="info"
+                    title="Dropout trend improving"
+                    message="The overall dropout rate has decreased by 0.28% over the past three years, indicating positive retention outcomes."
+                  />
+                )}
               </div>
             </>
           )}
@@ -795,7 +1532,7 @@ export default function Dashboard() {
           title="CESPES"
           subtitle="Comprehensive Evaluation of Schools' Performance and Effectiveness"
         >
-          {cespes.loading ? (
+          {cespes.loading || (isComparing && compareCespes.loading) ? (
             <div className="flex items-center justify-center py-10 text-slate-400 text-[0.8rem]">
               Loading CESPES data…
             </div>
@@ -823,6 +1560,29 @@ export default function Dashboard() {
                   </button>
                 ))}
               </div>
+
+              {/* Comparing header */}
+              {isComparing && (
+                <div className="flex flex-wrap items-center gap-2.5 mb-4">
+                  <span className="flex items-center gap-1.5 text-[0.72rem] font-bold text-blue-600">
+                    <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
+                    SY {selectedYear}
+                  </span>
+                  <span className="text-[0.68rem] font-medium text-slate-300">
+                    vs
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600">
+                    <span className="h-[6px] w-[6px] rounded-full bg-orange-500" />
+                    SY {compareYear}
+                  </span>
+                  {isOngoing(compareYear) && (
+                    <span className="flex items-center gap-1 text-[0.62rem] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                      <Clock size={10} />
+                      Ongoing
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* Tab Content */}
               <div className="min-h-[200px]">
@@ -854,130 +1614,190 @@ export default function Dashboard() {
                         2nd Semester
                       </span>
                     </div>
-                    <div className="space-y-3">
-                      {(() => {
-                        // Group operations by program
-                        const programs = [];
-                        const programMap = new Map();
-                        const dataSource =
+
+                    {isComparing ? (
+                      <div className="space-y-4">
+                        <CespesYearPanel
+                          color="blue"
+                          year={selectedYear}
+                          tab="Operations"
+                          rows={cespes.operations}
+                          fallbackToTemplate
+                        />
+                        <CespesYearPanel
+                          color="orange"
+                          year={compareYear}
+                          ongoing={isOngoing(compareYear)}
+                          tab="Operations"
+                          rows={compareCespes.operations}
+                          fallbackToTemplate={false}
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {groupOperationsByProgram(
                           cespes.operations.length > 0
                             ? cespes.operations
-                            : DEFAULT_CESPES_DATA.operations;
-
-                        dataSource.forEach((row) => {
-                          const pName = row.program || "(No Program)";
-                          if (!programMap.has(pName)) {
-                            const prog = { name: pName, rows: [] };
-                            programMap.set(pName, prog);
-                            programs.push(prog);
-                          }
-                          const iType = (
-                            row.indicator_type || ""
-                          ).toUpperCase();
-                          programMap.get(pName).rows.push({
-                            type: iType.startsWith("OUTCOME")
-                              ? "OUTCOME"
-                              : "OUTPUT",
-                            label: row.indicator,
-                            sem1Target: row.sem1_target || "—",
-                            sem1Accomp: row.sem1_accomplishment || "—",
-                            sem2Target: row.sem2_target || "—",
-                            sem2Accomp: row.sem2_accomplishment || "—",
-                          });
-                        });
-                        // Count outcomes/outputs per program
-                        programs.forEach((p) => {
-                          p.outcomes = p.rows.filter(
-                            (r) => r.type === "OUTCOME",
-                          ).length;
-                          p.outputs = p.rows.filter(
-                            (r) => r.type === "OUTPUT",
-                          ).length;
-                          p.reported = `${p.rows.length}/${p.rows.length}`;
-                        });
-                        return programs.map((prog) => (
+                            : DEFAULT_CESPES_DATA.operations,
+                        ).map((prog) => (
                           <CespesProgramRow key={prog.name} program={prog} />
-                        ));
-                      })()}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </>
                 )}
 
-                {activeCespesTab === "Support to Operations" && (
-                  <div className="space-y-4">
-                    {cespes.supportOperations.length === 0 && (
-                      <div className="text-[0.75rem] text-slate-500 italic px-1">
-                        Showing empty template format. Upload data for SY{" "}
-                        {selectedYear} to populate values.
-                      </div>
-                    )}
-                    <CespesSemesterTable
-                      rows={
-                        cespes.supportOperations.length > 0
-                          ? cespes.supportOperations
-                          : DEFAULT_CESPES_DATA.supportOperations
-                      }
-                      groupKey="service_activity"
-                      showPerson
-                    />
-                  </div>
-                )}
+                {activeCespesTab === "Support to Operations" &&
+                  (isComparing ? (
+                    <div className="space-y-4">
+                      <CespesYearPanel
+                        color="blue"
+                        year={selectedYear}
+                        tab="Support to Operations"
+                        rows={cespes.supportOperations}
+                        fallbackToTemplate
+                      />
+                      <CespesYearPanel
+                        color="orange"
+                        year={compareYear}
+                        ongoing={isOngoing(compareYear)}
+                        tab="Support to Operations"
+                        rows={compareCespes.supportOperations}
+                        fallbackToTemplate={false}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {cespes.supportOperations.length === 0 && (
+                        <div className="text-[0.75rem] text-slate-500 italic px-1">
+                          Showing empty template format. Upload data for SY{" "}
+                          {selectedYear} to populate values.
+                        </div>
+                      )}
+                      <CespesSemesterTable
+                        rows={
+                          cespes.supportOperations.length > 0
+                            ? cespes.supportOperations
+                            : DEFAULT_CESPES_DATA.supportOperations
+                        }
+                        groupKey="service_activity"
+                        showPerson
+                      />
+                    </div>
+                  ))}
 
-                {activeCespesTab === "General Admin" && (
-                  <div className="space-y-4">
-                    {cespes.generalAdmin.length === 0 && (
-                      <div className="text-[0.75rem] text-slate-500 italic px-1">
-                        Showing empty template format. Upload data for SY{" "}
-                        {selectedYear} to populate values.
-                      </div>
-                    )}
-                    <CespesSemesterTable
-                      rows={
-                        cespes.generalAdmin.length > 0
-                          ? cespes.generalAdmin
-                          : DEFAULT_CESPES_DATA.generalAdmin
-                      }
-                      groupKey="service_activity"
-                      showPerson
-                    />
-                  </div>
-                )}
+                {activeCespesTab === "General Admin" &&
+                  (isComparing ? (
+                    <div className="space-y-4">
+                      <CespesYearPanel
+                        color="blue"
+                        year={selectedYear}
+                        tab="General Admin"
+                        rows={cespes.generalAdmin}
+                        fallbackToTemplate
+                      />
+                      <CespesYearPanel
+                        color="orange"
+                        year={compareYear}
+                        ongoing={isOngoing(compareYear)}
+                        tab="General Admin"
+                        rows={compareCespes.generalAdmin}
+                        fallbackToTemplate={false}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {cespes.generalAdmin.length === 0 && (
+                        <div className="text-[0.75rem] text-slate-500 italic px-1">
+                          Showing empty template format. Upload data for SY{" "}
+                          {selectedYear} to populate values.
+                        </div>
+                      )}
+                      <CespesSemesterTable
+                        rows={
+                          cespes.generalAdmin.length > 0
+                            ? cespes.generalAdmin
+                            : DEFAULT_CESPES_DATA.generalAdmin
+                        }
+                        groupKey="service_activity"
+                        showPerson
+                      />
+                    </div>
+                  ))}
 
-                {activeCespesTab === "Individual Performance" && (
-                  <div className="space-y-4">
-                    {cespes.individualPerformance.length === 0 && (
-                      <div className="text-[0.75rem] text-slate-500 italic px-1">
-                        Showing empty template format. Upload data for SY{" "}
-                        {selectedYear} to populate values.
-                      </div>
-                    )}
-                    <CespesPerformanceTable
-                      rows={
-                        cespes.individualPerformance.length > 0
-                          ? cespes.individualPerformance
-                          : DEFAULT_CESPES_DATA.individualPerformance
-                      }
-                    />
-                  </div>
-                )}
+                {activeCespesTab === "Individual Performance" &&
+                  (isComparing ? (
+                    <div className="space-y-4">
+                      <CespesYearPanel
+                        color="blue"
+                        year={selectedYear}
+                        tab="Individual Performance"
+                        rows={cespes.individualPerformance}
+                        fallbackToTemplate
+                      />
+                      <CespesYearPanel
+                        color="orange"
+                        year={compareYear}
+                        ongoing={isOngoing(compareYear)}
+                        tab="Individual Performance"
+                        rows={compareCespes.individualPerformance}
+                        fallbackToTemplate={false}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {cespes.individualPerformance.length === 0 && (
+                        <div className="text-[0.75rem] text-slate-500 italic px-1">
+                          Showing empty template format. Upload data for SY{" "}
+                          {selectedYear} to populate values.
+                        </div>
+                      )}
+                      <CespesPerformanceTable
+                        rows={
+                          cespes.individualPerformance.length > 0
+                            ? cespes.individualPerformance
+                            : DEFAULT_CESPES_DATA.individualPerformance
+                        }
+                      />
+                    </div>
+                  ))}
 
-                {activeCespesTab === "Innovation & Intervention" && (
-                  <div className="space-y-4">
-                    {cespes.innovation.length === 0 && (
-                      <div className="text-[0.75rem] text-slate-500 italic px-1">
-                        Showing empty template format. Upload data for SY{" "}
-                        {selectedYear} to populate values.
-                      </div>
-                    )}
-                    <CespesInnovationTable
-                      rows={
-                        cespes.innovation.length > 0
-                          ? cespes.innovation
-                          : DEFAULT_CESPES_DATA.innovation
-                      }
-                    />
-                  </div>
-                )}
+                {activeCespesTab === "Innovation & Intervention" &&
+                  (isComparing ? (
+                    <div className="space-y-4">
+                      <CespesYearPanel
+                        color="blue"
+                        year={selectedYear}
+                        tab="Innovation & Intervention"
+                        rows={cespes.innovation}
+                        fallbackToTemplate
+                      />
+                      <CespesYearPanel
+                        color="orange"
+                        year={compareYear}
+                        ongoing={isOngoing(compareYear)}
+                        tab="Innovation & Intervention"
+                        rows={compareCespes.innovation}
+                        fallbackToTemplate={false}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {cespes.innovation.length === 0 && (
+                        <div className="text-[0.75rem] text-slate-500 italic px-1">
+                          Showing empty template format. Upload data for SY{" "}
+                          {selectedYear} to populate values.
+                        </div>
+                      )}
+                      <CespesInnovationTable
+                        rows={
+                          cespes.innovation.length > 0
+                            ? cespes.innovation
+                            : DEFAULT_CESPES_DATA.innovation
+                        }
+                      />
+                    </div>
+                  ))}
               </div>
             </>
           )}
@@ -1014,248 +1834,308 @@ export default function Dashboard() {
 
         {/* ── Crucial Resources ─────────────────────────── */}
         <DashboardAccordion
-          icon={
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50">
-              <School size={16} className="text-amber-500" />
-            </div>
-          }
-          title="Crucial Resources"
-          subtitle="No. of Teachers · Classrooms · Seats · Textbooks"
-          subtitleColor="#d97706"
-          accentBg="rgba(255,251,235,0.7)"
-        >
-          {!resources.teachers.loading &&
-          resources.teachers.total === 0 &&
-          resources.classrooms.total === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="mb-3 opacity-25 text-amber-500">
-                <School size={36} strokeWidth={1.5} />
-              </div>
-              <p
-                className="text-[0.78rem] font-semibold"
-                style={{ color: "rgba(217,119,6,0.55)" }}
-              >
-                No data available for SY {selectedYear}
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center justify-end mb-4">
-                <DashboardFilters
-                  options={["Summary", "Charts", "By Level", "Breakdown"]}
-                  active={resourceView}
-                  onChange={setResourceView}
-                />
-              </div>
+  icon={
+    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50">
+      <School size={16} className="text-amber-500" />
+    </div>
+  }
+  title="Crucial Resources"
+  subtitle="No. of Teachers · Classrooms · Seats · Textbooks"
+  subtitleColor="#d97706"
+  accentBg="rgba(255,251,235,0.7)"
+>
+  {!resources.teachers.loading &&
+  resources.teachers.total === 0 &&
+  resources.classrooms.total === 0 &&
+  !(
+    isComparing &&
+    (compareResources.teachers.total > 0 ||
+      compareResources.classrooms.total > 0)
+  ) ? (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="mb-3 opacity-25 text-amber-500">
+        <School size={36} strokeWidth={1.5} />
+      </div>
+      <p
+        className="text-[0.78rem] font-semibold"
+        style={{ color: "rgba(217,119,6,0.55)" }}
+      >
+        {isComparing
+          ? `No data available for SY ${selectedYear} or SY ${compareYear}`
+          : `No data available for SY ${selectedYear}`}
+      </p>
+    </div>
+  ) : (
+    <>
+      <div className="flex items-center justify-end mb-4">
+        <DashboardFilters
+          options={["Summary", "Charts", "By Level", "Breakdown"]}
+          active={resourceView}
+          onChange={setResourceView}
+        />
+      </div>
 
-              {/* ── Summary view ───────────────────────────── */}
-              {resourceView === "Summary" && (
+      {/* Comparing header */}
+      {isComparing && (
+        <div className="flex flex-wrap items-center gap-2.5 mb-4">
+          <span className="flex items-center gap-1.5 text-[0.72rem] font-bold text-blue-600">
+            <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
+            SY {selectedYear}
+          </span>
+          <span className="text-[0.68rem] font-medium text-slate-300">vs</span>
+          <span className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600">
+            <span className="h-[6px] w-[6px] rounded-full bg-orange-500" />
+            SY {compareYear}
+          </span>
+          {isOngoing(compareYear) && (
+            <span className="flex items-center gap-1 text-[0.62rem] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+              <Clock size={10} />
+              Ongoing
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* ── Summary view ───────────────────────────── */}
+      {resourceView === "Summary" &&
+        (isComparing ? (
+          <div className="space-y-2">
+            <ComparisonRow
+              label="Total Teachers"
+              primary={resources.teachers.total}
+              secondary={compareResources.teachers.total}
+            />
+            <ComparisonRow
+              label="Total Classrooms"
+              primary={resources.classrooms.total}
+              secondary={compareResources.classrooms.total}
+            />
+            <ComparisonRow
+              label="Total Seats"
+              primary={resources.seats.total}
+              secondary={compareResources.seats.total}
+            />
+            <ComparisonRow
+              label="Textbooks Shortage"
+              primary={resources.textbooks.needs}
+              secondary={compareResources.textbooks.needs}
+              bold
+            />
+          </div>
+        ) : (
+          <DashboardGrid cols={2}>
+            <TrendCard
+              label="Total Teachers"
+              value={
+                resources.teachers.loading
+                  ? "..."
+                  : (resources.teachers.total || 0).toLocaleString()
+              }
+              change={
+                resources.teachers.needs > 0
+                  ? `-${resources.teachers.needs.toLocaleString()} needs`
+                  : "No needs"
+              }
+              direction={resources.teachers.needs > 0 ? "down" : "up"}
+              period="Total Inventory"
+            />
+            <TrendCard
+              label="Total Classrooms"
+              value={
+                resources.classrooms.loading
+                  ? "..."
+                  : (resources.classrooms.total || 0).toLocaleString()
+              }
+              change={
+                resources.classrooms.needs > 0
+                  ? `-${resources.classrooms.needs.toLocaleString()} needs`
+                  : "No needs"
+              }
+              direction={resources.classrooms.needs > 0 ? "down" : "up"}
+              period="Total Inventory"
+            />
+            <TrendCard
+              label="Total Seats"
+              value={
+                resources.seats.loading
+                  ? "..."
+                  : (resources.seats.total || 0).toLocaleString()
+              }
+              change={
+                resources.seats.needs > 0
+                  ? `-${resources.seats.needs.toLocaleString()} needs`
+                  : "No needs"
+              }
+              direction={resources.seats.needs > 0 ? "down" : "up"}
+              period="Total Inventory"
+            />
+            <TrendCard
+              label="Textbooks Shortage"
+              value={
+                resources.textbooks.loading
+                  ? "..."
+                  : (resources.textbooks.needs || 0).toLocaleString()
+              }
+              change="Current total gap"
+              direction={resources.textbooks.needs > 0 ? "down" : "up"}
+              period="System-wide"
+            />
+          </DashboardGrid>
+        ))}
+
+      {/* ── Charts view ────────────────────────────── */}
+      {resourceView === "Charts" &&
+        (isComparing ? (
+          <div className="space-y-5">
+            <ResourcesChartsPanel
+              color="blue"
+              year={selectedYear}
+              resources={resources}
+            />
+            <ResourcesChartsPanel
+              color="orange"
+              year={compareYear}
+              ongoing={isOngoing(compareYear)}
+              resources={compareResources}
+            />
+          </div>
+        ) : (
+          (() => {
+            const teachersData = Object.entries(
+              resources.teachers.breakdown || {},
+            ).map(([level, val]) => ({
+              level,
+              inventory: val,
+              needs: resources.teachers.needsBreakdown?.[level] || 0,
+            }));
+            const classroomsData = Object.entries(
+              resources.classrooms.breakdown || {},
+            ).map(([level, val]) => ({
+              level,
+              inventory: val,
+              needs: resources.classrooms.needsBreakdown?.[level] || 0,
+            }));
+            const seatsData = Object.entries(
+              resources.seats.breakdown || {},
+            ).map(([level, val]) => ({
+              level,
+              inventory: val,
+              needs: resources.seats.needsBreakdown?.[level] || 0,
+            }));
+            const textbooksData = Object.entries(
+              resources.textbooks.breakdown || {},
+            ).map(([level, val]) => ({ level, shortage: val }));
+            return (
+              <div className="space-y-4">
                 <DashboardGrid cols={2}>
-                  <TrendCard
-                    label="Total Teachers"
-                    value={
-                      resources.teachers.loading
-                        ? "..."
-                        : (resources.teachers.total || 0).toLocaleString()
-                    }
-                    change={
-                      resources.teachers.needs > 0
-                        ? `-${resources.teachers.needs.toLocaleString()} needs`
-                        : "No needs"
-                    }
-                    direction={resources.teachers.needs > 0 ? "down" : "up"}
-                    period="Total Inventory"
+                  <ResourcesInventoryChart
+                    title="Teachers · Inventory vs Needs"
+                    data={teachersData}
                   />
-                  <TrendCard
-                    label="Total Classrooms"
-                    value={
-                      resources.classrooms.loading
-                        ? "..."
-                        : (resources.classrooms.total || 0).toLocaleString()
-                    }
-                    change={
-                      resources.classrooms.needs > 0
-                        ? `-${resources.classrooms.needs.toLocaleString()} needs`
-                        : "No needs"
-                    }
-                    direction={resources.classrooms.needs > 0 ? "down" : "up"}
-                    period="Total Inventory"
-                  />
-                  <TrendCard
-                    label="Total Seats"
-                    value={
-                      resources.seats.loading
-                        ? "..."
-                        : (resources.seats.total || 0).toLocaleString()
-                    }
-                    change={
-                      resources.seats.needs > 0
-                        ? `-${resources.seats.needs.toLocaleString()} needs`
-                        : "No needs"
-                    }
-                    direction={resources.seats.needs > 0 ? "down" : "up"}
-                    period="Total Inventory"
-                  />
-                  <TrendCard
-                    label="Textbooks Shortage"
-                    value={
-                      resources.textbooks.loading
-                        ? "..."
-                        : (resources.textbooks.needs || 0).toLocaleString()
-                    }
-                    change="Current total gap"
-                    direction={resources.textbooks.needs > 0 ? "down" : "up"}
-                    period="System-wide"
+                  <ResourcesInventoryChart
+                    title="Classrooms · Inventory vs Needs"
+                    data={classroomsData}
                   />
                 </DashboardGrid>
-              )}
-
-              {/* ── Charts view ────────────────────────────── */}
-              {resourceView === "Charts" &&
-                (() => {
-                  const teachersData = Object.entries(
-                    resources.teachers.breakdown || {},
-                  ).map(([level, val]) => ({
-                    level,
-                    inventory: val,
-                    needs: resources.teachers.needsBreakdown?.[level] || 0,
-                  }));
-                  const classroomsData = Object.entries(
-                    resources.classrooms.breakdown || {},
-                  ).map(([level, val]) => ({
-                    level,
-                    inventory: val,
-                    needs: resources.classrooms.needsBreakdown?.[level] || 0,
-                  }));
-                  const seatsData = Object.entries(
-                    resources.seats.breakdown || {},
-                  ).map(([level, val]) => ({
-                    level,
-                    inventory: val,
-                    needs: resources.seats.needsBreakdown?.[level] || 0,
-                  }));
-                  const textbooksData = Object.entries(
-                    resources.textbooks.breakdown || {},
-                  ).map(([level, val]) => ({
-                    level,
-                    shortage: val,
-                  }));
-                  return (
-                    <div className="space-y-4">
-                      <DashboardGrid cols={2}>
-                        <ResourcesInventoryChart
-                          title="Teachers · Inventory vs Needs"
-                          data={teachersData}
-                        />
-                        <ResourcesInventoryChart
-                          title="Classrooms · Inventory vs Needs"
-                          data={classroomsData}
-                        />
-                      </DashboardGrid>
-                      <DashboardGrid cols={2}>
-                        <ResourcesInventoryChart
-                          title="Seats · Inventory vs Needs"
-                          data={seatsData}
-                        />
-                        <TextbooksChart data={textbooksData} />
-                      </DashboardGrid>
-                    </div>
-                  );
-                })()}
-
-              {/* ── By Level view (Drill-down) ──────────────── */}
-              {resourceView === "By Level" && (
-                <ResourcesByLevel resources={resources} />
-              )}
-
-              {/* ── Breakdown view ──────────────────────────── */}
-              {resourceView === "Breakdown" && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
-                      Detailed Resource Breakdown
-                    </h4>
-                    <DashboardFilters
-                      options={["Teachers", "Classrooms", "Seats", "Textbooks"]}
-                      active={resourceType}
-                      onChange={setResourceType}
-                    />
-                  </div>
-
-                  <PerformanceCard>
-                    <div className="space-y-0.5">
-                      {(() => {
-                        const resKey = resourceType.toLowerCase();
-                        const resource = resources[resKey];
-                        const breakdown = resource.breakdown || {};
-                        const needsBreakdown = resource.needsBreakdown || {};
-                        const total = resource.total || 1;
-
-                        return Object.entries(breakdown).map(([level, val]) => {
-                          // Calculate percentage for progress bar
-                          const percentage = (val / total) * 100;
-
-                          let color = "bg-blue-500";
-                          let icon = <Users size={12} />;
-
-                          if (resKey === "classrooms") {
-                            color = "bg-emerald-500";
-                            icon = <School size={12} />;
-                          } else if (resKey === "seats") {
-                            color = "bg-amber-500";
-                            icon = <GraduationCap size={12} />;
-                          } else if (resKey === "textbooks") {
-                            color = "bg-rose-500";
-                            icon = <BookOpen size={12} />;
-                          }
-
-                          const needs = needsBreakdown[level] || 0;
-                          const displayValue = val.toLocaleString();
-                          const countText =
-                            needs > 0
-                              ? `${needs.toLocaleString()} needs`
-                              : "No needs";
-
-                          // For textbooks, display is the shortage itself
-                          if (resKey === "textbooks") {
-                            const totalNeeds = resource.needs || 1;
-                            return (
-                              <MetricProgress
-                                key={level}
-                                label={level}
-                                display={`${val.toLocaleString()} shortage`}
-                                value={(val / totalNeeds) * 100}
-                                color="bg-rose-500"
-                              />
-                            );
-                          }
-
-                          return (
-                            <MetricProgress
-                              key={level}
-                              label={level}
-                              display={displayValue}
-                              count={countText}
-                              value={percentage}
-                              color={color}
-                            />
-                          );
-                        });
-                      })()}
-                    </div>
-                  </PerformanceCard>
-
-                  <InsightCard
-                    icon={<Info size={14} />}
-                    variant="info"
-                    title={`${resourceType} Distribution`}
-                    message={`Showing the distribution of ${resourceType.toLowerCase()} across Elementary, JHS, and SHS levels based on current inventory data.`}
+                <DashboardGrid cols={2}>
+                  <ResourcesInventoryChart
+                    title="Seats · Inventory vs Needs"
+                    data={seatsData}
                   />
-                </div>
-              )}
-            </>
+                  <TextbooksChart data={textbooksData} />
+                </DashboardGrid>
+              </div>
+            );
+          })()
+        ))}
+
+      {/* ── By Level view (Drill-down) ──────────────── */}
+      {resourceView === "By Level" &&
+        (isComparing ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-blue-600 mb-2">
+                <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
+                {selectedYear}
+              </p>
+              <ResourcesByLevel resources={resources} />
+            </div>
+            <div>
+              <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600 mb-2">
+                <span className="h-[6px] w-[6px] rounded-full bg-orange-500" />
+                {compareYear}
+                {isOngoing(compareYear) && (
+                  <Clock size={11} className="text-orange-400" />
+                )}
+              </p>
+              <ResourcesByLevel resources={compareResources} />
+            </div>
+          </div>
+        ) : (
+          <ResourcesByLevel resources={resources} />
+        ))}
+
+      {/* ── Breakdown view ──────────────────────────── */}
+      {resourceView === "Breakdown" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
+              Detailed Resource Breakdown
+            </h4>
+            <DashboardFilters
+              options={["Teachers", "Classrooms", "Seats", "Textbooks"]}
+              active={resourceType}
+              onChange={setResourceType}
+            />
+          </div>
+
+          {isComparing ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-blue-600 mb-2">
+                  <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
+                  {selectedYear}
+                </p>
+                <PerformanceCard>
+                  <div className="space-y-0.5">
+                    {renderBreakdownRows(resourceType, resources)}
+                  </div>
+                </PerformanceCard>
+              </div>
+              <div>
+                <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600 mb-2">
+                  <span className="h-[6px] w-[6px] rounded-full bg-orange-500" />
+                  {compareYear}
+                  {isOngoing(compareYear) && (
+                    <Clock size={11} className="text-orange-400" />
+                  )}
+                </p>
+                <PerformanceCard>
+                  <div className="space-y-0.5">
+                    {renderBreakdownRows(resourceType, compareResources)}
+                  </div>
+                </PerformanceCard>
+              </div>
+            </div>
+          ) : (
+            <PerformanceCard>
+              <div className="space-y-0.5">
+                {renderBreakdownRows(resourceType, resources)}
+              </div>
+            </PerformanceCard>
           )}
-        </DashboardAccordion>
+
+          <InsightCard
+            icon={<Info size={14} />}
+            variant="info"
+            title={`${resourceType} Distribution`}
+            message={`Showing the distribution of ${resourceType.toLowerCase()} across Elementary, JHS, and SHS levels based on current inventory data.`}
+          />
+        </div>
+      )}
+    </>
+  )}
+</DashboardAccordion>
 
         <div className="mt-3" />
 
@@ -1269,7 +2149,163 @@ export default function Dashboard() {
   );
 }
 
+// ─── Sub-component: Comparison Row ──────────────────────────
+// Shared inline row used to compare a single metric between two
+// school years: label, primary (blue), "vs", secondary (orange),
+// and a delta with an up/down arrow.
+
+function ComparisonRow({ label, primary, secondary, bold, suffix = "" }) {
+  const delta = (secondary || 0) - (primary || 0);
+  const deltaUp = delta >= 0;
+  const fmt = (n) => `${(n || 0).toLocaleString()}${suffix}`;
+
+  return (
+    <div className="flex items-center justify-between rounded-[10px] bg-slate-50/70 px-4 py-3">
+      <span
+        className={`text-[0.8rem] ${
+          bold ? "font-bold text-slate-700" : "font-semibold text-slate-600"
+        }`}
+      >
+        {label}
+      </span>
+      <div className="flex items-center gap-2.5 flex-wrap justify-end">
+        <span className="text-[0.85rem] font-bold text-blue-600">
+          {fmt(primary)}
+        </span>
+        <span className="text-[0.7rem] font-medium text-slate-300">vs</span>
+        <span className="text-[0.85rem] font-bold text-orange-600">
+          {fmt(secondary)}
+        </span>
+        <span
+          className={`flex items-center gap-0.5 text-[0.72rem] font-semibold ${
+            deltaUp ? "text-emerald-600" : "text-rose-500"
+          }`}
+        >
+          {deltaUp ? "↗" : "↘"} {Math.abs(delta).toLocaleString()}
+          {suffix}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Sub-component: CESPES Program Row ──────────────────────
+
+function groupOperationsByProgram(rows) {
+  const programs = [];
+  const programMap = new Map();
+
+  rows.forEach((row) => {
+    const pName = row.program || "(No Program)";
+    if (!programMap.has(pName)) {
+      const prog = { name: pName, rows: [] };
+      programMap.set(pName, prog);
+      programs.push(prog);
+    }
+    const iType = (row.indicator_type || "").toUpperCase();
+    programMap.get(pName).rows.push({
+      type: iType.startsWith("OUTCOME") ? "OUTCOME" : "OUTPUT",
+      label: row.indicator,
+      sem1Target: row.sem1_target || "—",
+      sem1Accomp: row.sem1_accomplishment || "—",
+      sem2Target: row.sem2_target || "—",
+      sem2Accomp: row.sem2_accomplishment || "—",
+    });
+  });
+
+  programs.forEach((p) => {
+    p.outcomes = p.rows.filter((r) => r.type === "OUTCOME").length;
+    p.outputs = p.rows.filter((r) => r.type === "OUTPUT").length;
+    p.reported = `${p.rows.length}/${p.rows.length}`;
+  });
+
+  return programs;
+}
+
+function CespesYearPanel({
+  color,
+  year,
+  ongoing,
+  tab,
+  rows,
+  fallbackToTemplate,
+}) {
+  const hasRows = rows && rows.length > 0;
+  const isBlue = color === "blue";
+  const dotColor = isBlue ? "bg-blue-500" : "bg-orange-500";
+  const textColor = isBlue ? "text-blue-600" : "text-orange-600";
+  const borderColor = isBlue ? "border-blue-100" : "border-orange-100";
+  const bgTint = isBlue ? "bg-blue-50/20" : "bg-orange-50/20";
+
+  const renderBody = () => {
+    if (!hasRows && !fallbackToTemplate) return null;
+
+    const source = hasRows
+      ? rows
+      : {
+          Operations: DEFAULT_CESPES_DATA.operations,
+          "Support to Operations": DEFAULT_CESPES_DATA.supportOperations,
+          "General Admin": DEFAULT_CESPES_DATA.generalAdmin,
+          "Individual Performance": DEFAULT_CESPES_DATA.individualPerformance,
+          "Innovation & Intervention": DEFAULT_CESPES_DATA.innovation,
+        }[tab];
+
+    switch (tab) {
+      case "Operations":
+        return (
+          <div className="space-y-3">
+            {groupOperationsByProgram(source).map((prog) => (
+              <CespesProgramRow key={prog.name} program={prog} />
+            ))}
+          </div>
+        );
+      case "Support to Operations":
+      case "General Admin":
+        return (
+          <CespesSemesterTable
+            rows={source}
+            groupKey="service_activity"
+            showPerson
+          />
+        );
+      case "Individual Performance":
+        return <CespesPerformanceTable rows={source} />;
+      case "Innovation & Intervention":
+        return <CespesInnovationTable rows={source} />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className={`rounded-[12px] border ${borderColor} ${bgTint} p-4`}>
+      <div className="flex items-center justify-between mb-3">
+        <p
+          className={`flex items-center gap-1.5 text-[0.72rem] font-bold ${textColor}`}
+        >
+          <span className={`h-[6px] w-[6px] rounded-full ${dotColor}`} />
+          SY {year}
+          {ongoing && <Clock size={11} className="text-orange-400" />}
+        </p>
+        {!hasRows && (
+          <span className="text-[0.6rem] font-semibold text-slate-400 italic">
+            {fallbackToTemplate ? "Template view" : "No data yet"}
+          </span>
+        )}
+      </div>
+
+      {!hasRows && !fallbackToTemplate ? (
+        <div className="flex items-center justify-center py-8 text-center">
+          <p className="text-[0.72rem] text-slate-400 italic max-w-[280px]">
+            No {tab} data uploaded for SY {year} yet.
+          </p>
+        </div>
+      ) : (
+        renderBody()
+      )}
+    </div>
+  );
+}
 
 function CespesProgramRow({ program }) {
   const [open, setOpen] = useState(false);
@@ -1638,20 +2674,27 @@ function InstitutionalPlansCard({ selectedYear }) {
       setLoading(true);
       const { data, error } = await supabase
         .from("files")
-        .select(`
+        .select(
+          `
           id, file_name, file_path, created_at, uploaded_by_name, data_category,
           sections ( name ), divisions ( name )
-        `)
-        .in("data_category", ["aip_school", "aip_sdo", "qbedp", "accomplishment_report"])
+        `,
+        )
+        .in("data_category", [
+          "aip_school",
+          "aip_sdo",
+          "qbedp",
+          "accomplishment_report",
+        ])
         .eq("school_year", selectedYear)
         .order("created_at", { ascending: false });
-      
+
       if (!error && data) {
         setFiles(data);
       }
       setLoading(false);
     }
-    
+
     fetchFiles();
   }, [selectedYear]);
 
@@ -1660,27 +2703,44 @@ function InstitutionalPlansCard({ selectedYear }) {
   };
 
   const FolderUserIcon = () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-      <path d="M10 4H4C2.89543 4 2 4.89543 2 6V18C2 19.1046 2.89543 20 4 20H20C21.1046 20 22 19.1046 22 18V8C22 6.89543 21.1046 6 20 6H12L10 4Z" fill="#475569" />
-      <path d="M12.5 11.5C12.5 12.8807 11.3807 14 10 14C8.61929 14 7.5 12.8807 7.5 11.5C7.5 10.1193 8.61929 9 10 9C11.3807 9 12.5 10.1193 12.5 11.5ZM14.5 17.5C14.5 16.6716 12.4853 15 10 15C7.51472 15 5.5 16.6716 5.5 17.5V18H14.5V17.5Z" fill="white" />
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="shrink-0"
+    >
+      <path
+        d="M10 4H4C2.89543 4 2 4.89543 2 6V18C2 19.1046 2.89543 20 4 20H20C21.1046 20 22 19.1046 22 18V8C22 6.89543 21.1046 6 20 6H12L10 4Z"
+        fill="#475569"
+      />
+      <path
+        d="M12.5 11.5C12.5 12.8807 11.3807 14 10 14C8.61929 14 7.5 12.8807 7.5 11.5C7.5 10.1193 8.61929 9 10 9C11.3807 9 12.5 10.1193 12.5 11.5ZM14.5 17.5C14.5 16.6716 12.4853 15 10 15C7.51472 15 5.5 16.6716 5.5 17.5V18H14.5V17.5Z"
+        fill="white"
+      />
     </svg>
   );
 
   const getPublicUrl = (path) => {
     if (!path) return "#";
-    const { data } = supabase.storage.from("repository-files").getPublicUrl(path);
+    const { data } = supabase.storage
+      .from("repository-files")
+      .getPublicUrl(path);
     return data.publicUrl;
   };
 
   const downloadFile = async (path, filename) => {
     if (!path) return;
-    const { data, error } = await supabase.storage.from("repository-files").download(path);
+    const { data, error } = await supabase.storage
+      .from("repository-files")
+      .download(path);
     if (error) {
       console.error("Error downloading file:", error);
       return;
     }
     const url = URL.createObjectURL(data);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = filename;
     document.body.appendChild(a);
@@ -1691,8 +2751,8 @@ function InstitutionalPlansCard({ selectedYear }) {
 
   const renderSection = (id, title, categoryType) => {
     const isOpen = expandedSection === id;
-    const sectionFiles = files.filter(f => f.data_category === categoryType);
-    
+    const sectionFiles = files.filter((f) => f.data_category === categoryType);
+
     return (
       <div className="rounded-[10px] border border-slate-100/80 overflow-hidden mb-3 last:mb-0">
         <button
@@ -1718,7 +2778,9 @@ function InstitutionalPlansCard({ selectedYear }) {
             <table className="w-full text-[0.72rem]">
               <thead>
                 <tr className="bg-slate-50/70 border-b border-slate-100/60">
-                  <th className="px-4 py-2.5 text-left font-semibold text-slate-500">File Name</th>
+                  <th className="px-4 py-2.5 text-left font-semibold text-slate-500">
+                    File Name
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1734,26 +2796,34 @@ function InstitutionalPlansCard({ selectedYear }) {
                       No files uploaded for {title} yet.
                     </td>
                   </tr>
-                ) : sectionFiles.map((file, i) => (
-                  <tr
-                    key={file.id || i}
-                    className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors"
-                  >
-                    <td className="px-4 py-3">
-                      <a 
-                        href={getPublicUrl(file.file_path)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-2 cursor-pointer group"
-                      >
-                        <FileText size={14} className="text-red-500 shrink-0" />
-                        <span className="text-slate-700 font-medium truncate group-hover:text-blue-600 group-hover:underline transition-colors" title={file.file_name}>
-                          {file.file_name}
-                        </span>
-                      </a>
-                    </td>
-                  </tr>
-                ))}
+                ) : (
+                  sectionFiles.map((file, i) => (
+                    <tr
+                      key={file.id || i}
+                      className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <a
+                          href={getPublicUrl(file.file_path)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-2 cursor-pointer group"
+                        >
+                          <FileText
+                            size={14}
+                            className="text-red-500 shrink-0"
+                          />
+                          <span
+                            className="text-slate-700 font-medium truncate group-hover:text-blue-600 group-hover:underline transition-colors"
+                            title={file.file_name}
+                          >
+                            {file.file_name}
+                          </span>
+                        </a>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -1772,20 +2842,47 @@ function InstitutionalPlansCard({ selectedYear }) {
       title="Institutional Plans & Reports"
       subtitle={
         <span className="flex items-center gap-1.5">
-          <span onClick={(e) => e.stopPropagation()} className="text-blue-500 hover:underline cursor-pointer">AIP</span>
+          <span
+            onClick={(e) => e.stopPropagation()}
+            className="text-blue-500 hover:underline cursor-pointer"
+          >
+            AIP
+          </span>
           <span className="text-slate-300">•</span>
-          <span onClick={(e) => e.stopPropagation()} className="text-blue-500 hover:underline cursor-pointer">QBEDP</span>
+          <span
+            onClick={(e) => e.stopPropagation()}
+            className="text-blue-500 hover:underline cursor-pointer"
+          >
+            QBEDP
+          </span>
           <span className="text-slate-300">•</span>
-          <span onClick={(e) => e.stopPropagation()} className="text-blue-500 hover:underline cursor-pointer">Accomplishment Report</span>
+          <span
+            onClick={(e) => e.stopPropagation()}
+            className="text-blue-500 hover:underline cursor-pointer"
+          >
+            Accomplishment Report
+          </span>
         </span>
       }
       accentBg="rgba(254, 242, 242, 0.15)"
     >
       <div className="flex flex-col gap-2">
         {renderSection("aip-school", "Approved School AIP 2026", "aip_school")}
-        {renderSection("aip-sdo", "Approved SDO AIP 2026 (Per Functional Division)", "aip_sdo")}
-        {renderSection("qbedp", "Quality Basic Education Development Plan (QBEDP)", "qbedp")}
-        {renderSection("accomp", "Accomplishment Report", "accomplishment_report")}
+        {renderSection(
+          "aip-sdo",
+          "Approved SDO AIP 2026 (Per Functional Division)",
+          "aip_sdo",
+        )}
+        {renderSection(
+          "qbedp",
+          "Quality Basic Education Development Plan (QBEDP)",
+          "qbedp",
+        )}
+        {renderSection(
+          "accomp",
+          "Accomplishment Report",
+          "accomplishment_report",
+        )}
       </div>
     </DashboardAccordion>
   );

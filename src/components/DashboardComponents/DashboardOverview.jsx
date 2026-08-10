@@ -1,9 +1,8 @@
 import React from "react";
-import {useState, useEffect} from "react";
+import { useState, useEffect } from "react";
 import { Users, TrendingDown, Award, AlertTriangle } from "lucide-react";
 import { StatCard } from "./StatCard";
 import { supabase } from "../../lib/supabaseClient";
-import { set } from "date-fns";
 
 /**
  * DashboardOverview — The top KPI stats row showing
@@ -11,9 +10,13 @@ import { set } from "date-fns";
  *
  * @param {object} data — { totalEnrollment, overallDropout, elemPromotion, jhsDropout }
  * @param {string} selectedYear — The selected school year for filtering data
+ * @param {string} [compareYear] — When set (with compareData), each card renders
+ *   its compareData value in orange under the primary value, plus a delta.
+ * @param {object} [compareData] — { totalEnrollment, overallDropout, elemPromotion, jhsDropout }
+ *   for compareYear, same shape as `data`. Non-numeric strings like "N/A" are handled.
  */
-export function DashboardOverview({ data, selectedYear }) {
-  
+export function DashboardOverview({ data, selectedYear, compareYear, compareData }) {
+
   const [totalEnrollment, setTotalEnrollment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -45,8 +48,43 @@ export function DashboardOverview({ data, selectedYear }) {
     }
 
     fetchTotalEnrollment();
-  }, [selectedYear]); 
+  }, [selectedYear]);
 
+  const isComparing = !!(compareYear && compareData);
+
+  // Builds { compareValue, delta, deltaUp } for a StatCard given the
+  // primary numeric value and the raw (possibly "N/A") compare value.
+  function buildCompare(primaryNum, rawCompare, formatter = (n) => n.toLocaleString()) {
+    const secondaryNum =
+      typeof rawCompare === "number" ? rawCompare : parseFloat(rawCompare);
+
+    if (rawCompare === undefined || rawCompare === null || Number.isNaN(secondaryNum)) {
+      return { compareValue: "N/A", delta: null, deltaUp: true };
+    }
+
+    const delta = secondaryNum - (primaryNum || 0);
+    return {
+      compareValue: formatter(secondaryNum),
+      delta: formatter(Math.abs(delta)),
+      deltaUp: delta >= 0,
+    };
+  }
+
+  const enrollmentCompare = isComparing
+    ? buildCompare(totalEnrollment ?? 0, compareData.totalEnrollment)
+    : {};
+
+  const dropoutCompare = isComparing
+    ? buildCompare(parseFloat(data.overallDropout), compareData.overallDropout, (n) => `${n.toFixed(2)}%`)
+    : {};
+
+  const promoCompare = isComparing
+    ? buildCompare(parseFloat(data.elemPromotion), compareData.elemPromotion, (n) => `${n.toFixed(2)}%`)
+    : {};
+
+  const jhsDropoutCompare = isComparing
+    ? buildCompare(parseFloat(data.jhsDropout), compareData.jhsDropout, (n) => `${n.toFixed(2)}%`)
+    : {};
 
   const stats = [
     {
@@ -58,6 +96,7 @@ export function DashboardOverview({ data, selectedYear }) {
       gradient: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)",
       trend: data.enrollmentTrend,
       trendUp: true,
+      ...(isComparing ? enrollmentCompare : {}),
     },
     {
       label: "Overall Dropout",
@@ -68,6 +107,7 @@ export function DashboardOverview({ data, selectedYear }) {
       gradient: "linear-gradient(135deg, #fb7185 0%, #e11d48 100%)",
       trend: data.dropoutTrend,
       trendUp: false,
+      ...(isComparing ? dropoutCompare : {}),
     },
     {
       label: "Elem Promotion",
@@ -78,6 +118,7 @@ export function DashboardOverview({ data, selectedYear }) {
       gradient: "linear-gradient(135deg, #34d399 0%, #10b981 100%)",
       trend: data.promotionTrend,
       trendUp: true,
+      ...(isComparing ? promoCompare : {}),
     },
     {
       label: "JHS Dropout",
@@ -88,6 +129,7 @@ export function DashboardOverview({ data, selectedYear }) {
       gradient: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
       trend: data.jhsDropoutTrend,
       trendUp: false,
+      ...(isComparing ? jhsDropoutCompare : {}),
     },
   ];
 
