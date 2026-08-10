@@ -286,9 +286,27 @@ export default function ManageUsers() {
 
     if (error) {
       alert("Error: " + error.message);
+      await logAuditEvent({
+        action: "Other",
+        fileName: deactivatingUser.name,
+        details: `Failed to deactivate user account (${deactivatingUser.email}): ${error.message}`,
+        role: deactivatingUser.role,
+        status: "Failed",
+      });
       return;
     }
+
+    await logAuditEvent({
+      action: "Other",
+      fileName: deactivatingUser.name,
+      details: `Deactivated user account (${deactivatingUser.email})`,
+      role: deactivatingUser.role,
+      status: "Success",
+    });
+
     setDeactivatingUser(null);
+    setToastMessage("User deactivated successfully.");
+    setShowToast(true);
     fetchUsers();
   };
 
@@ -302,9 +320,27 @@ export default function ManageUsers() {
 
     if (error) {
       alert("Error: " + error.message);
+      await logAuditEvent({
+        action: "Other",
+        fileName: activatingUser.name,
+        details: `Failed to activate user account (${activatingUser.email}): ${error.message}`,
+        role: activatingUser.role,
+        status: "Failed",
+      });
       return;
     }
+
+    await logAuditEvent({
+      action: "Other",
+      fileName: activatingUser.name,
+      details: `Activated user account (${activatingUser.email})`,
+      role: activatingUser.role,
+      status: "Success",
+    });
+
     setActivatingUser(null);
+    setToastMessage("User activated successfully.");
+    setShowToast(true);
     fetchUsers();
   };
 
@@ -387,17 +423,16 @@ export default function ManageUsers() {
       <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
         {/* Toast Notification */}
         <div
-          className={`fixed bottom-8 right-8 z-50 flex bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${
-            showToast
-              ? "translate-x-0 opacity-100 pointer-events-auto"
-              : "translate-x-[120%] opacity-0 pointer-events-none"
-          }`}
+          className={`fixed bottom-8 right-8 z-50 flex bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${showToast
+            ? "translate-x-0 opacity-100 pointer-events-auto"
+            : "translate-x-[120%] opacity-0 pointer-events-none"
+            }`}
           style={{
             width: "380px",
             height: "76px",
             borderRadius: "16px",
-            boxShadow: showToast 
-              ? "0 4px 24px rgba(16, 185, 129, 0.25), 0 1px 3px rgba(0,0,0,0.05)" 
+            boxShadow: showToast
+              ? "0 4px 24px rgba(16, 185, 129, 0.25), 0 1px 3px rgba(0,0,0,0.05)"
               : "0 12px 30px rgba(0,0,0,0)",
             fontFamily: "Poppins, sans-serif",
             border: "1px solid rgba(241, 245, 249, 1)",
@@ -569,9 +604,8 @@ export default function ManageUsers() {
                             </div>
                             {/* Active dot */}
                             <span
-                              className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-[2.5px] border-white ${
-                                user.status === "Active" ? "bg-emerald-500" : "bg-slate-400"
-                              }`}
+                              className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-[2.5px] border-white ${user.status === "Active" ? "bg-emerald-500" : "bg-slate-400"
+                                }`}
                             />
                           </div>
                           <div className="flex flex-col pt-1 min-w-0">
@@ -643,7 +677,7 @@ export default function ManageUsers() {
                               >
                                 <Edit2 size={12} /> Edit
                               </button>
-                              
+
                               {user.status === "Inactive" ? (
                                 <button
                                   onClick={(e) => {

@@ -10,6 +10,7 @@ import {
   Users,
   Clock,
   Building2,
+  X,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
@@ -31,29 +32,36 @@ export default function AccessRestrictedPage() {
   const decodedName = decodeURIComponent(folderName || "");
   const { userProfile } = useUser();
 
-  const [folderInfo, setFolderInfo] = useState(null); // { name, fileCount, modifiedAt }
-  const [managers, setManagers] = useState([]); // all division_focal users for this division
+  const [folderInfo, setFolderInfo] = useState(null);
+  const [managers, setManagers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // the current user's own division/section names (for the "Your Role" card)
   const [ownContext, setOwnContext] = useState({
     divisionName: null,
     sectionName: null,
   });
 
-  // track the resolved division id + a small request modal
   const [resolvedDivisionId, setResolvedDivisionId] = useState(null);
   const [requestOpen, setRequestOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const [existingRequest, setExistingRequest] = useState(null); // { id, status, deny_reason, created_at } | null
+  const [existingRequest, setExistingRequest] = useState(null);
   const [checkingExisting, setCheckingExisting] = useState(false);
+
+  // ── Success toast state ──────────────────────────────────────
+  const [showToast, setShowToast] = useState(false);
+
+  const showSuccessToast = () => {
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+    }, 4000);
+  };
 
   const roleLabel =
     roleDisplayMap[userProfile?.role] || userProfile?.role || "Unknown Role";
 
-  // ── Resolve the current user's own division / section name ──────
   useEffect(() => {
     if (!userProfile) return;
 
@@ -117,9 +125,6 @@ export default function AccessRestrictedPage() {
     async function resolveFolder() {
       setLoading(true);
 
-      // The restricted route is reached two different ways:
-      //  - RepositoryDivisionPage redirects with a division id (numeric string)
-      //  - RepositoryFolderDetailPage redirects with a section name
       const isDivisionId = /^\d+$/.test(decodedName);
 
       let name = decodedName;
@@ -200,13 +205,12 @@ export default function AccessRestrictedPage() {
 
   const modifiedLabel = folderInfo?.modifiedAt
     ? new Date(folderInfo.modifiedAt).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })
     : "—";
 
-  // "Division Officer — IT Division" / "Section Personnel — Records Section"
   const ownContextLabel = ownContext.sectionName
     ? ownContext.sectionName
     : ownContext.divisionName
@@ -224,11 +228,40 @@ export default function AccessRestrictedPage() {
       });
       setExistingRequest(req);
       setRequestOpen(false);
+      showSuccessToast();
+
+      await logAuditEvent({
+        action: "Other",
+        fileName: displayName,
+        details: `Requested access to "${displayName}"${requestMessage ? ` — Note: ${requestMessage}` : ""
+          }`,
+        role: userProfile?.role,
+        status: "Success",
+      });
     } catch (err) {
       alert(err.message);
+      await logAuditEvent({
+        action: "Other",
+        fileName: displayName,
+        details: `Failed to request access to "${displayName}": ${err.message}`,
+        role: userProfile?.role,
+        status: "Failed",
+      });
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function logAuditEvent({ action, fileName, details, role, status = "Success" }) {
+    const { error } = await supabase.from("audit_logs").insert({
+      action,
+      file_name: fileName,
+      details,
+      performed_by: userProfile?.full_name ?? "System",
+      role: roleDisplayMap[userProfile?.role] ?? userProfile?.role ?? "Unknown",
+      status,
+    });
+    if (error) console.error("Audit log insert failed:", error.message);
   }
 
   return (
@@ -313,7 +346,6 @@ export default function AccessRestrictedPage() {
         </p>
 
         <div className="flex items-stretch gap-3 mb-8 flex-wrap justify-center">
-          {/* Managed By — full list, wraps instead of truncating */}
           <div className="flex items-start gap-2 border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50 max-w-xs">
             <Users size={13} className="text-gray-400 mt-0.5 shrink-0" />
             <div className="text-left">
@@ -351,7 +383,6 @@ export default function AccessRestrictedPage() {
             </div>
           </div>
 
-          {/* Your Role — now also shows the user's own section/division */}
           <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50">
             <Shield size={13} className="text-gray-400 shrink-0" />
             <div className="text-left">
@@ -467,6 +498,84 @@ export default function AccessRestrictedPage() {
           </div>
         </div>
       )}
+
+      {/* Success Toast */}
+      <div
+        className={`fixed bottom-8 right-8 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${
+          showToast
+            ? "translate-x-0 opacity-100 pointer-events-auto"
+            : "translate-x-[120%] opacity-0 pointer-events-none"
+        }`}
+        style={{
+          width: "380px",
+          minHeight: "76px",
+          borderRadius: "16px",
+          boxShadow: showToast
+            ? "0 4px 24px rgba(16, 185, 129, 0.25), 0 1px 3px rgba(0,0,0,0.05)"
+            : "0 12px 30px rgba(0,0,0,0)",
+          fontFamily: "Poppins, sans-serif",
+          border: "1px solid rgba(241, 245, 249, 1)",
+        }}
+      >
+        <div className="absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r from-emerald-100/60 to-transparent" />
+
+        <div
+          className="flex items-center relative z-10 py-4 flex-1"
+          style={{
+            padding: "0 20px",
+            gap: "16px",
+            minHeight: "76px",
+          }}
+        >
+          <div
+            className="flex items-center justify-center shrink-0 bg-white rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.06),_0_1px_3px_rgba(0,0,0,0.03)]"
+            style={{
+              width: "42px",
+              height: "42px",
+            }}
+          >
+            <CheckCircle
+              size={22}
+              className="text-emerald-500"
+              strokeWidth={2.5}
+            />
+          </div>
+
+          <div className="flex flex-col justify-center flex-1">
+            <p
+              style={{
+                fontSize: "15px",
+                fontWeight: 700,
+                color: "#0F172A",
+                lineHeight: 1.2,
+                margin: 0,
+              }}
+            >
+              Success
+            </p>
+
+            <p
+              style={{
+                fontSize: "13px",
+                fontWeight: 500,
+                color: "#64748B",
+                marginTop: "3px",
+                margin: 0,
+              }}
+            >
+              Access request sent successfully.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowToast(false)}
+            className="absolute top-1/2 -translate-y-1/2 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-md hover:bg-slate-100"
+            aria-label="Close notification"
+          >
+            <X size={18} strokeWidth={2.5} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   denyDivisionRequest,
   revokeDivisionAccess,
 } from "../../utils/divisionAccessRequestsApi";
+import { supabase } from "../../lib/supabaseClient";
 
 const roleDisplayMap = {
   division_focal: "Division Focal Person",
@@ -248,6 +249,18 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [entered, setEntered] = useState(false);
 
+  async function logAuditEvent({ action, fileName, details, role, status = "Success" }) {
+    const { error } = await supabase.from("audit_logs").insert({
+      action,
+      file_name: fileName,
+      details,
+      performed_by: userProfile?.full_name ?? "System",
+      role: roleDisplayMap[userProfile?.role] ?? userProfile?.role ?? "Unknown",
+      status,
+    });
+    if (error) console.error("Audit log insert failed:", error.message);
+  }
+
   useEffect(() => {
     let timeout;
     if (isOpen) {
@@ -287,16 +300,51 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
   async function handleConfirm(reason) {
     if (!confirmState) return;
     const { kind, request } = confirmState;
+    const divisionName = request.divisions?.name ?? "this division";
     setIsWorking(true);
     try {
-      if (kind === "approve") await approveDivisionRequest(request, userProfile);
-      if (kind === "deny") await denyDivisionRequest(request, userProfile, reason);
-      if (kind === "revoke") await revokeDivisionAccess(request, userProfile);
+      if (kind === "approve") {
+        await approveDivisionRequest(request, userProfile);
+        await logAuditEvent({
+          action: "Other",
+          fileName: divisionName,
+          details: `Approved division access for ${request.requested_by_name} to "${divisionName}"`,
+          role: userProfile?.role,
+          status: "Success",
+        });
+      }
+      if (kind === "deny") {
+        await denyDivisionRequest(request, userProfile, reason);
+        await logAuditEvent({
+          action: "Other",
+          fileName: divisionName,
+          details: `Denied division access for ${request.requested_by_name} to "${divisionName}"${reason ? ` — Reason: ${reason}` : ""}`,
+          role: userProfile?.role,
+          status: "Success",
+        });
+      }
+      if (kind === "revoke") {
+        await revokeDivisionAccess(request, userProfile);
+        await logAuditEvent({
+          action: "Other",
+          fileName: divisionName,
+          details: `Revoked division access for ${request.requested_by_name} from "${divisionName}"`,
+          role: userProfile?.role,
+          status: "Success",
+        });
+      }
       setConfirmState(null);
       await load();
     } catch (err) {
       console.error(err);
       alert(err.message);
+      await logAuditEvent({
+        action: "Other",
+        fileName: divisionName,
+        details: `Failed to ${kind} division access for ${request.requested_by_name} on "${divisionName}": ${err.message}`,
+        role: userProfile?.role,
+        status: "Failed",
+      });
     } finally {
       setIsWorking(false);
     }
@@ -336,12 +384,12 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
         <div className="flex items-center justify-between px-6 pt-7 pb-5 border-b border-slate-100 shrink-0 bg-gradient-to-b from-slate-50/80 to-white relative overflow-hidden">
           {/* Subtle background glow */}
           <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-blue-100/50 via-transparent to-transparent pointer-events-none" />
-          
+
           <div className="flex items-center gap-4 relative z-10">
             <div className="relative w-[52px] h-[52px] rounded-2xl bg-white shadow-[0_8px_24px_rgba(37,99,235,0.12)] border border-blue-50 flex items-center justify-center shrink-0">
               {/* Inner glow behind the animated icon */}
               <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full" />
-              
+
               <lord-icon
                 src="/wired-outline-2722-logo-myspace-in-reveal.json"
                 trigger="in"
@@ -377,15 +425,13 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12.5px] font-bold transition-colors ${
-                tab === t.key ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-              }`}
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12.5px] font-bold transition-colors ${tab === t.key ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                }`}
             >
               {t.label}
               <span
-                className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ${
-                  tab === t.key ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
-                }`}
+                className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ${tab === t.key ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
+                  }`}
               >
                 {t.count}
               </span>
