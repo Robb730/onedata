@@ -21,7 +21,7 @@ export default function LandingPage() {
         onYearChange={setSelectedYear}
         availableYears={AVAILABLE_YEARS}
       />
-      <AnalyticsPreview />
+      {/* <AnalyticsPreview /> */} 
       <Footer />
     </div>
   );
