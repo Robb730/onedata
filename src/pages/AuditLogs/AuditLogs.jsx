@@ -35,56 +35,111 @@ export default function AuditLogs() {
     const rows = auditLogs.map((log) => {
       const { date, time } = formatPerformedOn(log.performedOn);
       const statusColor =
-        log.status === "Success" ? "#16a34a" :
+        log.status === "Success" ? "#059669" :
           log.status === "Failed" ? "#dc2626" :
             "#d97706";
+      const statusBg =
+        log.status === "Success" ? "#ecfdf5" :
+          log.status === "Failed" ? "#fef2f2" :
+            "#fffbeb";
       return `
       <tr>
-        <td>${log.action}</td>
-        <td>${log.fileName}</td>
+        <td><span class="action-badge">${log.action}</span></td>
+        <td class="file-cell">${log.fileName}</td>
         <td>${log.performedBy}</td>
-        <td>${log.role}</td>
-        <td>${date} ${time}</td>
-        <td><span class="status-badge" style="background:${statusColor}1a; color:${statusColor};">${log.status}</span></td>
+        <td><span class="role-badge">${log.role}</span></td>
+        <td class="date-cell">${date}<br/><span class="time-text">${time}</span></td>
+        <td><span class="status-badge" style="background:${statusBg}; color:${statusColor};">${log.status}</span></td>
       </tr>`;
     }).join("");
+
+    const successCount = auditLogs.filter((l) => l.status === "Success").length;
+    const failedCount = auditLogs.filter((l) => l.status === "Failed").length;
+    const pendingCount = auditLogs.filter((l) => l.status === "Pending").length;
 
     const html = `
     <html>
       <head>
-        <title>Audit Logs Export</title>
+        <title>OneData: Audit Logs Export</title>
         <style>
           * { box-sizing: border-box; }
           body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: #f1f5f9;
             color: #1e293b;
-            padding: 32px;
+            padding: 36px;
             margin: 0;
           }
           .header {
             background: linear-gradient(135deg, #3b82f6, #6366f1);
-            border-radius: 12px;
-            padding: 24px 28px;
+            border-radius: 16px;
+            padding: 28px 32px;
             color: #ffffff;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
           }
-          .header h1 {
-            font-size: 20px;
+          .header-left h1 {
+            font-size: 22px;
             margin: 0 0 4px 0;
-            font-weight: 700;
+            font-weight: 800;
             letter-spacing: -0.02em;
           }
-          .header p {
+          .header-left p {
             font-size: 12.5px;
             margin: 0;
             color: #e0e7ff;
+            font-weight: 500;
           }
-          .card {
+          .header-right {
+            text-align: right;
+          }
+          .header-right .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.18);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 999px;
+            padding: 5px 14px;
+            font-size: 11.5px;
+            font-weight: 700;
+          }
+          .summary-row {
+            display: flex;
+            gap: 14px;
+            margin-bottom: 20px;
+          }
+          .summary-card {
+            flex: 1;
             background: #ffffff;
             border-radius: 12px;
+            padding: 14px 16px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+            border: 1px solid #f1f5f9;
+          }
+          .summary-card .value {
+            font-size: 20px;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1;
+          }
+          .summary-card .label {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 5px;
+          }
+          .summary-card.success .value { color: #059669; }
+          .summary-card.failed .value { color: #dc2626; }
+          .summary-card.pending .value { color: #d97706; }
+          .card {
+            background: #ffffff;
+            border-radius: 14px;
             overflow: hidden;
             box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+            border: 1px solid #f1f5f9;
           }
           table {
             width: 100%;
@@ -93,49 +148,107 @@ export default function AuditLogs() {
           thead th {
             background: #0f172a;
             color: #ffffff;
-            font-size: 11.5px;
+            font-size: 10.5px;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
-            padding: 12px 14px;
+            letter-spacing: 0.06em;
+            padding: 13px 14px;
             text-align: left;
-            font-weight: 600;
+            font-weight: 700;
           }
           tbody td {
-            padding: 11px 14px;
+            padding: 12px 14px;
             font-size: 12.5px;
-            color: #1e293b;
+            color: #334155;
             border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
           }
           tbody tr:nth-child(even) {
             background: #f8fafc;
           }
-          tbody tr:hover {
-            background: #f1f5f9;
+          .file-cell {
+            font-weight: 600;
+            color: #1e293b;
           }
-          .status-badge {
-            padding: 3px 10px;
-            border-radius: 999px;
+          .date-cell {
+            white-space: nowrap;
+            font-weight: 500;
+          }
+          .time-text {
+            color: #94a3b8;
+            font-size: 11px;
+          }
+          .action-badge {
+            display: inline-block;
+            background: #eff6ff;
+            color: #2563eb;
+            border: 1px solid #dbeafe;
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+          }
+          .role-badge {
+            display: inline-block;
+            background: #f8fafc;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            padding: 3px 9px;
+            border-radius: 6px;
             font-size: 11px;
             font-weight: 600;
           }
+          .status-badge {
+            display: inline-block;
+            padding: 4px 11px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+          }
           .footer {
-            margin-top: 18px;
+            margin-top: 16px;
             font-size: 11px;
             color: #94a3b8;
             text-align: right;
+            font-weight: 500;
           }
           @media print {
-            body { background: #ffffff; padding: 12px; }
-            .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body { background: #ffffff; padding: 14px; }
+            .header, thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .summary-card, .status-badge, .action-badge, .role-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            tbody tr { break-inside: avoid; }
           }
         </style>
       </head>
       <body>
         <div class="header">
-          <h1>OneData: Audit Logs</h1>
-          <p>Exported on ${new Date().toLocaleString()} • ${auditLogs.length} record(s)</p>
+          <div class="header-left">
+            <h1>OneData: Audit Logs</h1>
+            <p>Exported on ${new Date().toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" })}</p>
+          </div>
+          <div class="header-right">
+            <span class="badge">${auditLogs.length} record${auditLogs.length === 1 ? "" : "s"}</span>
+          </div>
         </div>
+
+        <div class="summary-row">
+          <div class="summary-card">
+            <div class="value">${auditLogs.length}</div>
+            <div class="label">Total Logs</div>
+          </div>
+          <div class="summary-card success">
+            <div class="value">${successCount}</div>
+            <div class="label">Success</div>
+          </div>
+          <div class="summary-card failed">
+            <div class="value">${failedCount}</div>
+            <div class="label">Failed</div>
+          </div>
+          <div class="summary-card pending">
+            <div class="value">${pendingCount}</div>
+            <div class="label">Pending</div>
+          </div>
+        </div>
+
         <div class="card">
           <table>
             <thead>
@@ -147,6 +260,8 @@ export default function AuditLogs() {
             <tbody>${rows}</tbody>
           </table>
         </div>
+
+        <div class="footer">OneData: Confidential Audit Record</div>
       </body>
     </html>`;
 
@@ -271,34 +386,34 @@ export default function AuditLogs() {
   return (
     <div className="min-h-screen bg-slate-50/40">
       <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
-      <AuditLogsHeader onExport={handleExport} />
+        <AuditLogsHeader onExport={handleExport} />
 
-      <AuditLogsStats actionCounts={actionCounts} />
+        <AuditLogsStats actionCounts={actionCounts} />
 
-      <AuditLogsFilters
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        filterAction={filterAction}
-        onFilterActionChange={setFilterAction}
-        filterStatus={filterStatus}
-        onFilterStatusChange={setFilterStatus}
-        actions={actions}
-        statuses={statuses}
-      />
+        <AuditLogsFilters
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          filterAction={filterAction}
+          onFilterActionChange={setFilterAction}
+          filterStatus={filterStatus}
+          onFilterStatusChange={setFilterStatus}
+          actions={actions}
+          statuses={statuses}
+        />
 
-      <AuditLogsTable
-        logs={paginatedLogs}
-        filteredCount={filteredLogs.length}
-        totalCount={auditLogs.length}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={setCurrentPage}
-      />
+        <AuditLogsTable
+          logs={paginatedLogs}
+          filteredCount={filteredLogs.length}
+          totalCount={auditLogs.length}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
 
-      <AuditLogsFooter
-        shownCount={filteredLogs.length}
-        totalCount={auditLogs.length}
-      />
+        <AuditLogsFooter
+          shownCount={filteredLogs.length}
+          totalCount={auditLogs.length}
+        />
       </div>
     </div>
   );

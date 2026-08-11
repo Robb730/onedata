@@ -47,6 +47,15 @@ function ChartCard({ title, subtitle, children, className = "" }) {
   );
 }
 
+function EmptyState({ icon: Icon, height = "h-[220px]" }) {
+  return (
+    <div className={`${height} flex flex-col items-center justify-center gap-2 text-slate-300`}>
+      <Icon size={28} strokeWidth={1.5} />
+      <span className="text-[0.78rem] font-semibold">Data not yet available</span>
+    </div>
+  );
+}
+
 function YearPicker({ selectedYear, onYearChange, availableYears }) {
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef(null);
@@ -232,6 +241,9 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
     }
   };
 
+  const noLearners = learners.total === 0;
+  const noSchools = schools.total === 0;
+
   return (
     <section className="relative z-20 pt-4 pb-20" style={{ background: "linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%)" }}>
       <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-1">
@@ -304,13 +316,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
           <div className="text-center text-rose-500 text-sm py-16">Couldn't load data: {error}</div>
         )}
 
-        {!loading && !error && learners.total === 0 && schools.total === 0 && (
-          <div className="text-center text-slate-400 text-sm py-16">
-            No data available for SY {selectedYear}.
-          </div>
-        )}
-
-        {!loading && !error && (learners.total > 0 || schools.total > 0) && (
+        {!loading && !error && (
           <>
             {/* ── Learners section ─────────────────── */}
             <div ref={learnersRef} className="mb-14">
@@ -325,6 +331,9 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                   title="Learners"
                   subtitle={`${learners.total.toLocaleString()} total enrolled`}
                 >
+                  {noLearners ? (
+                    <EmptyState icon={Users} height="h-[220px]" />
+                  ) : (
                   <div className="relative h-[220px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -369,7 +378,9 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                       </span>
                     </div>
                   </div>
+                  )}
 
+                  {!noLearners && (
                   <div className="flex justify-center gap-3 mt-3">
                     {learnerPieData.map((d) => {
                       const pct = learners.total > 0 ? Math.round((d.value / learners.total) * 100) : 0;
@@ -385,9 +396,13 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                       );
                     })}
                   </div>
+                  )}
                 </ChartCard>
 
                 <ChartCard title="Learners by Level" subtitle="Public vs. Private breakdown per level">
+                  {noLearners ? (
+                    <EmptyState icon={Users} height="h-[280px]" />
+                  ) : (
                   <div className="h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={learners.byLevel} barGap={4} barSize={24} margin={{ top: 10, right: 4, left: -12, bottom: 0 }}>
@@ -416,6 +431,8 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
+                  )}
+                  {!noLearners && (
                   <div className="flex justify-center gap-4 mt-1">
                     {[{ label: "Public", color: "#3b82f6" }, { label: "Private", color: "#10b981" }].map((l) => (
                       <span key={l.label} className="flex items-center gap-1.5 text-[0.7rem] font-semibold text-slate-400">
@@ -424,11 +441,15 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                       </span>
                     ))}
                   </div>
+                  )}
                 </ChartCard>
               </div>
 
               <div className="mt-5">
                 <ChartCard title="Elementary — By Grade & Gender" subtitle="Male vs. Female per grade level">
+                  {noLearners ? (
+                    <EmptyState icon={Users} height="h-[280px]" />
+                  ) : (
                   <div className="h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={learners.elemByGrade} barGap={3} barSize={18} margin={{ top: 10, right: 4, left: -12, bottom: 0 }}>
@@ -451,6 +472,8 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
+                  )}
+                  {!noLearners && (
                   <div className="flex justify-center gap-4 mt-1">
                     {[{ label: "Male", color: "#3b82f6" }, { label: "Female", color: "#ec4899" }].map((l) => (
                       <span key={l.label} className="flex items-center gap-1.5 text-[0.7rem] font-semibold text-slate-400">
@@ -459,6 +482,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                       </span>
                     ))}
                   </div>
+                  )}
                 </ChartCard>
               </div>
             </div>
@@ -476,6 +500,9 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                   title="Overview"
                   subtitle={`${schools.total.toLocaleString()} total schools`}
                 >
+                  {noSchools ? (
+                    <EmptyState icon={School} height="h-[180px]" />
+                  ) : (
                   <div className="h-[180px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -486,6 +513,8 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
+                  )}
+                  {!noSchools && (
                   <div className="flex flex-col gap-2 mt-1">
                     {schoolPieData.map((d) => (
                       <div key={d.name} className="flex items-center justify-between text-[0.72rem] font-semibold text-slate-500 bg-slate-50/60 rounded-lg px-3 py-2">
@@ -497,10 +526,15 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                       </div>
                     ))}
                   </div>
+                  )}
                 </ChartCard>
 
                 <ChartCard title="School Directory" subtitle="Search and browse individual schools">
-                  <SchoolDirectory schoolList={schools.schoolList} />
+                  {noSchools ? (
+                    <EmptyState icon={MapPin} height="h-[280px]" />
+                  ) : (
+                    <SchoolDirectory schoolList={schools.schoolList} />
+                  )}
                 </ChartCard>
               </div>
             </div>
@@ -513,10 +547,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                 subtitle="School personnel data"
               />
               <ChartCard title="Teachers" subtitle="No data available yet">
-                <div className="h-[200px] flex flex-col items-center justify-center gap-2 text-slate-300">
-                  <GraduationCap size={28} strokeWidth={1.5} />
-                  <span className="text-[0.78rem] font-semibold">Data not yet available</span>
-                </div>
+                <EmptyState icon={GraduationCap} height="h-[200px]" />
               </ChartCard>
             </div>
 
@@ -528,10 +559,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                 subtitle="Community Learning Center data"
               />
               <ChartCard title="Number of Schools" subtitle="No data available yet">
-                <div className="h-[200px] flex flex-col items-center justify-center gap-2 text-slate-300">
-                  <Building size={28} strokeWidth={1.5} />
-                  <span className="text-[0.78rem] font-semibold">Data not yet available</span>
-                </div>
+                <EmptyState icon={Building} height="h-[200px]" />
               </ChartCard>
             </div>
           </>
