@@ -6,7 +6,9 @@
 import { supabase } from "../lib/supabaseClient";
 
 export function canApproveDivisionAccessRequests(userProfile) {
-  return userProfile?.role === "division_focal" || userProfile?.role === "admin";
+  return (
+    userProfile?.role === "division_focal" || userProfile?.role === "admin"
+  );
 }
 
 // Returns requests scoped to what this user is allowed to review.
@@ -38,8 +40,13 @@ export async function fetchScopedDivisionRequests(userProfile) {
   return data || [];
 }
 
-export async function createDivisionAccessRequest({ divisionId, userProfile, message }) {
-  if (!userProfile?.id) throw new Error("You must be signed in to request access.");
+export async function createDivisionAccessRequest({
+  divisionId,
+  userProfile,
+  message,
+}) {
+  if (!userProfile?.id)
+    throw new Error("You must be signed in to request access.");
 
   const { data, error } = await supabase
     .from("division_access_request")
@@ -73,6 +80,13 @@ export async function approveDivisionRequest(request, userProfile) {
       deny_reason: null,
     })
     .eq("id", request.id);
+
+  await pushNotification({
+    recipientIds: [request.requester_id],
+    type: "division_access_request_approved",
+    title: "Division access approved",
+    content: `Your request for ${request.divisions?.name} was approved`,
+  });
   if (error) throw new Error(error.message);
 }
 
@@ -86,6 +100,13 @@ export async function denyDivisionRequest(request, userProfile, reason) {
       deny_reason: reason?.trim() || null,
     })
     .eq("id", request.id);
+
+  await pushNotification({
+    recipientIds: [request.requester_id],
+    type: "division_access_request_denied",
+    title: "Division access denied",
+    content: `Your request for ${request.divisions?.name} was denied`,
+  });
   if (error) throw new Error(error.message);
 }
 
@@ -98,6 +119,12 @@ export async function revokeDivisionAccess(request, userProfile) {
       reviewed_at: new Date().toISOString(),
     })
     .eq("id", request.id);
+  await pushNotification({
+    recipientIds: [request.requester_id],
+    type: "division_access_request_revoked",
+    title: "Division access revoked",
+    content: `Your request for ${request.divisions?.name} was revoked`,
+  });
   if (error) throw new Error(error.message);
 }
 

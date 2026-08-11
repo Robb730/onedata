@@ -1,85 +1,21 @@
 import React, { useState } from "react";
 import { CheckCheck, X, ShieldCheck, CalendarClock, UploadCloud, AlertTriangle, ArrowRight, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useNotifications } from "../hooks/useNotifications.js"; // adjust path to match your tree
 
 export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) {
-  const [notificationsList, setNotificationsList] = useState([
-    {
-      id: 1,
-      type: "verification",
-      group: "Today",
-      title: "Verification complete",
-      time: "2 minutes ago",
-      content: "Rosario Dela Cruz verified 8 documents in S.Y. 2024–2025 · BEIS Division. All records are now in...",
-      unread: true,
-      icon: ShieldCheck,
-      iconBg: "bg-emerald-100",
-      iconColor: "text-emerald-600",
-    },
-    {
-      id: 2,
-      type: "reminder",
-      group: "Today",
-      title: "Transition reminder",
-      time: "1 hour ago",
-      content: "S.Y. 2025–2026 activates in 25 days on Aug 31, 2026. 29 files are unverified and 12 uploads are still...",
-      unread: true,
-      icon: CalendarClock,
-      iconBg: "bg-blue-100",
-      iconColor: "text-blue-600",
-    },
-    {
-      id: 3,
-      type: "upload",
-      group: "Yesterday",
-      title: "New files uploaded",
-      time: "Yesterday at 4:30 PM",
-      content: "Benjamin Ramos uploaded 5 files to HRD Division · S.Y. 2024–2025. Pending verification by assigned...",
-      unread: true,
-      icon: UploadCloud,
-      iconBg: "bg-purple-100",
-      iconColor: "text-purple-600",
-    },
-    {
-      id: 4,
-      type: "alert",
-      group: "Yesterday",
-      title: "Action required",
-      time: "Yesterday at 9:15 AM",
-      content: "29 documents in S.Y. 2024–2025 are unverified and 12 uploads are still pending. Transition deadline is...",
-      unread: false,
-      icon: AlertTriangle,
-      iconBg: "bg-amber-100",
-      iconColor: "text-amber-600",
-    },
-    {
-      id: 5,
-      type: "verification",
-      group: "Earlier",
-      title: "System update",
-      time: "Aug 02 at 10:00 AM",
-      content: "The system has been updated to version 2.4.1. Please review the changelog for new features and bug fixes.",
-      unread: false,
-      icon: ShieldCheck,
-      iconBg: "bg-slate-100",
-      iconColor: "text-slate-600",
-    }
-  ]);
-
+  const { notificationsList, markAsRead, removeNotification, clearAll } = useNotifications();
   const [removingId, setRemovingId] = useState(null);
 
   const handleRemove = (id) => {
     setRemovingId(id);
     setTimeout(() => {
-      setNotificationsList((prev) => prev.filter((n) => n.id !== id));
+      removeNotification(id);
       setRemovingId(null);
     }, 300);
   };
 
-  const handleClearAll = () => {
-    // Optionally animate them all, but for now just clear them
-    setNotificationsList([]);
-  };
+  const handleClearAll = () => clearAll();
 
   const unreadCount = notificationsList.filter((n) => n.unread).length;
 
@@ -167,6 +103,7 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
                         return (
                           <div 
                             key={notif.id} 
+                            onClick={() => markAsRead(notif.id)}
                             className={`group relative flex items-start gap-3.5 p-3 hover:bg-slate-50 rounded-xl cursor-pointer transition-all duration-300 ease-out overflow-hidden ${
                               isRemoving ? "opacity-0 -translate-x-8 max-h-0 !p-0 !m-0" : "opacity-100 max-h-[150px]"
                             }`}

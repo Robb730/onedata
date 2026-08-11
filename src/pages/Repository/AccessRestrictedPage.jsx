@@ -205,10 +205,10 @@ export default function AccessRestrictedPage() {
 
   const modifiedLabel = folderInfo?.modifiedAt
     ? new Date(folderInfo.modifiedAt).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
     : "—";
 
   const ownContextLabel = ownContext.sectionName
@@ -233,10 +233,20 @@ export default function AccessRestrictedPage() {
       await logAuditEvent({
         action: "Other",
         fileName: displayName,
-        details: `Requested access to "${displayName}"${requestMessage ? ` — Note: ${requestMessage}` : ""
-          }`,
+        details: `Requested access to "${displayName}"${
+          requestMessage ? ` — Note: ${requestMessage}` : ""
+        }`,
         role: userProfile?.role,
         status: "Success",
+      });
+
+      await notifyScope({
+        divisionId: resolvedDivisionId,
+        excludeUserId: userProfile?.id,
+        type: "division_access_request",
+        title: "Division access request",
+        content: `${userProfile?.full_name} requested access to ${displayName}`,
+        meta: { division_id: resolvedDivisionId },
       });
     } catch (err) {
       alert(err.message);
@@ -252,7 +262,13 @@ export default function AccessRestrictedPage() {
     }
   }
 
-  async function logAuditEvent({ action, fileName, details, role, status = "Success" }) {
+  async function logAuditEvent({
+    action,
+    fileName,
+    details,
+    role,
+    status = "Success",
+  }) {
     const { error } = await supabase.from("audit_logs").insert({
       action,
       file_name: fileName,
@@ -341,8 +357,8 @@ export default function AccessRestrictedPage() {
         </p>
         <p className="text-xs text-gray-400 max-w-sm mb-8">
           Your current role ({roleLabel}
-          {ownContextLabel ? ` · ${ownContextLabel}` : ""}) does not have
-          access to this folder in the repository flow.
+          {ownContextLabel ? ` · ${ownContextLabel}` : ""}) does not have access
+          to this folder in the repository flow.
         </p>
 
         <div className="flex items-stretch gap-3 mb-8 flex-wrap justify-center">
