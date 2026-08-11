@@ -234,18 +234,6 @@ export default function ManageUsers() {
       return;
     }
 
-  const data = await res.json();
-  if (!res.ok) {
-    alert("Error deleting user: " + data.error);
-    await logAuditEvent({
-      action: "Delete",
-      fileName: deletingUser.name,
-      details: `Failed to delete user account (${deletingUser.email}): ${data.error}`,
-      role: deletingUser.role,
-      status: "Failed",
-    });
-    return;
-  }
 
   await logAuditEvent({
     action: "Other",
