@@ -1238,7 +1238,7 @@ function renderBreakdownRows(resourceType, resourcesState) {
           subtitle="Enrollment · Dropout · Promotion · Cohort Survival"
           subtitleColor="#4f7df5"
           accentBg="rgba(239,246,255,0.7)"
-          defaultOpen
+        
         >
           {!loading &&
           enrollmentSummary.total === 0 &&
