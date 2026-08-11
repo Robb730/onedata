@@ -97,6 +97,12 @@ export async function approveRequest(request, approver) {
     `Approved access for ${request.requested_by_name}`,
     approver,
   );
+  await pushNotification({
+    recipientIds: [request.requested_by],
+    type: "access_request_approved", // or _denied / _revoked to match the function
+    title: "Access request approved", // match wording per function
+    content: `Your request for ${request.files?.file_name} was approved`,
+  });
 }
 
 export async function denyRequest(request, approver, reason) {
@@ -120,6 +126,12 @@ export async function denyRequest(request, approver, reason) {
     }`,
     approver,
   );
+  await pushNotification({
+    recipientIds: [request.requested_by],
+    type: "access_request_denied", // or _denied / _revoked to match the function
+    title: "Access request denied", // match wording per function
+    content: `Your request for ${request.files?.file_name} was denied`,
+  });
 }
 
 /**
@@ -149,6 +161,12 @@ export async function revokeAccess(request, approver) {
     `Revoked access from ${request.requested_by_name}`,
     approver,
   );
+  await pushNotification({
+    recipientIds: [request.requested_by],
+    type: "access_request_revoked", // or _denied / _revoked to match the function
+    title: "Access request revoked", // match wording per function
+    content: `Your request for ${request.files?.file_name} was revoked`,
+  });
 }
 
 async function logAudit(action, fileName, details, approver) {

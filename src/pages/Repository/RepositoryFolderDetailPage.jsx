@@ -38,6 +38,7 @@ import FileEditModal from "../../components/RepositoryComponents/FileEditModal";
 import LockedActionButton from "../../components/RepositoryComponents/LockedActionButton";
 import { useUser } from "../../contexts/UserContext";
 import { getSectionAccessLevel } from "../../utils/accessControl";
+import { notifyScope, pushNotification } from "../../utils/notifications";
 import FileAccessRequestModal from "../../components/RepositoryComponents/FileAccessRequestModal";
 import AccessRequestsSidebar from "../../components/RepositoryComponents/AccessRequestsSidebar";
 import FloatingAccessRequestsButton from "../../components/RepositoryComponents/FloatingAccessRequestsButton";
@@ -805,6 +806,16 @@ export default function RepositoryFolderDetailPage() {
         ),
       );
 
+      await notifyScope({
+  sectionId: section?.id,
+  divisionId: section?.division_id,
+  excludeUserId: userProfile?.id,
+  type: "file_access_request",
+  title: "File access request",
+  content: `${userProfile?.full_name} requested access to ${targetFiles.length} file(s) in ${section?.name}`,
+  meta: { section_id: section?.id, division_id: section?.division_id },
+});
+
       setRequestModalFiles(null);
       setSelectedIds(new Set());
     } catch (err) {
@@ -1183,8 +1194,9 @@ export default function RepositoryFolderDetailPage() {
     setDeletingId(file.id);
     try {
       if (file.path) {
+        const bucket = getBucket(file.data_category);
         const { error: storageErr } = await supabase.storage
-          .from("excel-files")
+          .from(bucket)
           .remove([file.path]);
         if (storageErr) throw new Error(storageErr.message);
       }
@@ -1213,6 +1225,29 @@ export default function RepositoryFolderDetailPage() {
       );
       setFileToDelete(null);
       setShowDeleteToast(true);
+
+      await notifyScope({
+        sectionId: section?.id,
+        divisionId: section?.division_id,
+        excludeUserId: userProfile?.id,
+        type: "file_deleted",
+        title: "File deleted",
+        content: `${userProfile?.full_name} deleted ${file.name} from ${section?.name}`,
+        meta: {
+          section_id: section?.id,
+          division_id: section?.division_id,
+          uploaded_by: file.uploaderId,
+        },
+      });
+      // optional: also notify original uploader even if outside section/division scope
+      if (file.uploaderId && file.uploaderId !== userProfile?.id) {
+        await pushNotification({
+          recipientIds: [file.uploaderId],
+          type: "file_deleted",
+          title: "Your file was deleted",
+          content: `${file.name} was deleted from ${section?.name}`,
+        });
+      }
     } catch (err) {
       console.error(err);
       alert(err.message);
@@ -1328,6 +1363,22 @@ export default function RepositoryFolderDetailPage() {
       }
 
       setVerifyTarget(null);
+      await notifyScope({
+        sectionId: section?.id,
+        divisionId: section?.division_id,
+        excludeUserId: userProfile?.id,
+        type: newStatus === "Verified" ? "file_verified" : "file_unverified",
+        title:
+          newStatus === "Verified"
+            ? "Verification complete"
+            : "File unverified",
+        content: `${userProfile?.full_name} ${newStatus === "Verified" ? "verified" : "unverified"} ${file.name} in ${section?.name}`,
+        meta: {
+          related_file_id: file.id,
+          section_id: section?.id,
+          division_id: section?.division_id,
+        },
+      });
     } catch (err) {
       console.error(err);
       alert(err.message);
