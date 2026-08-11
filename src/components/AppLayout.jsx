@@ -2,8 +2,8 @@
 import React, { use, useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
-import {supabase} from '../lib/supabaseClient';
-import {useNavigate} from "react-router-dom";
+import { supabase } from '../lib/supabaseClient';
+import { useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import { ChangePasswordModal } from "./Modals/ChangePasswordModal";
 
@@ -13,6 +13,8 @@ export function AppLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showPasswordToast, setShowPasswordToast] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [isAnimating, setIsAnimating] = useState(false);
   const { userProfile, setUserProfile } = useUser();
 
   const mustChange = userProfile?.must_change_password === true;
@@ -23,8 +25,14 @@ export function AppLayout({
     return () => clearTimeout(timer);
   }, [showPasswordToast]);
 
+  useEffect(() => {
+    setIsAnimating(true);
+    const timer = setTimeout(() => setIsAnimating(false), 400); // 400ms matches CSS duration
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
+
   function handlePasswordChange() {
-    const updated = {...userProfile, must_change_password: false };
+    const updated = { ...userProfile, must_change_password: false };
     setUserProfile(updated);
     localStorage.setItem("userProfile", JSON.stringify(updated));
     setShowPasswordToast(true);
@@ -61,7 +69,7 @@ export function AppLayout({
         />
 
         {/* Page content — scrollable */}
-        <main className="flex-1 overflow-y-auto">
+        <main key={location.pathname} className={`flex-1 overflow-y-auto ${isAnimating ? 'animate-page-in' : ''}`}>
           {children}
         </main>
       </div>

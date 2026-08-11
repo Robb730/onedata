@@ -35,11 +35,10 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
 
   return (
     <div
-      className={`absolute right-0 top-[calc(100%+8px)] w-[420px] rounded-2xl bg-white z-50 overflow-hidden transition-all duration-300 origin-top-right ${
-        isOpen
+      className={`absolute right-0 top-[calc(100%+8px)] w-[420px] rounded-2xl bg-white z-50 overflow-hidden transition-all duration-300 origin-top-right ${isOpen
           ? "opacity-100 scale-100 visible pointer-events-auto"
           : "opacity-0 scale-95 invisible pointer-events-none"
-      }`}
+        }`}
       style={{
         boxShadow: "0 10px 40px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.05)",
         border: "1px solid rgba(203,213,225,0.6)"
@@ -56,15 +55,15 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
           )}
         </div>
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={handleClearAll}
             className="flex items-center gap-1.5 text-[0.82rem] font-bold text-rose-500 hover:text-rose-600 transition-colors"
           >
             <Trash2 size={15} strokeWidth={2.5} />
             Clear all
           </button>
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="text-slate-400 hover:text-slate-600 transition-colors hover:bg-slate-50 p-1 rounded-md"
             aria-label="Close notifications"
           >
@@ -72,7 +71,7 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
           </button>
         </div>
       </div>
-      
+
       {/* Tabs */}
       <div className="flex items-center gap-2 px-5 py-2.5 border-b border-slate-100">
         <button className="px-3.5 py-1.5 rounded-full bg-blue-50 text-blue-600 text-[0.82rem] font-bold transition-colors">
@@ -82,7 +81,7 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
           Unread ({unreadCount})
         </button>
       </div>
-      
+
       {/* Notifications List */}
       <div className="max-h-[380px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <div className="px-3 py-3">
@@ -91,7 +90,7 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
               {groupOrder.map((group) => {
                 const groupNotifs = groupedNotifications[group];
                 if (!groupNotifs || groupNotifs.length === 0) return null;
-                
+
                 return (
                   <div key={group}>
                     <p className="px-2 text-[0.68rem] font-bold tracking-widest text-slate-400 uppercase mb-2 mt-1">
@@ -101,12 +100,11 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
                       {groupNotifs.map((notif) => {
                         const isRemoving = removingId === notif.id;
                         return (
-                          <div 
-                            key={notif.id} 
+                          <div
+                            key={notif.id}
                             onClick={() => markAsRead(notif.id)}
-                            className={`group relative flex items-start gap-3.5 p-3 hover:bg-slate-50 rounded-xl cursor-pointer transition-all duration-300 ease-out overflow-hidden ${
-                              isRemoving ? "opacity-0 -translate-x-8 max-h-0 !p-0 !m-0" : "opacity-100 max-h-[150px]"
-                            }`}
+                            className={`group relative flex items-start gap-3.5 p-3 hover:bg-slate-50 rounded-xl cursor-pointer transition-all duration-300 ease-out overflow-hidden ${isRemoving ? "opacity-0 -translate-x-8 max-h-0 !p-0 !m-0" : "opacity-100 max-h-[150px]"
+                              }`}
                           >
                             <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${notif.iconBg} ${notif.iconColor}`}>
                               <notif.icon size={18} strokeWidth={2.5} />

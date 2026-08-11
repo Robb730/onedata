@@ -156,11 +156,10 @@ export function TopHeader({
               setNotificationsOpen(!notificationsOpen);
               setDropdownOpen(false);
             }}
-            className={`relative flex h-9 w-9 items-center justify-center rounded-[10px] transition-all cursor-pointer ${
-              notificationsOpen 
-                ? "bg-blue-50 text-blue-600" 
+            className={`relative flex h-9 w-9 items-center justify-center rounded-[10px] transition-all cursor-pointer ${notificationsOpen
+                ? "bg-blue-50 text-blue-600"
                 : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
-            }`}
+              }`}
             aria-label="Notifications"
           >
             <Bell size={17} strokeWidth={1.8} fill={notificationsOpen ? "currentColor" : "none"} />
@@ -172,10 +171,10 @@ export function TopHeader({
             )}
           </button>
         </div>
-        
-        <NotificationsPanel 
-          isOpen={notificationsOpen} 
-          onClose={() => setNotificationsOpen(false)} 
+
+        <NotificationsPanel
+          isOpen={notificationsOpen}
+          onClose={() => setNotificationsOpen(false)}
           onUnreadChange={setUnreadCount}
         />
 
@@ -236,103 +235,102 @@ export function TopHeader({
 
           {/* Dropdown / profile details card */}
           <div
-            className={`absolute right-0 top-full mt-2 w-64 rounded-xl bg-white py-1 z-50 overflow-hidden transition-all duration-300 origin-top-right ${
-              dropdownOpen
+            className={`absolute right-0 top-full mt-2 w-64 rounded-xl bg-white py-1 z-50 overflow-hidden transition-all duration-300 origin-top-right ${dropdownOpen
                 ? "opacity-100 scale-100 visible pointer-events-auto"
                 : "opacity-0 scale-95 invisible pointer-events-none"
-            }`}
+              }`}
             style={{
               border: "1px solid rgba(203,213,225,0.6)",
               boxShadow: "0 8px 24px rgba(15,23,42,0.10)",
             }}
           >
             {/* Header block — mirrors the "manage users" user card layout */}
-              <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100">
-                <div
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white text-[0.7rem] font-bold ring-[2.5px] ring-white"
+            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100">
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white text-[0.7rem] font-bold ring-[2.5px] ring-white"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #4f7df5 0%, #6366f1 100%)",
+                  boxShadow: "0 2px 8px rgba(99,102,241,0.3)",
+                }}
+              >
+                {initials}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[0.82rem] font-semibold text-slate-700 leading-tight">
+                  {resolvedName}
+                </p>
+                <span
+                  className="mt-0.5 inline-block rounded-full px-2 py-[1px] text-[0.62rem] font-semibold"
                   style={{
-                    background:
-                      "linear-gradient(135deg, #4f7df5 0%, #6366f1 100%)",
-                    boxShadow: "0 2px 8px rgba(99,102,241,0.3)",
+                    color: "#4f46e5",
+                    background: "rgba(99,102,241,0.10)",
                   }}
                 >
-                  {initials}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-[0.82rem] font-semibold text-slate-700 leading-tight">
-                    {resolvedName}
-                  </p>
-                  <span
-                    className="mt-0.5 inline-block rounded-full px-2 py-[1px] text-[0.62rem] font-semibold"
-                    style={{
-                      color: "#4f46e5",
-                      background: "rgba(99,102,241,0.10)",
-                    }}
-                  >
-                    {roleLabel}
-                  </span>
+                  {roleLabel}
+                </span>
+              </div>
+            </div>
+
+            {/* Division / Section — same card treatment used in ManageUsers,
+                  showing the specific division/section this user belongs to */}
+            {resolvedDivision && resolvedDivision !== "—" && (
+              <div className="px-4 py-3 border-b border-slate-100">
+                <div className="rounded-lg bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 p-3">
+                  <div className="flex items-center gap-1.5">
+                    <FolderOpen size={13} className="text-indigo-500 shrink-0" />
+                    <p
+                      className="text-[0.72rem] font-bold text-slate-800 leading-snug truncate"
+                      title={
+                        divisionAbbr.display !== divisionAbbr.full ? divisionAbbr.full : undefined
+                      }
+                    >
+                      {divisionAbbr.display}
+                    </p>
+                  </div>
+                  {/* Section is only meaningful for section-scoped roles */}
+                  {resolvedRole !== "division_focal" &&
+                    resolvedSection &&
+                    resolvedSection !== "—" && (
+                      <div className="flex items-center gap-1 mt-1.5 ml-0.5">
+                        <div className="w-1 h-1 rounded-full bg-indigo-300 shrink-0" />
+                        <span
+                          className="inline-block text-[10.5px] font-semibold text-indigo-600 bg-white px-2 py-0.5 rounded-full border border-indigo-200 truncate"
+                          title={
+                            sectionAbbr.display !== sectionAbbr.full ? sectionAbbr.full : undefined
+                          }
+                        >
+                          {sectionAbbr.display}
+                        </span>
+                      </div>
+                    )}
                 </div>
               </div>
+            )}
 
-              {/* Division / Section — same card treatment used in ManageUsers,
-                  showing the specific division/section this user belongs to */}
-              {resolvedDivision && resolvedDivision !== "—" && (
-                <div className="px-4 py-3 border-b border-slate-100">
-                  <div className="rounded-lg bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 p-3">
-                    <div className="flex items-center gap-1.5">
-                      <FolderOpen size={13} className="text-indigo-500 shrink-0" />
-                      <p
-                        className="text-[0.72rem] font-bold text-slate-800 leading-snug truncate"
-                        title={
-                          divisionAbbr.display !== divisionAbbr.full ? divisionAbbr.full : undefined
-                        }
-                      >
-                        {divisionAbbr.display}
-                      </p>
-                    </div>
-                    {/* Section is only meaningful for section-scoped roles */}
-                    {resolvedRole !== "division_focal" &&
-                      resolvedSection &&
-                      resolvedSection !== "—" && (
-                        <div className="flex items-center gap-1 mt-1.5 ml-0.5">
-                          <div className="w-1 h-1 rounded-full bg-indigo-300 shrink-0" />
-                          <span
-                            className="inline-block text-[10.5px] font-semibold text-indigo-600 bg-white px-2 py-0.5 rounded-full border border-indigo-200 truncate"
-                            title={
-                              sectionAbbr.display !== sectionAbbr.full ? sectionAbbr.full : undefined
-                            }
-                          >
-                            {sectionAbbr.display}
-                          </span>
-                        </div>
-                      )}
-                  </div>
-                </div>
-              )}
-
-              <div className="py-1">
-                <button
-                  onClick={() => {
-                    setDropdownOpen(false);
-                    // Settings workflow to be implemented
-                  }}
-                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[0.78rem] font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-                >
-                  <Settings size={14} strokeWidth={2} />
-                  Settings
-                </button>
-                <button
-                  onClick={() => {
-                    setDropdownOpen(false);
-                    onLogout?.();
-                  }}
-                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[0.78rem] font-medium text-rose-500 hover:bg-rose-50 transition-colors"
-                >
+            <div className="py-1">
+              <button
+                onClick={() => {
+                  setDropdownOpen(false);
+                  // Settings workflow to be implemented
+                }}
+                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[0.78rem] font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                <Settings size={14} strokeWidth={2} />
+                Settings
+              </button>
+              <button
+                onClick={() => {
+                  setDropdownOpen(false);
+                  onLogout?.();
+                }}
+                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[0.78rem] font-medium text-rose-500 hover:bg-rose-50 transition-colors"
+              >
                 <LogOut size={14} strokeWidth={2} />
                 Logout
               </button>
-              </div>
             </div>
+          </div>
         </div>
       </div>
     </header>

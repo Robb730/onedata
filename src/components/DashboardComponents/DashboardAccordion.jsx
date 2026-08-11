@@ -60,9 +60,8 @@ export function DashboardAccordion({
 
         {/* Chevron pill */}
         <div
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${
-            open ? "rotate-180 bg-slate-100" : "bg-slate-50 hover:bg-slate-100"
-          }`}
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${open ? "rotate-180 bg-slate-100" : "bg-slate-50 hover:bg-slate-100"
+            }`}
         >
           <ChevronDown size={13} strokeWidth={2.5} className="text-slate-500" />
         </div>
@@ -70,9 +69,8 @@ export function DashboardAccordion({
 
       {/* ── Expandable body ──────────────────────────────── */}
       <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          open ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"
-        }`}
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${open ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"
+          }`}
       >
         <div
           className="border-t border-slate-100/60 px-5 py-5"

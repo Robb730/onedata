@@ -54,11 +54,10 @@ export function StatCard({
             compete visually with the compare delta chip below */}
         {trend && !isComparing && (
           <span
-            className={`inline-flex items-center gap-0.5 text-[0.65rem] font-bold px-2 py-1 rounded-full ${
-              trendUp
+            className={`inline-flex items-center gap-0.5 text-[0.65rem] font-bold px-2 py-1 rounded-full ${trendUp
                 ? "bg-emerald-50 text-emerald-600"
                 : "bg-rose-50 text-rose-500"
-            }`}
+              }`}
           >
             {trendUp ? "↗" : "▼"} {trend}
           </span>
@@ -75,9 +74,8 @@ export function StatCard({
 
       {/* ── Value ─────────────────────────────────────────── */}
       <p
-        className={`font-black text-slate-800 tracking-tight leading-none mb-1.5 ${
-          isComparing ? "text-[1.3rem]" : "text-[1.55rem]"
-        }`}
+        className={`font-black text-slate-800 tracking-tight leading-none mb-1.5 ${isComparing ? "text-[1.3rem]" : "text-[1.55rem]"
+          }`}
       >
         {value}
       </p>
@@ -97,11 +95,10 @@ export function StatCard({
 
           {delta !== null && delta !== undefined && (
             <span
-              className={`flex items-center gap-0.5 text-[0.65rem] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                deltaUp
+              className={`flex items-center gap-0.5 text-[0.65rem] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${deltaUp
                   ? "bg-emerald-50 text-emerald-600"
                   : "bg-rose-50 text-rose-500"
-              }`}
+                }`}
             >
               {deltaUp ? "↗" : "↘"} {delta}
             </span>

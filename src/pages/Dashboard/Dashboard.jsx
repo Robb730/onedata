@@ -213,12 +213,12 @@ export default function Dashboard() {
   });
 
   const [compareResources, setCompareResources] = useState({
-  teachers: { total: 0, needs: 0, breakdown: {}, loading: false },
-  classrooms: { total: 0, needs: 0, breakdown: {}, loading: false },
-  seats: { total: 0, needs: 0, breakdown: {}, loading: false },
-  textbooks: { needs: 0, excess: 0, breakdown: {}, loading: false },
-});
-const [compareResourcesLoading, setCompareResourcesLoading] = useState(false);
+    teachers: { total: 0, needs: 0, breakdown: {}, loading: false },
+    classrooms: { total: 0, needs: 0, breakdown: {}, loading: false },
+    seats: { total: 0, needs: 0, breakdown: {}, loading: false },
+    textbooks: { needs: 0, excess: 0, breakdown: {}, loading: false },
+  });
+  const [compareResourcesLoading, setCompareResourcesLoading] = useState(false);
 
   // ── Year Dropdown State ─────────────────────────────────────
   const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
@@ -259,165 +259,165 @@ const [compareResourcesLoading, setCompareResourcesLoading] = useState(false);
   }, []);
 
   useEffect(() => {
-  if (!compareMode || !compareYear) {
-    setCompareResources({
-      teachers: { total: 0, needs: 0, breakdown: {}, loading: false },
-      classrooms: { total: 0, needs: 0, breakdown: {}, loading: false },
-      seats: { total: 0, needs: 0, breakdown: {}, loading: false },
-      textbooks: { needs: 0, excess: 0, breakdown: {}, loading: false },
-    });
-    setCompareResourcesLoading(false);
-    return;
-  }
-
-  let cancelled = false;
-
-  async function fetchCompareResources() {
-    setCompareResourcesLoading(true);
-    try {
-      const result = await fetchResourcesForYear(compareYear);
-      if (!cancelled) setCompareResources(result);
-    } catch (error) {
-      console.error("Error fetching compare crucial resources:", error);
-    } finally {
-      if (!cancelled) setCompareResourcesLoading(false);
+    if (!compareMode || !compareYear) {
+      setCompareResources({
+        teachers: { total: 0, needs: 0, breakdown: {}, loading: false },
+        classrooms: { total: 0, needs: 0, breakdown: {}, loading: false },
+        seats: { total: 0, needs: 0, breakdown: {}, loading: false },
+        textbooks: { needs: 0, excess: 0, breakdown: {}, loading: false },
+      });
+      setCompareResourcesLoading(false);
+      return;
     }
-  }
 
-  fetchCompareResources();
-  return () => {
-    cancelled = true;
-  };
-}, [compareMode, compareYear]);
+    let cancelled = false;
 
-function ResourcesChartsPanel({ color, year, ongoing, resources }) {
-  const isBlue = color === "blue";
-  const dotColor = isBlue ? "bg-blue-500" : "bg-orange-500";
-  const textColor = isBlue ? "text-blue-600" : "text-orange-600";
-  const borderColor = isBlue ? "border-blue-100" : "border-orange-100";
-  const bgTint = isBlue ? "bg-blue-50/20" : "bg-orange-50/20";
+    async function fetchCompareResources() {
+      setCompareResourcesLoading(true);
+      try {
+        const result = await fetchResourcesForYear(compareYear);
+        if (!cancelled) setCompareResources(result);
+      } catch (error) {
+        console.error("Error fetching compare crucial resources:", error);
+      } finally {
+        if (!cancelled) setCompareResourcesLoading(false);
+      }
+    }
 
-  const teachersData = Object.entries(resources.teachers.breakdown || {}).map(
-    ([level, val]) => ({
+    fetchCompareResources();
+    return () => {
+      cancelled = true;
+    };
+  }, [compareMode, compareYear]);
+
+  function ResourcesChartsPanel({ color, year, ongoing, resources }) {
+    const isBlue = color === "blue";
+    const dotColor = isBlue ? "bg-blue-500" : "bg-orange-500";
+    const textColor = isBlue ? "text-blue-600" : "text-orange-600";
+    const borderColor = isBlue ? "border-blue-100" : "border-orange-100";
+    const bgTint = isBlue ? "bg-blue-50/20" : "bg-orange-50/20";
+
+    const teachersData = Object.entries(resources.teachers.breakdown || {}).map(
+      ([level, val]) => ({
+        level,
+        inventory: val,
+        needs: resources.teachers.needsBreakdown?.[level] || 0,
+      }),
+    );
+    const classroomsData = Object.entries(
+      resources.classrooms.breakdown || {},
+    ).map(([level, val]) => ({
       level,
       inventory: val,
-      needs: resources.teachers.needsBreakdown?.[level] || 0,
-    }),
-  );
-  const classroomsData = Object.entries(
-    resources.classrooms.breakdown || {},
-  ).map(([level, val]) => ({
-    level,
-    inventory: val,
-    needs: resources.classrooms.needsBreakdown?.[level] || 0,
-  }));
-  const seatsData = Object.entries(resources.seats.breakdown || {}).map(
-    ([level, val]) => ({
-      level,
-      inventory: val,
-      needs: resources.seats.needsBreakdown?.[level] || 0,
-    }),
-  );
-  const textbooksData = Object.entries(resources.textbooks.breakdown || {}).map(
-    ([level, val]) => ({ level, shortage: val }),
-  );
+      needs: resources.classrooms.needsBreakdown?.[level] || 0,
+    }));
+    const seatsData = Object.entries(resources.seats.breakdown || {}).map(
+      ([level, val]) => ({
+        level,
+        inventory: val,
+        needs: resources.seats.needsBreakdown?.[level] || 0,
+      }),
+    );
+    const textbooksData = Object.entries(resources.textbooks.breakdown || {}).map(
+      ([level, val]) => ({ level, shortage: val }),
+    );
 
-  const hasAnyData =
-    teachersData.some((d) => d.inventory > 0 || d.needs > 0) ||
-    classroomsData.some((d) => d.inventory > 0 || d.needs > 0) ||
-    seatsData.some((d) => d.inventory > 0 || d.needs > 0) ||
-    textbooksData.some((d) => d.shortage > 0);
+    const hasAnyData =
+      teachersData.some((d) => d.inventory > 0 || d.needs > 0) ||
+      classroomsData.some((d) => d.inventory > 0 || d.needs > 0) ||
+      seatsData.some((d) => d.inventory > 0 || d.needs > 0) ||
+      textbooksData.some((d) => d.shortage > 0);
 
-  return (
-    <div className={`rounded-[12px] border ${borderColor} ${bgTint} p-4`}>
-      <div className="flex items-center justify-between mb-3">
-        <p className={`flex items-center gap-1.5 text-[0.72rem] font-bold ${textColor}`}>
-          <span className={`h-[6px] w-[6px] rounded-full ${dotColor}`} />
-          SY {year}
-          {ongoing && <Clock size={11} className="text-orange-400" />}
-        </p>
-        {!hasAnyData && (
-          <span className="text-[0.6rem] font-semibold text-slate-400 italic">
-            No data yet
-          </span>
+    return (
+      <div className={`rounded-[12px] border ${borderColor} ${bgTint} p-4`}>
+        <div className="flex items-center justify-between mb-3">
+          <p className={`flex items-center gap-1.5 text-[0.72rem] font-bold ${textColor}`}>
+            <span className={`h-[6px] w-[6px] rounded-full ${dotColor}`} />
+            SY {year}
+            {ongoing && <Clock size={11} className="text-orange-400" />}
+          </p>
+          {!hasAnyData && (
+            <span className="text-[0.6rem] font-semibold text-slate-400 italic">
+              No data yet
+            </span>
+          )}
+        </div>
+
+        {!hasAnyData ? (
+          <div className="flex items-center justify-center py-8 text-center">
+            <p className="text-[0.72rem] text-slate-400 italic max-w-[280px]">
+              No resource data uploaded for SY {year} yet.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <DashboardGrid cols={2}>
+              <ResourcesInventoryChart
+                title="Teachers · Inventory vs Needs"
+                data={teachersData}
+              />
+              <ResourcesInventoryChart
+                title="Classrooms · Inventory vs Needs"
+                data={classroomsData}
+              />
+            </DashboardGrid>
+            <DashboardGrid cols={2}>
+              <ResourcesInventoryChart
+                title="Seats · Inventory vs Needs"
+                data={seatsData}
+              />
+              <TextbooksChart data={textbooksData} />
+            </DashboardGrid>
+          </div>
         )}
       </div>
+    );
+  }
 
-      {!hasAnyData ? (
-        <div className="flex items-center justify-center py-8 text-center">
-          <p className="text-[0.72rem] text-slate-400 italic max-w-[280px]">
-            No resource data uploaded for SY {year} yet.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <DashboardGrid cols={2}>
-            <ResourcesInventoryChart
-              title="Teachers · Inventory vs Needs"
-              data={teachersData}
-            />
-            <ResourcesInventoryChart
-              title="Classrooms · Inventory vs Needs"
-              data={classroomsData}
-            />
-          </DashboardGrid>
-          <DashboardGrid cols={2}>
-            <ResourcesInventoryChart
-              title="Seats · Inventory vs Needs"
-              data={seatsData}
-            />
-            <TextbooksChart data={textbooksData} />
-          </DashboardGrid>
-        </div>
-      )}
-    </div>
-  );
-}
+  function renderBreakdownRows(resourceType, resourcesState) {
+    const resKey = resourceType.toLowerCase();
+    const resource = resourcesState[resKey];
+    const breakdown = resource.breakdown || {};
+    const needsBreakdown = resource.needsBreakdown || {};
+    const total = resource.total || 1;
 
-function renderBreakdownRows(resourceType, resourcesState) {
-  const resKey = resourceType.toLowerCase();
-  const resource = resourcesState[resKey];
-  const breakdown = resource.breakdown || {};
-  const needsBreakdown = resource.needsBreakdown || {};
-  const total = resource.total || 1;
+    return Object.entries(breakdown).map(([level, val]) => {
+      const percentage = (val / total) * 100;
+      let color = "bg-blue-500";
 
-  return Object.entries(breakdown).map(([level, val]) => {
-    const percentage = (val / total) * 100;
-    let color = "bg-blue-500";
+      if (resKey === "classrooms") color = "bg-emerald-500";
+      else if (resKey === "seats") color = "bg-amber-500";
+      else if (resKey === "textbooks") color = "bg-rose-500";
 
-    if (resKey === "classrooms") color = "bg-emerald-500";
-    else if (resKey === "seats") color = "bg-amber-500";
-    else if (resKey === "textbooks") color = "bg-rose-500";
+      const needs = needsBreakdown[level] || 0;
+      const displayValue = val.toLocaleString();
+      const countText = needs > 0 ? `${needs.toLocaleString()} needs` : "No needs";
 
-    const needs = needsBreakdown[level] || 0;
-    const displayValue = val.toLocaleString();
-    const countText = needs > 0 ? `${needs.toLocaleString()} needs` : "No needs";
+      if (resKey === "textbooks") {
+        const totalNeeds = resource.needs || 1;
+        return (
+          <MetricProgress
+            key={level}
+            label={level}
+            display={`${val.toLocaleString()} shortage`}
+            value={(val / totalNeeds) * 100}
+            color="bg-rose-500"
+          />
+        );
+      }
 
-    if (resKey === "textbooks") {
-      const totalNeeds = resource.needs || 1;
       return (
         <MetricProgress
           key={level}
           label={level}
-          display={`${val.toLocaleString()} shortage`}
-          value={(val / totalNeeds) * 100}
-          color="bg-rose-500"
+          display={displayValue}
+          count={countText}
+          value={percentage}
+          color={color}
         />
       );
-    }
-
-    return (
-      <MetricProgress
-        key={level}
-        label={level}
-        display={displayValue}
-        count={countText}
-        value={percentage}
-        color={color}
-      />
-    );
-  });
-}
+    });
+  }
 
   // ── Resolve the default (active) school year once on mount ──
   useEffect(() => {
@@ -564,13 +564,13 @@ function renderBreakdownRows(resourceType, resourcesState) {
     }
 
     async function fetchCrucialResources() {
-  try {
-    const result = await fetchResourcesForYear(selectedYear);
-    setResources(result);
-  } catch (error) {
-    console.error("Error fetching crucial resources:", error);
-  }
-}
+      try {
+        const result = await fetchResourcesForYear(selectedYear);
+        setResources(result);
+      } catch (error) {
+        console.error("Error fetching crucial resources:", error);
+      }
+    }
 
     async function fetchCespes() {
       try {
@@ -871,10 +871,10 @@ function renderBreakdownRows(resourceType, resourcesState) {
   ];
 
   const kToElemPromo = getKpiRate(
-  currentKpi,
-  "K to 6  Promo & Grad",
-  "Ave. Promotion Rate",
-);
+    currentKpi,
+    "K to 6  Promo & Grad",
+    "Ave. Promotion Rate",
+  );
   const jhsPromo = getKpiRate(
     currentKpi,
     "JHS Promo & Grad",
@@ -886,17 +886,17 @@ function renderBreakdownRows(resourceType, resourcesState) {
     "Ave. Promotion Rate",
   );
   const promotionByLevel = [
-  { level: "Kinder", rate: kToElemPromo || 0 },
-  { level: "Elementary", rate: kToElemPromo || 0 },
-  { level: "JHS", rate: jhsPromo || 0 },
-  { level: "SHS", rate: shsPromo || 0 },
-];
+    { level: "Kinder", rate: kToElemPromo || 0 },
+    { level: "Elementary", rate: kToElemPromo || 0 },
+    { level: "JHS", rate: jhsPromo || 0 },
+    { level: "SHS", rate: shsPromo || 0 },
+  ];
 
   const kToElemPromoCompare = getKpiRate(
-  currentKpiCompare,
-  "K to 6  Promo & Grad",
-  "Ave. Promotion Rate",
-);
+    currentKpiCompare,
+    "K to 6  Promo & Grad",
+    "Ave. Promotion Rate",
+  );
   const jhsPromoCompare = getKpiRate(
     currentKpiCompare,
     "JHS Promo & Grad",
@@ -909,51 +909,51 @@ function renderBreakdownRows(resourceType, resourcesState) {
   );
 
   const promotionByLevelCompare = [
-  { level: "Kinder", rate: compareHasData ? kToElemPromoCompare || 0 : 0 },
-  { level: "Elementary", rate: compareHasData ? kToElemPromoCompare || 0 : 0 },
-  { level: "JHS", rate: compareHasData ? jhsPromoCompare || 0 : 0 },
-  { level: "SHS", rate: compareHasData ? shsPromoCompare || 0 : 0 },
-];
+    { level: "Kinder", rate: compareHasData ? kToElemPromoCompare || 0 : 0 },
+    { level: "Elementary", rate: compareHasData ? kToElemPromoCompare || 0 : 0 },
+    { level: "JHS", rate: compareHasData ? jhsPromoCompare || 0 : 0 },
+    { level: "SHS", rate: compareHasData ? shsPromoCompare || 0 : 0 },
+  ];
 
   const kpiYears = [...new Set(kpiData.map((d) => d.school_year))].sort();
   const dropoutTrend =
     kpiYears.length > 0
       ? kpiYears.map((year) => {
-          const yData = kpiData.filter((d) => d.school_year === year);
-          const elem = getKpiRate(
-            yData,
-            "G1toG6 SLR_DR",
-            "Ave. School Leaver Rate",
-          );
-          const jhs = getKpiRate(
-            yData,
-            "JHS School Leaver Rate",
-            "Ave. School Leaver Rate",
-          );
-          const shs = getKpiRate(
-            yData,
-            " JHS to SHS SLR_DR",
-            "Ave. School Leaver Rate",
-          );
-          return {
-            year,
-            overall: parseFloat(((elem + jhs + shs) / 3).toFixed(2)),
-            elementary: parseFloat(elem.toFixed(2)),
-            jhs: parseFloat(jhs.toFixed(2)),
-          };
-        })
+        const yData = kpiData.filter((d) => d.school_year === year);
+        const elem = getKpiRate(
+          yData,
+          "G1toG6 SLR_DR",
+          "Ave. School Leaver Rate",
+        );
+        const jhs = getKpiRate(
+          yData,
+          "JHS School Leaver Rate",
+          "Ave. School Leaver Rate",
+        );
+        const shs = getKpiRate(
+          yData,
+          " JHS to SHS SLR_DR",
+          "Ave. School Leaver Rate",
+        );
+        return {
+          year,
+          overall: parseFloat(((elem + jhs + shs) / 3).toFixed(2)),
+          elementary: parseFloat(elem.toFixed(2)),
+          jhs: parseFloat(jhs.toFixed(2)),
+        };
+      })
       : [{ year: selectedYear, overall: 0, elementary: 0, jhs: 0 }];
 
   const cohortTrend =
     kpiYears.length > 0
       ? kpiYears.map((year) => {
-          const yData = kpiData.filter((d) => d.school_year === year);
-          const elemCsr = getKpiRate(yData, "G1toG6 CSR & CompR", "CSR");
-          return {
-            year,
-            rate: parseFloat(elemCsr.toFixed(2)),
-          };
-        })
+        const yData = kpiData.filter((d) => d.school_year === year);
+        const elemCsr = getKpiRate(yData, "G1toG6 CSR & CompR", "CSR");
+        return {
+          year,
+          rate: parseFloat(elemCsr.toFixed(2)),
+        };
+      })
       : [{ year: selectedYear, rate: 0 }];
 
   const elemCsrCurrent = getKpiRate(currentKpi, "G1toG6 CSR & CompR", "CSR");
@@ -978,17 +978,17 @@ function renderBreakdownRows(resourceType, resourcesState) {
   const compareOverviewData =
     compareMode && compareYear
       ? {
-          totalEnrollment: compareEnrollmentSummary.total,
-          overallDropout: compareHasData
-            ? overallDropoutCompare.toFixed(2) + "%"
-            : "N/A",
-          elemPromotion: compareHasData
-  ? kToElemPromoCompare.toFixed(2) + "%"
-  : "N/A",
-          jhsDropout: compareHasData
-            ? jhsDropoutCompare.toFixed(2) + "%"
-            : "N/A",
-        }
+        totalEnrollment: compareEnrollmentSummary.total,
+        overallDropout: compareHasData
+          ? overallDropoutCompare.toFixed(2) + "%"
+          : "N/A",
+        elemPromotion: compareHasData
+          ? kToElemPromoCompare.toFixed(2) + "%"
+          : "N/A",
+        jhsDropout: compareHasData
+          ? jhsDropoutCompare.toFixed(2) + "%"
+          : "N/A",
+      }
       : null;
 
   const isComparing = compareMode && !!compareYear;
@@ -1024,9 +1024,8 @@ function renderBreakdownRows(resourceType, resourcesState) {
                 <ChevronDown
                   size={14}
                   strokeWidth={2.5}
-                  className={`text-slate-400 pointer-events-none absolute right-3 transition-transform duration-200 ${
-                    isYearDropdownOpen ? "rotate-180" : ""
-                  }`}
+                  className={`text-slate-400 pointer-events-none absolute right-3 transition-transform duration-200 ${isYearDropdownOpen ? "rotate-180" : ""
+                    }`}
                 />
               </button>
 
@@ -1045,13 +1044,12 @@ function renderBreakdownRows(resourceType, resourcesState) {
                           setSelectedYear(year);
                           setIsYearDropdownOpen(false);
                         }}
-                        className={`w-full flex items-center px-3.5 py-2 text-[0.82rem] font-semibold transition-colors ${
-                          isSelected
+                        className={`w-full flex items-center px-3.5 py-2 text-[0.82rem] font-semibold transition-colors ${isSelected
                             ? "bg-blue-50 text-blue-700"
                             : isDisabled
                               ? "text-slate-300 cursor-not-allowed"
                               : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
-                        }`}
+                          }`}
                       >
                         {year}
                         {isSelected && (
@@ -1087,9 +1085,8 @@ function renderBreakdownRows(resourceType, resourcesState) {
                     <ChevronDown
                       size={14}
                       strokeWidth={2.5}
-                      className={`text-orange-400 pointer-events-none absolute right-3 transition-transform duration-200 ${
-                        isCompareYearDropdownOpen ? "rotate-180" : ""
-                      }`}
+                      className={`text-orange-400 pointer-events-none absolute right-3 transition-transform duration-200 ${isCompareYearDropdownOpen ? "rotate-180" : ""
+                        }`}
                     />
                   </button>
 
@@ -1107,13 +1104,12 @@ function renderBreakdownRows(resourceType, resourcesState) {
                               setCompareYear(year);
                               setIsCompareYearDropdownOpen(false);
                             }}
-                            className={`w-full flex items-center gap-1.5 px-3.5 py-2 text-[0.82rem] font-semibold transition-colors ${
-                              isSelected
+                            className={`w-full flex items-center gap-1.5 px-3.5 py-2 text-[0.82rem] font-semibold transition-colors ${isSelected
                                 ? "bg-orange-50 text-orange-700"
                                 : isDisabled
                                   ? "text-slate-300 cursor-not-allowed"
                                   : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
-                            }`}
+                              }`}
                           >
                             {year}
                             {isOngoing(year) && (
@@ -1238,11 +1234,11 @@ function renderBreakdownRows(resourceType, resourcesState) {
           subtitle="Enrollment · Dropout · Promotion · Cohort Survival"
           subtitleColor="#4f7df5"
           accentBg="rgba(239,246,255,0.7)"
-        
+
         >
           {!loading &&
-          enrollmentSummary.total === 0 &&
-          !(isComparing && compareEnrollmentSummary.total > 0) ? (
+            enrollmentSummary.total === 0 &&
+            !(isComparing && compareEnrollmentSummary.total > 0) ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="mb-3 opacity-25 text-indigo-400">
                 <BarChart3 size={36} strokeWidth={1.5} />
@@ -1550,11 +1546,10 @@ function renderBreakdownRows(resourceType, resourcesState) {
                   <button
                     key={tab}
                     onClick={() => setActiveCespesTab(tab)}
-                    className={`whitespace-nowrap px-4 py-2 text-[0.75rem] font-semibold rounded-t-lg transition-colors ${
-                      activeCespesTab === tab
+                    className={`whitespace-nowrap px-4 py-2 text-[0.75rem] font-semibold rounded-t-lg transition-colors ${activeCespesTab === tab
                         ? "text-blue-600 bg-blue-50/50 border-b-2 border-blue-500"
                         : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                    }`}
+                      }`}
                   >
                     {tab}
                   </button>
@@ -1834,308 +1829,308 @@ function renderBreakdownRows(resourceType, resourcesState) {
 
         {/* ── Crucial Resources ─────────────────────────── */}
         <DashboardAccordion
-  icon={
-    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50">
-      <School size={16} className="text-amber-500" />
-    </div>
-  }
-  title="Crucial Resources"
-  subtitle="No. of Teachers · Classrooms · Seats · Textbooks"
-  subtitleColor="#d97706"
-  accentBg="rgba(255,251,235,0.7)"
->
-  {!resources.teachers.loading &&
-  resources.teachers.total === 0 &&
-  resources.classrooms.total === 0 &&
-  !(
-    isComparing &&
-    (compareResources.teachers.total > 0 ||
-      compareResources.classrooms.total > 0)
-  ) ? (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="mb-3 opacity-25 text-amber-500">
-        <School size={36} strokeWidth={1.5} />
-      </div>
-      <p
-        className="text-[0.78rem] font-semibold"
-        style={{ color: "rgba(217,119,6,0.55)" }}
-      >
-        {isComparing
-          ? `No data available for SY ${selectedYear} or SY ${compareYear}`
-          : `No data available for SY ${selectedYear}`}
-      </p>
-    </div>
-  ) : (
-    <>
-      <div className="flex items-center justify-end mb-4">
-        <DashboardFilters
-          options={["Summary", "Charts", "By Level", "Breakdown"]}
-          active={resourceView}
-          onChange={setResourceView}
-        />
-      </div>
-
-      {/* Comparing header */}
-      {isComparing && (
-        <div className="flex flex-wrap items-center gap-2.5 mb-4">
-          <span className="flex items-center gap-1.5 text-[0.72rem] font-bold text-blue-600">
-            <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
-            SY {selectedYear}
-          </span>
-          <span className="text-[0.68rem] font-medium text-slate-300">vs</span>
-          <span className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600">
-            <span className="h-[6px] w-[6px] rounded-full bg-orange-500" />
-            SY {compareYear}
-          </span>
-          {isOngoing(compareYear) && (
-            <span className="flex items-center gap-1 text-[0.62rem] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-              <Clock size={10} />
-              Ongoing
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* ── Summary view ───────────────────────────── */}
-      {resourceView === "Summary" &&
-        (isComparing ? (
-          <div className="space-y-2">
-            <ComparisonRow
-              label="Total Teachers"
-              primary={resources.teachers.total}
-              secondary={compareResources.teachers.total}
-            />
-            <ComparisonRow
-              label="Total Classrooms"
-              primary={resources.classrooms.total}
-              secondary={compareResources.classrooms.total}
-            />
-            <ComparisonRow
-              label="Total Seats"
-              primary={resources.seats.total}
-              secondary={compareResources.seats.total}
-            />
-            <ComparisonRow
-              label="Textbooks Shortage"
-              primary={resources.textbooks.needs}
-              secondary={compareResources.textbooks.needs}
-              bold
-            />
-          </div>
-        ) : (
-          <DashboardGrid cols={2}>
-            <TrendCard
-              label="Total Teachers"
-              value={
-                resources.teachers.loading
-                  ? "..."
-                  : (resources.teachers.total || 0).toLocaleString()
-              }
-              change={
-                resources.teachers.needs > 0
-                  ? `-${resources.teachers.needs.toLocaleString()} needs`
-                  : "No needs"
-              }
-              direction={resources.teachers.needs > 0 ? "down" : "up"}
-              period="Total Inventory"
-            />
-            <TrendCard
-              label="Total Classrooms"
-              value={
-                resources.classrooms.loading
-                  ? "..."
-                  : (resources.classrooms.total || 0).toLocaleString()
-              }
-              change={
-                resources.classrooms.needs > 0
-                  ? `-${resources.classrooms.needs.toLocaleString()} needs`
-                  : "No needs"
-              }
-              direction={resources.classrooms.needs > 0 ? "down" : "up"}
-              period="Total Inventory"
-            />
-            <TrendCard
-              label="Total Seats"
-              value={
-                resources.seats.loading
-                  ? "..."
-                  : (resources.seats.total || 0).toLocaleString()
-              }
-              change={
-                resources.seats.needs > 0
-                  ? `-${resources.seats.needs.toLocaleString()} needs`
-                  : "No needs"
-              }
-              direction={resources.seats.needs > 0 ? "down" : "up"}
-              period="Total Inventory"
-            />
-            <TrendCard
-              label="Textbooks Shortage"
-              value={
-                resources.textbooks.loading
-                  ? "..."
-                  : (resources.textbooks.needs || 0).toLocaleString()
-              }
-              change="Current total gap"
-              direction={resources.textbooks.needs > 0 ? "down" : "up"}
-              period="System-wide"
-            />
-          </DashboardGrid>
-        ))}
-
-      {/* ── Charts view ────────────────────────────── */}
-      {resourceView === "Charts" &&
-        (isComparing ? (
-          <div className="space-y-5">
-            <ResourcesChartsPanel
-              color="blue"
-              year={selectedYear}
-              resources={resources}
-            />
-            <ResourcesChartsPanel
-              color="orange"
-              year={compareYear}
-              ongoing={isOngoing(compareYear)}
-              resources={compareResources}
-            />
-          </div>
-        ) : (
-          (() => {
-            const teachersData = Object.entries(
-              resources.teachers.breakdown || {},
-            ).map(([level, val]) => ({
-              level,
-              inventory: val,
-              needs: resources.teachers.needsBreakdown?.[level] || 0,
-            }));
-            const classroomsData = Object.entries(
-              resources.classrooms.breakdown || {},
-            ).map(([level, val]) => ({
-              level,
-              inventory: val,
-              needs: resources.classrooms.needsBreakdown?.[level] || 0,
-            }));
-            const seatsData = Object.entries(
-              resources.seats.breakdown || {},
-            ).map(([level, val]) => ({
-              level,
-              inventory: val,
-              needs: resources.seats.needsBreakdown?.[level] || 0,
-            }));
-            const textbooksData = Object.entries(
-              resources.textbooks.breakdown || {},
-            ).map(([level, val]) => ({ level, shortage: val }));
-            return (
-              <div className="space-y-4">
-                <DashboardGrid cols={2}>
-                  <ResourcesInventoryChart
-                    title="Teachers · Inventory vs Needs"
-                    data={teachersData}
-                  />
-                  <ResourcesInventoryChart
-                    title="Classrooms · Inventory vs Needs"
-                    data={classroomsData}
-                  />
-                </DashboardGrid>
-                <DashboardGrid cols={2}>
-                  <ResourcesInventoryChart
-                    title="Seats · Inventory vs Needs"
-                    data={seatsData}
-                  />
-                  <TextbooksChart data={textbooksData} />
-                </DashboardGrid>
-              </div>
-            );
-          })()
-        ))}
-
-      {/* ── By Level view (Drill-down) ──────────────── */}
-      {resourceView === "By Level" &&
-        (isComparing ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-blue-600 mb-2">
-                <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
-                {selectedYear}
-              </p>
-              <ResourcesByLevel resources={resources} />
+          icon={
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50">
+              <School size={16} className="text-amber-500" />
             </div>
-            <div>
-              <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600 mb-2">
-                <span className="h-[6px] w-[6px] rounded-full bg-orange-500" />
-                {compareYear}
-                {isOngoing(compareYear) && (
-                  <Clock size={11} className="text-orange-400" />
-                )}
+          }
+          title="Crucial Resources"
+          subtitle="No. of Teachers · Classrooms · Seats · Textbooks"
+          subtitleColor="#d97706"
+          accentBg="rgba(255,251,235,0.7)"
+        >
+          {!resources.teachers.loading &&
+            resources.teachers.total === 0 &&
+            resources.classrooms.total === 0 &&
+            !(
+              isComparing &&
+              (compareResources.teachers.total > 0 ||
+                compareResources.classrooms.total > 0)
+            ) ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="mb-3 opacity-25 text-amber-500">
+                <School size={36} strokeWidth={1.5} />
+              </div>
+              <p
+                className="text-[0.78rem] font-semibold"
+                style={{ color: "rgba(217,119,6,0.55)" }}
+              >
+                {isComparing
+                  ? `No data available for SY ${selectedYear} or SY ${compareYear}`
+                  : `No data available for SY ${selectedYear}`}
               </p>
-              <ResourcesByLevel resources={compareResources} />
-            </div>
-          </div>
-        ) : (
-          <ResourcesByLevel resources={resources} />
-        ))}
-
-      {/* ── Breakdown view ──────────────────────────── */}
-      {resourceView === "Breakdown" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
-              Detailed Resource Breakdown
-            </h4>
-            <DashboardFilters
-              options={["Teachers", "Classrooms", "Seats", "Textbooks"]}
-              active={resourceType}
-              onChange={setResourceType}
-            />
-          </div>
-
-          {isComparing ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-blue-600 mb-2">
-                  <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
-                  {selectedYear}
-                </p>
-                <PerformanceCard>
-                  <div className="space-y-0.5">
-                    {renderBreakdownRows(resourceType, resources)}
-                  </div>
-                </PerformanceCard>
-              </div>
-              <div>
-                <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600 mb-2">
-                  <span className="h-[6px] w-[6px] rounded-full bg-orange-500" />
-                  {compareYear}
-                  {isOngoing(compareYear) && (
-                    <Clock size={11} className="text-orange-400" />
-                  )}
-                </p>
-                <PerformanceCard>
-                  <div className="space-y-0.5">
-                    {renderBreakdownRows(resourceType, compareResources)}
-                  </div>
-                </PerformanceCard>
-              </div>
             </div>
           ) : (
-            <PerformanceCard>
-              <div className="space-y-0.5">
-                {renderBreakdownRows(resourceType, resources)}
+            <>
+              <div className="flex items-center justify-end mb-4">
+                <DashboardFilters
+                  options={["Summary", "Charts", "By Level", "Breakdown"]}
+                  active={resourceView}
+                  onChange={setResourceView}
+                />
               </div>
-            </PerformanceCard>
-          )}
 
-          <InsightCard
-            icon={<Info size={14} />}
-            variant="info"
-            title={`${resourceType} Distribution`}
-            message={`Showing the distribution of ${resourceType.toLowerCase()} across Elementary, JHS, and SHS levels based on current inventory data.`}
-          />
-        </div>
-      )}
-    </>
-  )}
-</DashboardAccordion>
+              {/* Comparing header */}
+              {isComparing && (
+                <div className="flex flex-wrap items-center gap-2.5 mb-4">
+                  <span className="flex items-center gap-1.5 text-[0.72rem] font-bold text-blue-600">
+                    <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
+                    SY {selectedYear}
+                  </span>
+                  <span className="text-[0.68rem] font-medium text-slate-300">vs</span>
+                  <span className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600">
+                    <span className="h-[6px] w-[6px] rounded-full bg-orange-500" />
+                    SY {compareYear}
+                  </span>
+                  {isOngoing(compareYear) && (
+                    <span className="flex items-center gap-1 text-[0.62rem] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                      <Clock size={10} />
+                      Ongoing
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* ── Summary view ───────────────────────────── */}
+              {resourceView === "Summary" &&
+                (isComparing ? (
+                  <div className="space-y-2">
+                    <ComparisonRow
+                      label="Total Teachers"
+                      primary={resources.teachers.total}
+                      secondary={compareResources.teachers.total}
+                    />
+                    <ComparisonRow
+                      label="Total Classrooms"
+                      primary={resources.classrooms.total}
+                      secondary={compareResources.classrooms.total}
+                    />
+                    <ComparisonRow
+                      label="Total Seats"
+                      primary={resources.seats.total}
+                      secondary={compareResources.seats.total}
+                    />
+                    <ComparisonRow
+                      label="Textbooks Shortage"
+                      primary={resources.textbooks.needs}
+                      secondary={compareResources.textbooks.needs}
+                      bold
+                    />
+                  </div>
+                ) : (
+                  <DashboardGrid cols={2}>
+                    <TrendCard
+                      label="Total Teachers"
+                      value={
+                        resources.teachers.loading
+                          ? "..."
+                          : (resources.teachers.total || 0).toLocaleString()
+                      }
+                      change={
+                        resources.teachers.needs > 0
+                          ? `-${resources.teachers.needs.toLocaleString()} needs`
+                          : "No needs"
+                      }
+                      direction={resources.teachers.needs > 0 ? "down" : "up"}
+                      period="Total Inventory"
+                    />
+                    <TrendCard
+                      label="Total Classrooms"
+                      value={
+                        resources.classrooms.loading
+                          ? "..."
+                          : (resources.classrooms.total || 0).toLocaleString()
+                      }
+                      change={
+                        resources.classrooms.needs > 0
+                          ? `-${resources.classrooms.needs.toLocaleString()} needs`
+                          : "No needs"
+                      }
+                      direction={resources.classrooms.needs > 0 ? "down" : "up"}
+                      period="Total Inventory"
+                    />
+                    <TrendCard
+                      label="Total Seats"
+                      value={
+                        resources.seats.loading
+                          ? "..."
+                          : (resources.seats.total || 0).toLocaleString()
+                      }
+                      change={
+                        resources.seats.needs > 0
+                          ? `-${resources.seats.needs.toLocaleString()} needs`
+                          : "No needs"
+                      }
+                      direction={resources.seats.needs > 0 ? "down" : "up"}
+                      period="Total Inventory"
+                    />
+                    <TrendCard
+                      label="Textbooks Shortage"
+                      value={
+                        resources.textbooks.loading
+                          ? "..."
+                          : (resources.textbooks.needs || 0).toLocaleString()
+                      }
+                      change="Current total gap"
+                      direction={resources.textbooks.needs > 0 ? "down" : "up"}
+                      period="System-wide"
+                    />
+                  </DashboardGrid>
+                ))}
+
+              {/* ── Charts view ────────────────────────────── */}
+              {resourceView === "Charts" &&
+                (isComparing ? (
+                  <div className="space-y-5">
+                    <ResourcesChartsPanel
+                      color="blue"
+                      year={selectedYear}
+                      resources={resources}
+                    />
+                    <ResourcesChartsPanel
+                      color="orange"
+                      year={compareYear}
+                      ongoing={isOngoing(compareYear)}
+                      resources={compareResources}
+                    />
+                  </div>
+                ) : (
+                  (() => {
+                    const teachersData = Object.entries(
+                      resources.teachers.breakdown || {},
+                    ).map(([level, val]) => ({
+                      level,
+                      inventory: val,
+                      needs: resources.teachers.needsBreakdown?.[level] || 0,
+                    }));
+                    const classroomsData = Object.entries(
+                      resources.classrooms.breakdown || {},
+                    ).map(([level, val]) => ({
+                      level,
+                      inventory: val,
+                      needs: resources.classrooms.needsBreakdown?.[level] || 0,
+                    }));
+                    const seatsData = Object.entries(
+                      resources.seats.breakdown || {},
+                    ).map(([level, val]) => ({
+                      level,
+                      inventory: val,
+                      needs: resources.seats.needsBreakdown?.[level] || 0,
+                    }));
+                    const textbooksData = Object.entries(
+                      resources.textbooks.breakdown || {},
+                    ).map(([level, val]) => ({ level, shortage: val }));
+                    return (
+                      <div className="space-y-4">
+                        <DashboardGrid cols={2}>
+                          <ResourcesInventoryChart
+                            title="Teachers · Inventory vs Needs"
+                            data={teachersData}
+                          />
+                          <ResourcesInventoryChart
+                            title="Classrooms · Inventory vs Needs"
+                            data={classroomsData}
+                          />
+                        </DashboardGrid>
+                        <DashboardGrid cols={2}>
+                          <ResourcesInventoryChart
+                            title="Seats · Inventory vs Needs"
+                            data={seatsData}
+                          />
+                          <TextbooksChart data={textbooksData} />
+                        </DashboardGrid>
+                      </div>
+                    );
+                  })()
+                ))}
+
+              {/* ── By Level view (Drill-down) ──────────────── */}
+              {resourceView === "By Level" &&
+                (isComparing ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-blue-600 mb-2">
+                        <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
+                        {selectedYear}
+                      </p>
+                      <ResourcesByLevel resources={resources} />
+                    </div>
+                    <div>
+                      <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600 mb-2">
+                        <span className="h-[6px] w-[6px] rounded-full bg-orange-500" />
+                        {compareYear}
+                        {isOngoing(compareYear) && (
+                          <Clock size={11} className="text-orange-400" />
+                        )}
+                      </p>
+                      <ResourcesByLevel resources={compareResources} />
+                    </div>
+                  </div>
+                ) : (
+                  <ResourcesByLevel resources={resources} />
+                ))}
+
+              {/* ── Breakdown view ──────────────────────────── */}
+              {resourceView === "Breakdown" && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                      Detailed Resource Breakdown
+                    </h4>
+                    <DashboardFilters
+                      options={["Teachers", "Classrooms", "Seats", "Textbooks"]}
+                      active={resourceType}
+                      onChange={setResourceType}
+                    />
+                  </div>
+
+                  {isComparing ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-blue-600 mb-2">
+                          <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
+                          {selectedYear}
+                        </p>
+                        <PerformanceCard>
+                          <div className="space-y-0.5">
+                            {renderBreakdownRows(resourceType, resources)}
+                          </div>
+                        </PerformanceCard>
+                      </div>
+                      <div>
+                        <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600 mb-2">
+                          <span className="h-[6px] w-[6px] rounded-full bg-orange-500" />
+                          {compareYear}
+                          {isOngoing(compareYear) && (
+                            <Clock size={11} className="text-orange-400" />
+                          )}
+                        </p>
+                        <PerformanceCard>
+                          <div className="space-y-0.5">
+                            {renderBreakdownRows(resourceType, compareResources)}
+                          </div>
+                        </PerformanceCard>
+                      </div>
+                    </div>
+                  ) : (
+                    <PerformanceCard>
+                      <div className="space-y-0.5">
+                        {renderBreakdownRows(resourceType, resources)}
+                      </div>
+                    </PerformanceCard>
+                  )}
+
+                  <InsightCard
+                    icon={<Info size={14} />}
+                    variant="info"
+                    title={`${resourceType} Distribution`}
+                    message={`Showing the distribution of ${resourceType.toLowerCase()} across Elementary, JHS, and SHS levels based on current inventory data.`}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </DashboardAccordion>
 
         <div className="mt-3" />
 
@@ -2162,9 +2157,8 @@ function ComparisonRow({ label, primary, secondary, bold, suffix = "" }) {
   return (
     <div className="flex items-center justify-between rounded-[10px] bg-slate-50/70 px-4 py-3">
       <span
-        className={`text-[0.8rem] ${
-          bold ? "font-bold text-slate-700" : "font-semibold text-slate-600"
-        }`}
+        className={`text-[0.8rem] ${bold ? "font-bold text-slate-700" : "font-semibold text-slate-600"
+          }`}
       >
         {label}
       </span>
@@ -2177,9 +2171,8 @@ function ComparisonRow({ label, primary, secondary, bold, suffix = "" }) {
           {fmt(secondary)}
         </span>
         <span
-          className={`flex items-center gap-0.5 text-[0.72rem] font-semibold ${
-            deltaUp ? "text-emerald-600" : "text-rose-500"
-          }`}
+          className={`flex items-center gap-0.5 text-[0.72rem] font-semibold ${deltaUp ? "text-emerald-600" : "text-rose-500"
+            }`}
         >
           {deltaUp ? "↗" : "↘"} {Math.abs(delta).toLocaleString()}
           {suffix}
@@ -2243,12 +2236,12 @@ function CespesYearPanel({
     const source = hasRows
       ? rows
       : {
-          Operations: DEFAULT_CESPES_DATA.operations,
-          "Support to Operations": DEFAULT_CESPES_DATA.supportOperations,
-          "General Admin": DEFAULT_CESPES_DATA.generalAdmin,
-          "Individual Performance": DEFAULT_CESPES_DATA.individualPerformance,
-          "Innovation & Intervention": DEFAULT_CESPES_DATA.innovation,
-        }[tab];
+        Operations: DEFAULT_CESPES_DATA.operations,
+        "Support to Operations": DEFAULT_CESPES_DATA.supportOperations,
+        "General Admin": DEFAULT_CESPES_DATA.generalAdmin,
+        "Individual Performance": DEFAULT_CESPES_DATA.individualPerformance,
+        "Innovation & Intervention": DEFAULT_CESPES_DATA.innovation,
+      }[tab];
 
     switch (tab) {
       case "Operations":
@@ -2319,14 +2312,12 @@ function CespesProgramRow({ program }) {
     <div className="rounded-[10px] border border-slate-100/80 overflow-hidden">
       <button
         onClick={() => hasRows && setOpen((v) => !v)}
-        className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
-          hasRows ? "hover:bg-slate-50/50 cursor-pointer" : "cursor-default"
-        }`}
+        className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${hasRows ? "hover:bg-slate-50/50 cursor-pointer" : "cursor-default"
+          }`}
       >
         <span
-          className={`h-2 w-2 rounded-full shrink-0 ${
-            isComplete ? "bg-emerald-400" : "bg-blue-400"
-          }`}
+          className={`h-2 w-2 rounded-full shrink-0 ${isComplete ? "bg-emerald-400" : "bg-blue-400"
+            }`}
         />
         <div className="flex-1 min-w-0">
           <p className="text-[0.78rem] font-semibold text-slate-700 truncate">
@@ -2337,19 +2328,17 @@ function CespesProgramRow({ program }) {
           </p>
         </div>
         <span
-          className={`text-[0.7rem] font-semibold px-2.5 py-1 rounded-full ${
-            isComplete
+          className={`text-[0.7rem] font-semibold px-2.5 py-1 rounded-full ${isComplete
               ? "bg-emerald-50 text-emerald-600"
               : "bg-blue-50 text-blue-600"
-          }`}
+            }`}
         >
           {program.reported} reported
         </span>
         {hasRows && (
           <svg
-            className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
-              open ? "rotate-180" : ""
-            }`}
+            className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""
+              }`}
             viewBox="0 0 20 20"
             fill="currentColor"
           >
@@ -2409,11 +2398,10 @@ function CespesProgramRow({ program }) {
                   <td className="px-4 py-3">
                     <div className="flex items-start gap-2">
                       <span
-                        className={`mt-0.5 shrink-0 text-[0.6rem] font-bold px-1.5 py-0.5 rounded ${
-                          row.type === "OUTCOME"
+                        className={`mt-0.5 shrink-0 text-[0.6rem] font-bold px-1.5 py-0.5 rounded ${row.type === "OUTCOME"
                             ? "bg-amber-100 text-amber-700"
                             : "bg-blue-100 text-blue-700"
-                        }`}
+                          }`}
                       >
                         {row.type}
                       </span>
@@ -2767,9 +2755,8 @@ function InstitutionalPlansCard({ selectedYear }) {
           </div>
           <ChevronDown
             size={16}
-            className={`text-slate-400 transition-transform duration-200 ${
-              isOpen ? "rotate-180" : ""
-            }`}
+            className={`text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""
+              }`}
           />
         </button>
 

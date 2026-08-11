@@ -208,18 +208,18 @@ export default function ManageUsers() {
   };
 
   const handleDeleteUser = async () => {
-  if (!deletingUser) return;
+    if (!deletingUser) return;
 
-  const res = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      },
-      body: JSON.stringify({ userId: deletingUser.id }),
-    });
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ userId: deletingUser.id }),
+      });
 
     const data = await res.json();
     if (!res.ok) {
@@ -235,45 +235,45 @@ export default function ManageUsers() {
     }
 
 
-  await logAuditEvent({
-    action: "Other",
-    fileName: deletingUser.name,
-    details: `Deleted user account (${deletingUser.email})`,
-    role: deletingUser.role,
-    status: "Success",
-  });
+    await logAuditEvent({
+      action: "Other",
+      fileName: deletingUser.name,
+      details: `Deleted user account (${deletingUser.email})`,
+      role: deletingUser.role,
+      status: "Success",
+    });
 
-  setDeletingUser(null);
-  setToastMessage("User deleted successfully.");
-  setShowToast(true);
-  fetchUsers();
-};
+    setDeletingUser(null);
+    setToastMessage("User deleted successfully.");
+    setShowToast(true);
+    fetchUsers();
+  };
 
   const handleAddNewUser = async (newUserData) => {
-  const res = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          email: newUserData.email,
+          full_name: newUserData.name,
+          division_id: newUserData.divisionId,
+          section_id: newUserData.sectionId,
+          role: getRoleDisplay(newUserData.role),
+          idNumber: newUserData.idNumber,
+        }),
       },
-      body: JSON.stringify({
-        email: newUserData.email,
-        full_name: newUserData.name,
-        division_id: newUserData.divisionId,
-        section_id: newUserData.sectionId,
-        role: getRoleDisplay(newUserData.role),
-        idNumber: newUserData.idNumber,
-      }),
-    },
-  );
+    );
 
-  const data = await res.json();
-  if (!res.ok) {
-    alert("Error: " + data.error);
-    return;
-  }
+    const data = await res.json();
+    if (!res.ok) {
+      alert("Error: " + data.error);
+      return;
+    }
 
     await logAuditEvent({
       action: "Access Grant",
@@ -283,10 +283,10 @@ export default function ManageUsers() {
       status: "Success",
     });
 
-  setAddingNewUser(false);
-  setSuccessEmail(newUserData.email);
-  fetchUsers();
-};
+    setAddingNewUser(false);
+    setSuccessEmail(newUserData.email);
+    fetchUsers();
+  };
 
   const handleDeactivateUser = async () => {
     if (!deactivatingUser) return;

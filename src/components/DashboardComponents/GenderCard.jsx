@@ -1,4 +1,4 @@
-import {useState} from "react";
+import { useState } from "react";
 
 export function GenderCard({ label, total, publicCount, privateCount, accent, hoverAccent }) {
   const [hovered, setHovered] = useState(false);
