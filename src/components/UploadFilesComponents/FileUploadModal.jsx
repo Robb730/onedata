@@ -232,8 +232,8 @@ export default function FileUploadModal({
   const accentStyle = activeCode
     ? "linear-gradient(90deg, #6366f1, #3b82f6)"
     : linkedRequestId
-    ? "linear-gradient(90deg, #0ea5e9, #06b6d4)"
-    : "linear-gradient(90deg, #3b82f6, #06b6d4)";
+      ? "linear-gradient(90deg, #0ea5e9, #06b6d4)"
+      : "linear-gradient(90deg, #3b82f6, #06b6d4)";
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -251,20 +251,18 @@ export default function FileUploadModal({
                   <Fragment key={s}>
                     <div className="flex items-center gap-1.5">
                       <div
-                        className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold border transition-all ${
-                          i < stepIndex
+                        className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold border transition-all ${i < stepIndex
                             ? "bg-teal-500 text-white border-teal-500"
                             : i === stepIndex
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "bg-gray-200 text-gray-400 border-gray-200"
-                        }`}
+                              ? "bg-blue-600 text-white border-blue-600"
+                              : "bg-gray-200 text-gray-400 border-gray-200"
+                          }`}
                       >
                         {i < stepIndex ? <CheckCircle size={12} /> : i + 1}
                       </div>
                       <span
-                        className={`text-xs font-semibold ${
-                          i === stepIndex ? "text-blue-600" : i < stepIndex ? "text-teal-500" : "text-gray-400"
-                        }`}
+                        className={`text-xs font-semibold ${i === stepIndex ? "text-blue-600" : i < stepIndex ? "text-teal-500" : "text-gray-400"
+                          }`}
                       >
                         {STEP_LABELS[s]}
                       </span>
@@ -318,454 +316,447 @@ export default function FileUploadModal({
         ) : (
           <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-200 min-h-[500px]">
             <div className="w-full md:w-[50%] flex flex-col bg-white overflow-y-auto max-h-[75vh]">
-            {/* ── STEP: File Details ── */}
-            {currentStep === "details" && (
-              <form onSubmit={handleStep1Submit} className="px-6 py-5 space-y-5">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Upload to Folder</label>
-                  <div className="relative">
-                    <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400" size={16} />
-                    <input
-                      type="text"
-                      value={selectedFolder}
-                      readOnly
-                      className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 font-medium text-sm cursor-not-allowed"
-                    />
+              {/* ── STEP: File Details ── */}
+              {currentStep === "details" && (
+                <form onSubmit={handleStep1Submit} className="px-6 py-5 space-y-5">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Upload to Folder</label>
+                    <div className="relative">
+                      <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400" size={16} />
+                      <input
+                        type="text"
+                        value={selectedFolder}
+                        readOnly
+                        className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 font-medium text-sm cursor-not-allowed"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Upload Type</label>
-                  <div ref={uploadTypeRef} className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setIsUploadTypeOpen((v) => !v)}
-                      className="w-full flex items-center gap-2 pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-left"
-                    >
-                      <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                      <span className="font-medium text-gray-800 truncate">
-                        {UPLOAD_OPTIONS.find((opt) => opt.value === uploadType)?.label ?? "Select type"}
-                      </span>
-                      <svg
-                        className={`h-3.5 w-3.5 text-gray-400 ml-auto shrink-0 transition-transform duration-200 ${isUploadTypeOpen ? "rotate-180" : ""}`}
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Upload Type</label>
+                    <div ref={uploadTypeRef} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsUploadTypeOpen((v) => !v)}
+                        className="w-full flex items-center gap-2 pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-left"
                       >
-                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-
-                    {isUploadTypeOpen && (
-                      <div className="absolute top-[calc(100%+6px)] left-0 w-full bg-white border border-gray-200 rounded-lg shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50 max-h-56 overflow-y-auto">
-                        {UPLOAD_OPTIONS.map(({ value, label }) => {
-                          const isSelected = uploadType === value;
-                          return (
-                            <button
-                              key={value}
-                              type="button"
-                              onClick={() => {
-                                setUploadType(value);
-                                setIsUploadTypeOpen(false);
-                                if (value !== "general" && selectedFiles.length > 1) {
-                                  setSelectedFiles([selectedFiles[0]]);
-                                  setFileName(selectedFiles[0].name);
-                                }
-                              }}
-                              className={`w-full flex items-center gap-2 px-3.5 py-2 text-sm transition-colors text-left ${isSelected ? "bg-blue-50" : "hover:bg-gray-50"}`}
-                            >
-                              <span className={`truncate ${isSelected ? "text-blue-700 font-semibold" : "text-gray-700"}`}>{label}</span>
-                              {isSelected && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                    Choose File <span className="text-red-500">*</span>
-                  </label>
-                  <label
-                    htmlFor="file-upload-input"
-                    className={`flex items-center gap-2.5 w-full py-2.5 px-3 text-sm border rounded-lg cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-blue-500 ${
-                      selectedFiles.length > 0
-                        ? "border-blue-200 bg-blue-50/60 hover:bg-blue-50"
-                        : "border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400"
-                    }`}
-                  >
-                    <FileText size={16} className={`flex-shrink-0 ${selectedFiles.length > 0 ? "text-blue-500" : "text-gray-400"}`} />
-                    <span className={`truncate ${selectedFiles.length > 0 ? "text-gray-800 font-medium" : "text-gray-400"}`}>
-                      {selectedFiles.length === 0 ? "Click to browse or drop a file" : selectedFiles.length === 1 ? selectedFiles[0].name : `${selectedFiles.length} files selected`}
-                    </span>
-                    {selectedFiles.length > 0 && (
-                      <span className="ml-auto text-[11px] font-semibold text-blue-600 shrink-0">Change</span>
-                    )}
-                    <input
-                      id="file-upload-input"
-                      ref={fileInputRef}
-                      type="file"
-                      onChange={handleFileChange}
-                      className="hidden"
-                      multiple={uploadType === "general"}
-                      required={selectedFiles.length === 0}
-                    />
-                  </label>
-                </div>
-
-                {selectedFiles.length <= 1 && (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                    File Name <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                    <input
-                      type="text"
-                      value={fileName}
-                      onChange={(e) => setFileName(e.target.value)}
-                      placeholder="Enter file name"
-                      className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                      required
-                    />
-                  </div>
-                </div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                    School Year <span className="text-red-500">*</span>
-                  </label>
-                  <div ref={yearRef} className="relative">
-                    <button
-                      type="button"
-                      onClick={() => !yearsLoading && !yearsError && schoolYears.length > 0 && setIsYearOpen((v) => !v)}
-                      disabled={yearsLoading || !!yearsError || schoolYears.length === 0}
-                      className="w-full flex items-center gap-2 pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:border-gray-300"
-                    >
-                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                      {yearsLoading ? (
-                        <span className="flex items-center gap-2 text-gray-400">
-                          <Loader size={13} className="animate-spin" />
-                          Loading school years…
+                        <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                        <span className="font-medium text-gray-800 truncate">
+                          {UPLOAD_OPTIONS.find((opt) => opt.value === uploadType)?.label ?? "Select type"}
                         </span>
-                      ) : yearsError ? (
-                        <span className="text-red-400">Failed to load school years</span>
-                      ) : schoolYears.length === 0 ? (
-                        <span className="text-gray-400">No school year available</span>
-                      ) : (
-                        <>
-                          <span className="font-semibold text-gray-800">{schoolYear}</span>
-                          {(() => {
-                            const current = schoolYears.find((y) => y.label === schoolYear);
-                            if (!current) return null;
-                            const isActive = current.tag === "Active";
+                        <svg
+                          className={`h-3.5 w-3.5 text-gray-400 ml-auto shrink-0 transition-transform duration-200 ${isUploadTypeOpen ? "rotate-180" : ""}`}
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+
+                      {isUploadTypeOpen && (
+                        <div className="absolute top-[calc(100%+6px)] left-0 w-full bg-white border border-gray-200 rounded-lg shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50 max-h-56 overflow-y-auto">
+                          {UPLOAD_OPTIONS.map(({ value, label }) => {
+                            const isSelected = uploadType === value;
                             return (
-                              <span
-                                className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                  isActive
-                                    ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                                    : "bg-amber-50 text-amber-600 border border-amber-200"
-                                }`}
+                              <button
+                                key={value}
+                                type="button"
+                                onClick={() => {
+                                  setUploadType(value);
+                                  setIsUploadTypeOpen(false);
+                                  if (value !== "general" && selectedFiles.length > 1) {
+                                    setSelectedFiles([selectedFiles[0]]);
+                                    setFileName(selectedFiles[0].name);
+                                  }
+                                }}
+                                className={`w-full flex items-center gap-2 px-3.5 py-2 text-sm transition-colors text-left ${isSelected ? "bg-blue-50" : "hover:bg-gray-50"}`}
                               >
-                                <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-amber-500"}`} />
-                                {current.tag}
-                              </span>
+                                <span className={`truncate ${isSelected ? "text-blue-700 font-semibold" : "text-gray-700"}`}>{label}</span>
+                                {isSelected && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />}
+                              </button>
                             );
-                          })()}
-                        </>
+                          })}
+                        </div>
                       )}
-                      <svg
-                        className={`h-3.5 w-3.5 text-gray-400 ml-auto shrink-0 transition-transform duration-200 ${isYearOpen ? "rotate-180" : ""}`}
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                      Choose File <span className="text-red-500">*</span>
+                    </label>
+                    <label
+                      htmlFor="file-upload-input"
+                      className={`flex items-center gap-2.5 w-full py-2.5 px-3 text-sm border rounded-lg cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-blue-500 ${selectedFiles.length > 0
+                          ? "border-blue-200 bg-blue-50/60 hover:bg-blue-50"
+                          : "border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400"
+                        }`}
+                    >
+                      <FileText size={16} className={`flex-shrink-0 ${selectedFiles.length > 0 ? "text-blue-500" : "text-gray-400"}`} />
+                      <span className={`truncate ${selectedFiles.length > 0 ? "text-gray-800 font-medium" : "text-gray-400"}`}>
+                        {selectedFiles.length === 0 ? "Click to browse or drop a file" : selectedFiles.length === 1 ? selectedFiles[0].name : `${selectedFiles.length} files selected`}
+                      </span>
+                      {selectedFiles.length > 0 && (
+                        <span className="ml-auto text-[11px] font-semibold text-blue-600 shrink-0">Change</span>
+                      )}
+                      <input
+                        id="file-upload-input"
+                        ref={fileInputRef}
+                        type="file"
+                        onChange={handleFileChange}
+                        className="hidden"
+                        multiple={uploadType === "general"}
+                        required={selectedFiles.length === 0}
+                      />
+                    </label>
+                  </div>
+
+                  {selectedFiles.length <= 1 && (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                        File Name <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                        <input
+                          type="text"
+                          value={fileName}
+                          onChange={(e) => setFileName(e.target.value)}
+                          placeholder="Enter file name"
+                          className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                          required
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                      School Year <span className="text-red-500">*</span>
+                    </label>
+                    <div ref={yearRef} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => !yearsLoading && !yearsError && schoolYears.length > 0 && setIsYearOpen((v) => !v)}
+                        disabled={yearsLoading || !!yearsError || schoolYears.length === 0}
+                        className="w-full flex items-center gap-2 pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:border-gray-300"
                       >
-                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                      </svg>
-                    </button>
+                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                        {yearsLoading ? (
+                          <span className="flex items-center gap-2 text-gray-400">
+                            <Loader size={13} className="animate-spin" />
+                            Loading school years…
+                          </span>
+                        ) : yearsError ? (
+                          <span className="text-red-400">Failed to load school years</span>
+                        ) : schoolYears.length === 0 ? (
+                          <span className="text-gray-400">No school year available</span>
+                        ) : (
+                          <>
+                            <span className="font-semibold text-gray-800">{schoolYear}</span>
+                            {(() => {
+                              const current = schoolYears.find((y) => y.label === schoolYear);
+                              if (!current) return null;
+                              const isActive = current.tag === "Active";
+                              return (
+                                <span
+                                  className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${isActive
+                                      ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                                      : "bg-amber-50 text-amber-600 border border-amber-200"
+                                    }`}
+                                >
+                                  <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-amber-500"}`} />
+                                  {current.tag}
+                                </span>
+                              );
+                            })()}
+                          </>
+                        )}
+                        <svg
+                          className={`h-3.5 w-3.5 text-gray-400 ml-auto shrink-0 transition-transform duration-200 ${isYearOpen ? "rotate-180" : ""}`}
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                        </svg>
+                      </button>
 
-                    {isYearOpen && !yearsLoading && !yearsError && schoolYears.length > 0 && (
-                      <div className="absolute top-[calc(100%+6px)] left-0 w-full bg-white border border-gray-200 rounded-lg shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50 max-h-56 overflow-y-auto">
-                        {schoolYears.map(({ label, tag }) => {
-                          const isSelected = schoolYear === label;
-                          const isActive = tag === "Active";
-                          return (
-                            <button
-                              key={label}
-                              type="button"
-                              onClick={() => { setSchoolYear(label); setIsYearOpen(false); }}
-                              className={`w-full flex items-center gap-2 px-3.5 py-2 text-sm transition-colors ${isSelected ? "bg-blue-50" : "hover:bg-gray-50"}`}
-                            >
-                              <span className={`font-semibold ${isSelected ? "text-blue-700" : "text-gray-700"}`}>{label}</span>
-                              <span
-                                className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                  isActive
-                                    ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                                    : "bg-amber-50 text-amber-600 border border-amber-200"
-                                }`}
+                      {isYearOpen && !yearsLoading && !yearsError && schoolYears.length > 0 && (
+                        <div className="absolute top-[calc(100%+6px)] left-0 w-full bg-white border border-gray-200 rounded-lg shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50 max-h-56 overflow-y-auto">
+                          {schoolYears.map(({ label, tag }) => {
+                            const isSelected = schoolYear === label;
+                            const isActive = tag === "Active";
+                            return (
+                              <button
+                                key={label}
+                                type="button"
+                                onClick={() => { setSchoolYear(label); setIsYearOpen(false); }}
+                                className={`w-full flex items-center gap-2 px-3.5 py-2 text-sm transition-colors ${isSelected ? "bg-blue-50" : "hover:bg-gray-50"}`}
                               >
-                                <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-amber-500"}`} />
-                                {tag}
-                              </span>
-                              {isSelected && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                                <span className={`font-semibold ${isSelected ? "text-blue-700" : "text-gray-700"}`}>{label}</span>
+                                <span
+                                  className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${isActive
+                                      ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                                      : "bg-amber-50 text-amber-600 border border-amber-200"
+                                    }`}
+                                >
+                                  <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-amber-500"}`} />
+                                  {tag}
+                                </span>
+                                {isSelected && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    {!yearsLoading && yearsError && <p className="text-[11px] text-red-500 mt-1">{yearsError}</p>}
                   </div>
-                  {!yearsLoading && yearsError && <p className="text-[11px] text-red-500 mt-1">{yearsError}</p>}
-                </div>
 
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-semibold transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={yearsLoading || !!yearsError || !schoolYear}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-white rounded-lg text-sm font-semibold shadow-sm shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-                    style={{ background: "linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)" }}
-                  >
-                    {isMultiStep ? (
-                      <>Next: {STEP_LABELS[steps[1]]} <ArrowRight size={15} /></>
-                    ) : (
-                      "Upload File"
-                    )}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* ── STEP: Category / Subfolder Selection ── */}
-            {currentStep === "category" && (
-              <div className="px-6 py-5 space-y-5">
-                <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
-                  <FileText size={16} className="text-gray-400 flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-gray-400 font-medium">File</p>
-                    <p className="text-sm font-semibold text-gray-800 truncate">{selectedFiles.length > 1 ? `${selectedFiles.length} files selected` : fileName}</p>
-                  </div>
-                  <div className="ml-auto text-right flex-shrink-0">
-                    <p className="text-xs text-gray-400 font-medium">School Year</p>
-                    <p className="text-sm font-semibold text-gray-800">{schoolYear}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Which category does this file belong to?
-                  </label>
-                  <p className="text-[11px] text-gray-400 mb-3">
-                    Select a category to auto-prefix the filename, or choose{" "}
-                    <span className="font-semibold text-gray-600">None</span> to upload directly into the section folder.
-                  </p>
-
-                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  <div className="flex items-center gap-3 pt-2">
                     <button
                       type="button"
-                      onClick={() => setSelectedSubfolder(null)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all ${
-                        selectedSubfolder === null ? "border-gray-800 bg-gray-50" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                      }`}
+                      onClick={onClose}
+                      className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-semibold transition-colors"
                     >
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${selectedSubfolder === null ? "border-gray-800" : "border-gray-300"}`}>
-                        {selectedSubfolder === null && <div className="w-2 h-2 rounded-full bg-gray-800" />}
-                      </div>
-                      <FolderOpen size={16} className="text-gray-400 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800">None</p>
-                        <p className="text-[11px] text-gray-400">
-                          Upload directly into <span className="font-medium">{selectedFolder}</span>
-                        </p>
-                      </div>
+                      Cancel
                     </button>
-
-                    {subfolders.map((sf) => {
-                      const isSelected = selectedSubfolder?.name === sf.name;
-                      const preview = buildCodedFilename(fileName, sf.code, schoolYear);
-                      return (
-                        <button
-                          key={sf.name}
-                          type="button"
-                          onClick={() => setSelectedSubfolder(isSelected ? null : sf)}
-                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all ${
-                            isSelected ? "border-indigo-600 bg-indigo-50" : "border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/40"
-                          }`}
-                        >
-                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? "border-indigo-600" : "border-gray-300"}`}>
-                            {isSelected && <div className="w-2 h-2 rounded-full bg-indigo-600" />}
-                          </div>
-                          <FolderPlus size={16} className={`flex-shrink-0 ${isSelected ? "text-indigo-500" : "text-gray-400"}`} />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className={`text-sm font-semibold ${isSelected ? "text-indigo-900" : "text-gray-800"}`}>{sf.name}</p>
-                              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${isSelected ? "bg-indigo-200 text-indigo-800 border-indigo-300" : "bg-gray-100 text-gray-600 border-gray-200"}`}>
-                                {sf.code}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-gray-400 truncate mt-0.5">→ {preview}</p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {codedName && (
-                  <div className="rounded-xl border border-indigo-200 bg-indigo-50 overflow-hidden">
-                    <div className="flex items-center gap-2 px-3.5 py-2 border-b border-indigo-200 bg-indigo-100/60">
-                      <Sparkles size={13} className="text-indigo-500" />
-                      <span className="text-xs font-bold text-indigo-700 uppercase tracking-wide">Auto-Generated Filename</span>
-                    </div>
-                    <div className="px-3.5 py-3">
-                      <p className="text-sm font-mono text-indigo-900 break-all leading-relaxed">
-                        <span className="bg-indigo-200 text-indigo-800 px-1 py-0.5 rounded font-bold">{activeCode}</span>
-                        <span className="text-indigo-400 mx-0.5">-</span>
-                        <span className="bg-blue-100 text-blue-700 px-1 py-0.5 rounded">{schoolYear}</span>
-                        <span className="text-indigo-400 mx-0.5">-</span>
-                        <span className="text-gray-700">{fileName}</span>
-                      </p>
-                      <p className="text-[11px] text-indigo-500 mt-2">This is the exact filename that will be saved in the system.</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={goBack}
-                    className="flex items-center gap-1.5 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-semibold transition-colors"
-                  >
-                    <ArrowLeft size={15} /> Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={isLastStep ? submitUpload : goNext}
-                    disabled={!schoolYear}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ background: activeCode ? "linear-gradient(135deg, #6366f1 0%, #3b82f6 100%)" : "linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)" }}
-                  >
-                    {isLastStep ? (
-                      activeCode ? "Upload & Apply Code" : "Upload to Section Folder"
-                    ) : (
-                      <>Next: {STEP_LABELS[steps[stepIndex + 1]]} <ArrowRight size={15} /></>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── STEP: Link Request ── */}
-            {currentStep === "request" && (
-              <div className="px-6 py-5 space-y-5">
-                <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
-                  <FileText size={16} className="text-gray-400 flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-gray-400 font-medium">File</p>
-                    <p className="text-sm font-semibold text-gray-800 truncate">{selectedFiles.length > 1 ? `${selectedFiles.length} files selected` : (codedName ?? fileName)}</p>
-                  </div>
-                  <div className="ml-auto text-right flex-shrink-0">
-                    <p className="text-xs text-gray-400 font-medium">School Year</p>
-                    <p className="text-sm font-semibold text-gray-800">{schoolYear}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 mb-1">
-                    <Link2 size={13} className="text-blue-500" /> Does this file fulfill an open request?
-                  </label>
-                  <p className="text-[11px] text-gray-400 mb-3">
-                    Linking a request marks it completed as soon as this upload finishes. Choose{" "}
-                    <span className="font-semibold text-gray-600">None</span> if it isn't related to any request.
-                  </p>
-
-                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                     <button
-                      type="button"
-                      onClick={() => setLinkedRequestId(null)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all ${
-                        linkedRequestId === null ? "border-gray-800 bg-gray-50" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                      }`}
+                      type="submit"
+                      disabled={yearsLoading || !!yearsError || !schoolYear}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-white rounded-lg text-sm font-semibold shadow-sm shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                      style={{ background: "linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)" }}
                     >
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${linkedRequestId === null ? "border-gray-800" : "border-gray-300"}`}>
-                        {linkedRequestId === null && <div className="w-2 h-2 rounded-full bg-gray-800" />}
-                      </div>
-                      <X size={16} className="text-gray-400 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800">None</p>
-                        <p className="text-[11px] text-gray-400">Not related to any open request</p>
-                      </div>
+                      {isMultiStep ? (
+                        <>Next: {STEP_LABELS[steps[1]]} <ArrowRight size={15} /></>
+                      ) : (
+                        "Upload File"
+                      )}
                     </button>
-
-                    {pendingRequests.map((req) => {
-                      const isSelected = linkedRequestId === req.id;
-                      const isOverdue = req.status === "Overdue";
-                      return (
-                        <button
-                          key={req.id}
-                          type="button"
-                          onClick={() => setLinkedRequestId(isSelected ? null : req.id)}
-                          className={`w-full flex items-start gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all ${
-                            isSelected ? "border-blue-600 bg-blue-50" : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/40"
-                          }`}
-                        >
-                          <div className={`w-4 h-4 mt-0.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? "border-blue-600" : "border-gray-300"}`}>
-                            {isSelected && <div className="w-2 h-2 rounded-full bg-blue-600" />}
-                          </div>
-                          <FileText size={16} className={`flex-shrink-0 mt-0.5 ${isSelected ? "text-blue-500" : "text-gray-400"}`} />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className={`text-sm font-semibold truncate ${isSelected ? "text-blue-900" : "text-gray-800"}`}>{req.fileName}</p>
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${isOverdue ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
-                                {req.status}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-gray-400 mt-0.5">Requested by {req.requestedBy} · Due {req.dueDate}</p>
-                          </div>
-                        </button>
-                      );
-                    })}
                   </div>
-                </div>
+                </form>
+              )}
 
-                {linkedRequest && (
-                  <div className="rounded-xl border border-teal-200 bg-teal-50 px-3.5 py-3 flex items-start gap-2">
-                    <CheckCircle size={14} className="text-teal-600 mt-0.5 shrink-0" />
-                    <p className="text-[11px] text-teal-700 leading-relaxed">
-                      "{linkedRequest.fileName}" from {linkedRequest.requestedBy} will be marked{" "}
-                      <span className="font-semibold">completed</span> once this file finishes uploading.
+              {/* ── STEP: Category / Subfolder Selection ── */}
+              {currentStep === "category" && (
+                <div className="px-6 py-5 space-y-5">
+                  <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+                    <FileText size={16} className="text-gray-400 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-400 font-medium">File</p>
+                      <p className="text-sm font-semibold text-gray-800 truncate">{selectedFiles.length > 1 ? `${selectedFiles.length} files selected` : fileName}</p>
+                    </div>
+                    <div className="ml-auto text-right flex-shrink-0">
+                      <p className="text-xs text-gray-400 font-medium">School Year</p>
+                      <p className="text-sm font-semibold text-gray-800">{schoolYear}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Which category does this file belong to?
+                    </label>
+                    <p className="text-[11px] text-gray-400 mb-3">
+                      Select a category to auto-prefix the filename, or choose{" "}
+                      <span className="font-semibold text-gray-600">None</span> to upload directly into the section folder.
                     </p>
-                  </div>
-                )}
 
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={goBack}
-                    className="flex items-center gap-1.5 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-semibold transition-colors"
-                  >
-                    <ArrowLeft size={15} /> Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={submitUpload}
-                    disabled={!schoolYear}
-                    className="flex-1 px-4 py-2.5 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ background: linkedRequestId ? "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)" : "linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)" }}
-                  >
-                    {linkedRequestId ? "Upload & Complete Request" : "Upload File"}
-                  </button>
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSubfolder(null)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all ${selectedSubfolder === null ? "border-gray-800 bg-gray-50" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                          }`}
+                      >
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${selectedSubfolder === null ? "border-gray-800" : "border-gray-300"}`}>
+                          {selectedSubfolder === null && <div className="w-2 h-2 rounded-full bg-gray-800" />}
+                        </div>
+                        <FolderOpen size={16} className="text-gray-400 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-semibold text-gray-800">None</p>
+                          <p className="text-[11px] text-gray-400">
+                            Upload directly into <span className="font-medium">{selectedFolder}</span>
+                          </p>
+                        </div>
+                      </button>
+
+                      {subfolders.map((sf) => {
+                        const isSelected = selectedSubfolder?.name === sf.name;
+                        const preview = buildCodedFilename(fileName, sf.code, schoolYear);
+                        return (
+                          <button
+                            key={sf.name}
+                            type="button"
+                            onClick={() => setSelectedSubfolder(isSelected ? null : sf)}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all ${isSelected ? "border-indigo-600 bg-indigo-50" : "border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/40"
+                              }`}
+                          >
+                            <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? "border-indigo-600" : "border-gray-300"}`}>
+                              {isSelected && <div className="w-2 h-2 rounded-full bg-indigo-600" />}
+                            </div>
+                            <FolderPlus size={16} className={`flex-shrink-0 ${isSelected ? "text-indigo-500" : "text-gray-400"}`} />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className={`text-sm font-semibold ${isSelected ? "text-indigo-900" : "text-gray-800"}`}>{sf.name}</p>
+                                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${isSelected ? "bg-indigo-200 text-indigo-800 border-indigo-300" : "bg-gray-100 text-gray-600 border-gray-200"}`}>
+                                  {sf.code}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-gray-400 truncate mt-0.5">→ {preview}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {codedName && (
+                    <div className="rounded-xl border border-indigo-200 bg-indigo-50 overflow-hidden">
+                      <div className="flex items-center gap-2 px-3.5 py-2 border-b border-indigo-200 bg-indigo-100/60">
+                        <Sparkles size={13} className="text-indigo-500" />
+                        <span className="text-xs font-bold text-indigo-700 uppercase tracking-wide">Auto-Generated Filename</span>
+                      </div>
+                      <div className="px-3.5 py-3">
+                        <p className="text-sm font-mono text-indigo-900 break-all leading-relaxed">
+                          <span className="bg-indigo-200 text-indigo-800 px-1 py-0.5 rounded font-bold">{activeCode}</span>
+                          <span className="text-indigo-400 mx-0.5">-</span>
+                          <span className="bg-blue-100 text-blue-700 px-1 py-0.5 rounded">{schoolYear}</span>
+                          <span className="text-indigo-400 mx-0.5">-</span>
+                          <span className="text-gray-700">{fileName}</span>
+                        </p>
+                        <p className="text-[11px] text-indigo-500 mt-2">This is the exact filename that will be saved in the system.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={goBack}
+                      className="flex items-center gap-1.5 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-semibold transition-colors"
+                    >
+                      <ArrowLeft size={15} /> Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={isLastStep ? submitUpload : goNext}
+                      disabled={!schoolYear}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ background: activeCode ? "linear-gradient(135deg, #6366f1 0%, #3b82f6 100%)" : "linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)" }}
+                    >
+                      {isLastStep ? (
+                        activeCode ? "Upload & Apply Code" : "Upload to Section Folder"
+                      ) : (
+                        <>Next: {STEP_LABELS[steps[stepIndex + 1]]} <ArrowRight size={15} /></>
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+
+              {/* ── STEP: Link Request ── */}
+              {currentStep === "request" && (
+                <div className="px-6 py-5 space-y-5">
+                  <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+                    <FileText size={16} className="text-gray-400 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-400 font-medium">File</p>
+                      <p className="text-sm font-semibold text-gray-800 truncate">{selectedFiles.length > 1 ? `${selectedFiles.length} files selected` : (codedName ?? fileName)}</p>
+                    </div>
+                    <div className="ml-auto text-right flex-shrink-0">
+                      <p className="text-xs text-gray-400 font-medium">School Year</p>
+                      <p className="text-sm font-semibold text-gray-800">{schoolYear}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 mb-1">
+                      <Link2 size={13} className="text-blue-500" /> Does this file fulfill an open request?
+                    </label>
+                    <p className="text-[11px] text-gray-400 mb-3">
+                      Linking a request marks it completed as soon as this upload finishes. Choose{" "}
+                      <span className="font-semibold text-gray-600">None</span> if it isn't related to any request.
+                    </p>
+
+                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                      <button
+                        type="button"
+                        onClick={() => setLinkedRequestId(null)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all ${linkedRequestId === null ? "border-gray-800 bg-gray-50" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                          }`}
+                      >
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${linkedRequestId === null ? "border-gray-800" : "border-gray-300"}`}>
+                          {linkedRequestId === null && <div className="w-2 h-2 rounded-full bg-gray-800" />}
+                        </div>
+                        <X size={16} className="text-gray-400 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-semibold text-gray-800">None</p>
+                          <p className="text-[11px] text-gray-400">Not related to any open request</p>
+                        </div>
+                      </button>
+
+                      {pendingRequests.map((req) => {
+                        const isSelected = linkedRequestId === req.id;
+                        const isOverdue = req.status === "Overdue";
+                        return (
+                          <button
+                            key={req.id}
+                            type="button"
+                            onClick={() => setLinkedRequestId(isSelected ? null : req.id)}
+                            className={`w-full flex items-start gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all ${isSelected ? "border-blue-600 bg-blue-50" : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/40"
+                              }`}
+                          >
+                            <div className={`w-4 h-4 mt-0.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? "border-blue-600" : "border-gray-300"}`}>
+                              {isSelected && <div className="w-2 h-2 rounded-full bg-blue-600" />}
+                            </div>
+                            <FileText size={16} className={`flex-shrink-0 mt-0.5 ${isSelected ? "text-blue-500" : "text-gray-400"}`} />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className={`text-sm font-semibold truncate ${isSelected ? "text-blue-900" : "text-gray-800"}`}>{req.fileName}</p>
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${isOverdue ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+                                  {req.status}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-gray-400 mt-0.5">Requested by {req.requestedBy} · Due {req.dueDate}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {linkedRequest && (
+                    <div className="rounded-xl border border-teal-200 bg-teal-50 px-3.5 py-3 flex items-start gap-2">
+                      <CheckCircle size={14} className="text-teal-600 mt-0.5 shrink-0" />
+                      <p className="text-[11px] text-teal-700 leading-relaxed">
+                        "{linkedRequest.fileName}" from {linkedRequest.requestedBy} will be marked{" "}
+                        <span className="font-semibold">completed</span> once this file finishes uploading.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={goBack}
+                      className="flex items-center gap-1.5 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-semibold transition-colors"
+                    >
+                      <ArrowLeft size={15} /> Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={submitUpload}
+                      disabled={!schoolYear}
+                      className="flex-1 px-4 py-2.5 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ background: linkedRequestId ? "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)" : "linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)" }}
+                    >
+                      {linkedRequestId ? "Upload & Complete Request" : "Upload File"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            
+
             {/* Right Pane: Preview */}
             <div className="w-full md:w-[50%] bg-gray-50 p-6 flex flex-col overflow-y-auto max-h-[75vh]">
               <div className="flex items-center justify-between mb-4">
@@ -809,35 +800,35 @@ export default function FileUploadModal({
                   {selectedFiles.map((file, idx) => {
                     const { icon: FileIcon, color, bg } = getFileIconAndColor(file.name);
                     return (
-                    <div key={idx} className="group relative flex flex-col p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-200 hover:shadow-md transition-all">
-                      <div className="flex items-start gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${bg} ${color}`}>
-                          <FileIcon size={20} />
-                        </div>
-                        <div className="min-w-0 flex-1 pr-6">
-                          <p className="text-sm font-semibold text-gray-900 truncate" title={file.name}>
-                            {file.name}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
-                            <span className="inline-flex items-center text-xs font-medium text-gray-500">
-                              {(file.size / 1024 / 1024).toFixed(2)} MB
-                            </span>
-                            <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-600 font-mono font-bold">
-                              {file.name.split('.').pop().toUpperCase()}
-                            </span>
+                      <div key={idx} className="group relative flex flex-col p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-200 hover:shadow-md transition-all">
+                        <div className="flex items-start gap-3">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${bg} ${color}`}>
+                            <FileIcon size={20} />
                           </div>
+                          <div className="min-w-0 flex-1 pr-6">
+                            <p className="text-sm font-semibold text-gray-900 truncate" title={file.name}>
+                              {file.name}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                              <span className="inline-flex items-center text-xs font-medium text-gray-500">
+                                {(file.size / 1024 / 1024).toFixed(2)} MB
+                              </span>
+                              <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-600 font-mono font-bold">
+                                {file.name.split('.').pop().toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFile(idx)}
+                            className="absolute top-3 right-3 p-1 rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                            aria-label={`Remove ${file.name}`}
+                            title="Remove file"
+                          >
+                            <X size={15} />
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFile(idx)}
-                          className="absolute top-3 right-3 p-1 rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                          aria-label={`Remove ${file.name}`}
-                          title="Remove file"
-                        >
-                          <X size={15} />
-                        </button>
                       </div>
-                    </div>
                     );
                   })}
                 </div>

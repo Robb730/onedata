@@ -10,7 +10,7 @@ import { User } from 'lucide-react'
 console.log("main loaded")
 
 createRoot(document.getElementById('root')).render(
-  
+
   <StrictMode>
     <BrowserRouter>
       <UserProvider>
