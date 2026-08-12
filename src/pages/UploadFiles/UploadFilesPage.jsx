@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Upload,
   FileText,
@@ -130,10 +130,11 @@ export default function UploadFilesPage() {
   const isSectionFocal = role === "section_focal";
   const isSectionPersonnel = role === "section_personnel";
   const isSectionScoped = isSectionFocal || isSectionPersonnel;
-
-  console.log("ROLE:", role, "| userProfile:", userProfile);
-
+  const [uploadErrorMessage, setUploadErrorMessage] = useState("");
   const [selectedFolder, setSelectedFolder] = useState(null);
+  const toastTimeoutRef = useRef(null);
+  const uploadInFlightRef = useRef(false);
+  console.log("ROLE:", role, "| userProfile:", userProfile);
 
   // selectedFolder is now { id, name, divisionId, divisionName } or null
   // ── Auto-resolve the assigned section for section_focal / section_personnel ──
@@ -255,10 +256,10 @@ export default function UploadFilesPage() {
           requestedOn: r.created_at, // ← add this line
           dueDate: r.deadline
             ? new Date(r.deadline).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
             : "—",
           requestedBy: r.users?.full_name ?? "Unknown",
           requesterRole: getRoleDisplay(r.users?.role) ?? "",
@@ -478,7 +479,6 @@ export default function UploadFilesPage() {
       });
     } catch (err) {
       console.error("Upload failed:", err);
-      alert(`Upload failed: ${err.message}`);
       setUploadedFiles((files) =>
         files.map((f) =>
           f.id === newEntry.id ? { ...f, status: "Failed" } : f,
@@ -492,6 +492,8 @@ export default function UploadFilesPage() {
         details: err.message,
         status: "Failed",
       });
+
+      throw err;
     }
 
     return newEntry;
@@ -849,8 +851,12 @@ export default function UploadFilesPage() {
     fileOrFiles,
     linkedRequestId,
   ) => {
+    if (uploadInFlightRef.current) return;
+    uploadInFlightRef.current = true;
+
     setShowUploadModal(false);
     setPendingFile(null);
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     setUploadToastStatus("uploading");
 
     try {
@@ -880,26 +886,34 @@ export default function UploadFilesPage() {
 
       setUploadToastStatus("success");
     } catch (e) {
+      setUploadErrorMessage(e.message || "An error occurred during upload.");
       setUploadToastStatus("error");
     }
 
-    setTimeout(() => {
-      setUploadToastStatus((prev) => (prev !== "uploading" ? null : prev));
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => {
+      setUploadToastStatus(null);
+      toastTimeoutRef.current = null;
     }, 4000);
+
+    uploadInFlightRef.current = false;
   };
 
-  const handleRequestFileUpload = async (
+  const handleRequestFileUpload = async ( 
     fileName,
     schoolYear,
     uploadType,
     fileOrFiles,
   ) => {
+    if (uploadInFlightRef.current) return;
+    uploadInFlightRef.current = true;
     const req = pendingRequestUpload;
 
     setShowUploadModal(false);
     setPendingFile(null);
     setPendingRequestUpload(null);
 
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     setUploadToastStatus("uploading");
 
     try {
@@ -927,12 +941,16 @@ export default function UploadFilesPage() {
       setUploadToastStatus("success");
     } catch (err) {
       console.error("Failed to update file request status or upload:", err);
+      setUploadErrorMessage(err.message || "An error occurred during upload.");
       setUploadToastStatus("error");
     }
 
-    setTimeout(() => {
-      setUploadToastStatus((prev) => (prev !== "uploading" ? null : prev));
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => {
+      setUploadToastStatus(null);
+      toastTimeoutRef.current = null;
     }, 4000);
+    uploadInFlightRef.current = false;
   };
 
   const filteredRequests = fileRequests.filter((r) => {
@@ -1005,11 +1023,10 @@ export default function UploadFilesPage() {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`border-2 border-dashed rounded-xl p-10 text-center transition-all ${
-          isDragging
-            ? "border-indigo-400 bg-indigo-50"
-            : "border-gray-300 hover:border-gray-400"
-        }`}
+        className={`border-2 border-dashed rounded-xl p-10 text-center transition-all ${isDragging
+          ? "border-indigo-400 bg-indigo-50"
+          : "border-gray-300 hover:border-gray-400"
+          }`}
       >
         <div className="flex flex-col items-center justify-center">
           <div
@@ -1075,11 +1092,10 @@ export default function UploadFilesPage() {
                 <button
                   key={f}
                   onClick={() => setFileRequestFilter(f)}
-                  className={`flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl text-[10.5px] font-bold transition-colors ${
-                    isActive
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "bg-slate-50 text-slate-500 hover:bg-slate-100"
-                  }`}
+                  className={`flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl text-[10.5px] font-bold transition-colors ${isActive
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-slate-50 text-slate-500 hover:bg-slate-100"
+                    }`}
                 >
                   <span className="text-[13px] leading-none">{counts[f]}</span>
                   <span className="leading-none">{f}</span>
@@ -1420,11 +1436,10 @@ export default function UploadFilesPage() {
 
         {/* Toast Notification */}
         <div
-          className={`fixed bottom-8 right-8 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${
-            uploadToastStatus
-              ? "translate-x-0 opacity-100 pointer-events-auto"
-              : "translate-x-[120%] opacity-0 pointer-events-none"
-          }`}
+          className={`fixed bottom-8 right-8 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${uploadToastStatus
+            ? "translate-x-0 opacity-100 pointer-events-auto"
+            : "translate-x-[120%] opacity-0 pointer-events-none"
+            }`}
           style={{
             width: "380px",
             minHeight: "76px",
@@ -1442,13 +1457,12 @@ export default function UploadFilesPage() {
         >
           {/* Soft background gradient on the left */}
           <div
-            className={`absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r to-transparent ${
-              uploadToastStatus === "success"
-                ? "from-emerald-100/60"
-                : uploadToastStatus === "error"
-                  ? "from-red-100/60"
-                  : "from-blue-100/60"
-            }`}
+            className={`absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r to-transparent ${uploadToastStatus === "success"
+              ? "from-emerald-100/60"
+              : uploadToastStatus === "error"
+                ? "from-red-100/60"
+                : "from-blue-100/60"
+              }`}
           />
 
           {/* Content */}
@@ -1510,7 +1524,7 @@ export default function UploadFilesPage() {
                 {uploadToastStatus === "uploading"
                   ? "Please wait, your file is uploading..."
                   : uploadToastStatus === "error"
-                    ? "An error occurred during upload."
+                    ? uploadErrorMessage || "An error occurred during upload."
                     : "File uploaded successfully."}
               </p>
             </div>
