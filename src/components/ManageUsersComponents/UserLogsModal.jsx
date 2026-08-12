@@ -190,34 +190,48 @@ export default function UserLogsModal({ isOpen, onClose, user }) {
   const totalActions = logs.length;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 sm:p-6 animate-in fade-in duration-200">
-      <div className="bg-white rounded-[24px] shadow-[0_20px_60px_rgba(15,23,42,0.15)] w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+    <div
+      className="fixed inset-x-0 bottom-0 top-14 lg:inset-0 z-[100] flex items-end lg:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-0 lg:p-6"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-t-2xl lg:rounded-[24px] shadow-[0_20px_60px_rgba(15,23,42,0.15)] w-full max-w-5xl max-h-[calc(100dvh-3.5rem)] lg:max-h-[90vh] flex flex-col overflow-hidden border border-slate-200 border-b-0 lg:border-b"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="lg:hidden flex justify-center pt-2.5 shrink-0">
+          <div className="h-1 w-10 rounded-full bg-slate-200" />
+        </div>
         {/* Header */}
-        <div className="flex items-center justify-between px-7 py-6 border-b border-slate-100 bg-white">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-black text-[1.1rem] shadow-sm shrink-0">
-              {user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+        <div className="flex items-center justify-between px-4 sm:px-7 py-4 sm:py-6 border-b border-slate-100 bg-white shrink-0 gap-3">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-black text-sm sm:text-[1.1rem] shadow-sm shrink-0">
+              {user.name.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase()}
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-800 tracking-tight leading-tight">{user.name}</h2>
-              <div className="flex items-center gap-2 mt-1.5">
-                <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-full text-[0.7rem] font-bold">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-xl font-bold text-slate-800 tracking-tight leading-tight truncate">
+                {user.name}
+              </h2>
+              <div className="flex items-center gap-2 mt-1 sm:mt-1.5 flex-wrap">
+                <span className="px-2 sm:px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-full text-[0.65rem] sm:text-[0.7rem] font-bold">
                   {user.role}
                 </span>
-                <span className="text-[0.8rem] font-medium text-slate-400">{user.division}</span>
+                <span className="text-[0.72rem] sm:text-[0.8rem] font-medium text-slate-400 truncate">
+                  {user.division}
+                </span>
               </div>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
           >
             <X size={20} strokeWidth={2.5} />
           </button>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 px-7 py-5 border-b border-slate-100 bg-slate-50/50">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 px-4 sm:px-7 py-4 sm:py-5 border-b border-slate-100 bg-slate-50/50 shrink-0">
           <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center shrink-0">
               <Activity size={18} strokeWidth={2.5} />
@@ -266,14 +280,14 @@ export default function UserLogsModal({ isOpen, onClose, user }) {
         </div>
 
         {/* Filter */}
-        <div className="px-7 py-4 border-b border-slate-100 bg-white">
-          <div className="flex items-center gap-3">
-            <label className="text-[0.8rem] font-bold text-slate-700">Filter by Action:</label>
-            <div className="relative">
+        <div className="px-4 sm:px-7 py-3 sm:py-4 border-b border-slate-100 bg-white shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <label className="text-[0.8rem] font-bold text-slate-700 shrink-0">Filter by Action:</label>
+            <div className="relative w-full sm:w-auto">
               <select
                 value={filterAction}
                 onChange={(e) => setFilterAction(e.target.value)}
-                className="appearance-none border border-slate-200 rounded-[10px] pl-3.5 pr-8 py-2 text-[0.8rem] font-semibold text-slate-700 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-shadow bg-white shadow-sm cursor-pointer"
+                className="w-full sm:w-auto appearance-none border border-slate-200 rounded-[10px] pl-3.5 pr-8 py-2.5 min-h-[44px] text-[0.8rem] font-semibold text-slate-700 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-shadow bg-white shadow-sm cursor-pointer"
               >
                 <option value="All">All Actions</option>
                 <option value="Upload">Upload</option>
@@ -287,24 +301,56 @@ export default function UserLogsModal({ isOpen, onClose, user }) {
                 <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
               </div>
             </div>
-            <span className="ml-auto text-[0.8rem] font-medium text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
+            <span className="sm:ml-auto text-[0.75rem] sm:text-[0.8rem] font-medium text-slate-400 bg-slate-100 px-3 py-1.5 rounded-full text-center sm:text-left">
               Showing <span className="font-bold text-slate-700">{filteredLogs.length}</span> of {totalActions} activities
             </span>
           </div>
         </div>
 
-        {/* Logs Table */}
-        <div className="flex-1 overflow-auto bg-slate-50/30">
+        {/* Logs */}
+        <div className="flex-1 overflow-auto bg-slate-50/30 min-h-0">
           {filteredLogs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20">
+            <div className="flex flex-col items-center justify-center py-16 sm:py-20 px-4">
               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 shadow-sm border border-slate-200">
                 <FileText className="text-slate-400" size={28} />
               </div>
               <p className="text-slate-700 font-bold text-[0.9rem]">No activity logs found</p>
-              <p className="text-[0.8rem] text-slate-500 mt-1">This user hasn't performed any actions yet</p>
+              <p className="text-[0.8rem] text-slate-500 mt-1 text-center">This user hasn&apos;t performed any actions yet</p>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse">
+            <>
+              {/* Mobile card list */}
+              <div className="lg:hidden p-3 sm:p-4 space-y-3">
+                {filteredLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[0.72rem] font-bold border ${getActionColor(
+                          log.action
+                        )}`}
+                      >
+                        {getActionIcon(log.action)}
+                        {log.action}
+                      </span>
+                      <span className={`text-[0.72rem] font-bold flex items-center gap-1 shrink-0 ${getStatusColor(log.status)}`}>
+                        {log.status}
+                      </span>
+                    </div>
+                    <p className="text-sm font-bold text-slate-800 truncate">{log.fileName}</p>
+                    <p className="text-[0.75rem] font-medium text-slate-500 mt-1 truncate">{log.folder}</p>
+                    <p className="text-[0.72rem] text-slate-400 mt-2 flex items-center gap-1">
+                      <Calendar size={12} />
+                      {log.timestamp}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop table */}
+              <table className="hidden lg:table w-full text-left border-collapse">
               <thead className="bg-white sticky top-0 z-10 shadow-sm shadow-slate-100/50">
                 <tr className="border-b border-slate-200/80">
                   <th className="px-7 py-3 text-[0.75rem] font-bold text-slate-500 uppercase tracking-wider">Action</th>
@@ -356,14 +402,16 @@ export default function UserLogsModal({ isOpen, onClose, user }) {
                 ))}
               </tbody>
             </table>
+            </>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-7 py-5 border-t border-slate-100 bg-white flex justify-end">
+        <div className="px-4 sm:px-7 py-4 sm:py-5 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-5 border-t border-slate-100 bg-white flex justify-end shrink-0">
           <button
+            type="button"
             onClick={onClose}
-            className="px-6 py-2.5 bg-slate-900 text-white rounded-[10px] hover:bg-slate-800 hover:shadow-md font-bold text-[0.85rem] transition-all"
+            className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 bg-slate-900 text-white rounded-[10px] hover:bg-slate-800 hover:shadow-md font-bold text-[0.85rem] transition-all"
           >
             Close Logs
           </button>

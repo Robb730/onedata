@@ -254,15 +254,15 @@ export default function SchoolYearPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50/40 flex items-center justify-center">
+      <div className="min-h-full bg-slate-50/40 flex items-center justify-center py-24">
         <p className="text-sm font-medium text-slate-400">Loading school year data…</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/40">
-      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
+    <div className="min-h-full bg-slate-50/40 overflow-x-hidden">
+      <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 py-5 sm:py-8">
         <SchoolYearHeader onSchedule={openCreateDialog} />
 
         {error && (
@@ -271,7 +271,7 @@ export default function SchoolYearPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 mb-5">
           <ActiveSchoolYearCard year={activeYear} onForceTransition={handleForceTransition} />
           <ScheduledSchoolYearCard
             year={scheduledYear}
@@ -279,8 +279,6 @@ export default function SchoolYearPage() {
             onEdit={openEditDialog}
           />
         </div>
-
-
 
         <PreviousSchoolYearsTable
           years={previousYears}
@@ -304,12 +302,11 @@ export default function SchoolYearPage() {
 
         {/* Success Toast */}
         <div
-          className={`fixed bottom-8 right-8 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${showToast
+          className={`fixed left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(6.5rem+env(safe-area-inset-bottom))] lg:bottom-8 sm:left-auto sm:right-8 sm:w-[380px] ${showToast
               ? "translate-x-0 opacity-100 pointer-events-auto"
               : "translate-x-[120%] opacity-0 pointer-events-none"
             }`}
           style={{
-            width: "380px",
             minHeight: "76px",
             borderRadius: "16px",
             boxShadow: showToast
@@ -330,7 +327,7 @@ export default function SchoolYearPage() {
             >
               <CheckCircle size={22} className="text-emerald-500" strokeWidth={2.5} />
             </div>
-            <div className="flex flex-col justify-center flex-1">
+            <div className="flex flex-col justify-center flex-1 min-w-0">
               <p style={{ fontSize: "15px", fontWeight: 700, color: "#0F172A", lineHeight: 1.2, margin: 0 }}>
                 Success
               </p>

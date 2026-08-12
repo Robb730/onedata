@@ -101,9 +101,9 @@ function ActionConfirmModal({ open, kind, request, onClose, onConfirm, isWorking
   }[kind];
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 backdrop-blur-[2px] p-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-[0_32px_80px_rgba(15,23,42,0.25)] border border-slate-200 overflow-hidden">
-        <div className="flex items-start gap-4 px-6 pt-6 pb-5 border-b border-slate-100">
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-slate-950/50 backdrop-blur-[2px] p-0 sm:p-4">
+      <div className="w-full max-w-sm max-h-[90dvh] overflow-y-auto bg-white rounded-t-2xl sm:rounded-2xl shadow-[0_32px_80px_rgba(15,23,42,0.25)] border border-slate-200">
+        <div className="flex items-start gap-3 sm:gap-4 px-4 sm:px-6 pt-5 sm:pt-6 pb-4 sm:pb-5 border-b border-slate-100">
           <div className={`w-11 h-11 rounded-xl ${copy.iconBg} flex items-center justify-center shrink-0 shadow-sm`}>
             {copy.icon}
           </div>
@@ -116,12 +116,12 @@ function ActionConfirmModal({ open, kind, request, onClose, onConfirm, isWorking
           </button>
         </div>
 
-        <div className="px-6 pt-4">
+        <div className="px-4 sm:px-6 pt-4">
           <p className="text-[13px] text-slate-600 leading-relaxed">{copy.body}</p>
         </div>
 
         {kind === "deny" && (
-          <div className="px-6 pt-4">
+          <div className="px-4 sm:px-6 pt-4">
             <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
               Reason (optional, shown to requester)
             </p>
@@ -136,7 +136,7 @@ function ActionConfirmModal({ open, kind, request, onClose, onConfirm, isWorking
           </div>
         )}
 
-        <div className="flex gap-3 px-6 py-6">
+        <div className="flex gap-3 px-4 sm:px-6 py-5 sm:py-6 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-6">
           <button
             onClick={onClose}
             disabled={isWorking}
@@ -263,14 +263,25 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
 
   useEffect(() => {
     let timeout;
+    let raf1;
+    let raf2;
     if (isOpen) {
       setShouldRender(true);
-      setEntered(true);
+      document.body.style.overflow = "hidden";
+      raf1 = requestAnimationFrame(() => {
+        raf2 = requestAnimationFrame(() => setEntered(true));
+      });
     } else {
       setEntered(false);
+      document.body.style.overflow = "";
       timeout = setTimeout(() => setShouldRender(false), SIDEBAR_TRANSITION_MS);
     }
-    return () => timeout && clearTimeout(timeout);
+    return () => {
+      timeout && clearTimeout(timeout);
+      if (raf1) cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
+      document.body.style.overflow = "";
+    };
   }, [isOpen]);
 
   async function load() {
@@ -354,40 +365,31 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
 
   return (
     <>
-      <style>{`
-        @keyframes davSidebarBackdropIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes davSidebarBackdropOut { from { opacity: 1; } to { opacity: 0; } }
-        @keyframes davSidebarSlideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
-        @keyframes davSidebarSlideOut { from { transform: translateX(0); } to { transform: translateX(100%); } }
-      `}</style>
-
       <div
-        className="fixed inset-0 z-40 bg-slate-950/10 backdrop-blur-[1px]"
-        style={{
-          animation: entered
-            ? "davSidebarBackdropIn 280ms ease-out forwards"
-            : `davSidebarBackdropOut ${SIDEBAR_TRANSITION_MS}ms ease-in forwards`,
-        }}
+        className={`fixed inset-0 z-[55] bg-slate-950/40 lg:bg-slate-950/10 backdrop-blur-[1px] transition-opacity duration-300 ${
+          entered ? "opacity-100" : "opacity-0"
+        }`}
         onClick={onClose}
       />
 
       <aside
-        className="fixed top-0 right-0 z-50 h-screen w-full max-w-[440px] bg-white border-l border-slate-200 shadow-[0_0_60px_rgba(15,23,42,0.15)] flex flex-col will-change-transform"
-        style={{
-          animation: entered
-            ? "davSidebarSlideIn 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards"
-            : `davSidebarSlideOut ${SIDEBAR_TRANSITION_MS}ms cubic-bezier(0.4, 0, 1, 1) forwards`,
-        }}
+        className={`fixed z-[60] bg-white flex flex-col will-change-transform shadow-[0_0_60px_rgba(15,23,42,0.15)]
+          left-0 right-0 bottom-0 max-h-[92dvh] rounded-t-2xl
+          lg:left-auto lg:top-0 lg:right-0 lg:h-dvh lg:max-h-none lg:w-full lg:max-w-[440px] lg:rounded-none lg:border-l lg:border-slate-200
+          transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
+          ${entered ? "translate-y-0 lg:translate-x-0" : "translate-y-full lg:translate-y-0 lg:translate-x-full"}
+        `}
       >
-        <div className="h-1.5 w-full bg-blue-600 shrink-0" />
+        <div className="lg:hidden flex justify-center pt-2.5 pb-1 shrink-0">
+          <div className="h-1 w-10 rounded-full bg-slate-200" />
+        </div>
+        <div className="hidden lg:block h-1.5 w-full bg-blue-600 shrink-0" />
 
-        <div className="flex items-center justify-between px-6 pt-7 pb-5 border-b border-slate-100 shrink-0 bg-gradient-to-b from-slate-50/80 to-white relative overflow-hidden">
-          {/* Subtle background glow */}
+        <div className="flex items-center justify-between gap-3 px-4 pt-2 pb-3 lg:px-6 lg:pt-7 lg:pb-5 border-b border-slate-100 shrink-0 bg-gradient-to-b from-slate-50/80 to-white relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-blue-100/50 via-transparent to-transparent pointer-events-none" />
 
-          <div className="flex items-center gap-4 relative z-10">
-            <div className="relative w-[52px] h-[52px] rounded-2xl bg-white shadow-[0_8px_24px_rgba(37,99,235,0.12)] border border-blue-50 flex items-center justify-center shrink-0">
-              {/* Inner glow behind the animated icon */}
+          <div className="flex items-center gap-3 lg:gap-4 relative z-10 min-w-0">
+            <div className="relative w-10 h-10 lg:w-[52px] lg:h-[52px] rounded-xl lg:rounded-2xl bg-white shadow-[0_8px_24px_rgba(37,99,235,0.12)] border border-blue-50 flex items-center justify-center shrink-0">
               <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full" />
 
               <lord-icon
@@ -397,11 +399,11 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
                 stroke="bold"
                 state="in-reveal"
                 colors="primary:#2563eb,secondary:#2563eb"
-                style={{ width: "36px", height: "36px", zIndex: 1 }}
+                style={{ width: "28px", height: "28px", zIndex: 1 }}
               ></lord-icon>
             </div>
-            <div>
-              <h2 className="text-[1.15rem] font-black text-slate-800 tracking-[-0.02em] leading-tight drop-shadow-sm">
+            <div className="min-w-0">
+              <h2 className="text-[1rem] lg:text-[1.15rem] font-black text-slate-800 tracking-[-0.02em] leading-tight drop-shadow-sm">
                 Division Access Requests
               </h2>
               {pending.length > 0 && (
@@ -411,12 +413,12 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
               )}
             </div>
           </div>
-          <button onClick={onClose} className="relative z-10 p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+          <button onClick={onClose} className="relative z-10 p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0">
             <X size={18} strokeWidth={2.5} />
           </button>
         </div>
 
-        <div className="flex items-center gap-1 px-4 pt-3 shrink-0">
+        <div className="flex items-center gap-1 px-3 lg:px-4 pt-3 shrink-0">
           {[
             { key: "pending", label: "Pending", count: pending.length },
             { key: "all", label: "All", count: requests.length },
@@ -425,7 +427,7 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12.5px] font-bold transition-colors ${tab === t.key ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+              className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 px-2 lg:px-3 py-2 rounded-lg text-[11px] lg:text-[12.5px] font-bold transition-colors ${tab === t.key ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
                 }`}
             >
               {t.label}
@@ -438,10 +440,10 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
             </button>
           ))}
         </div>
-        <div className="h-px bg-slate-100 mx-5 mt-3 shrink-0" />
+        <div className="h-px bg-slate-100 mx-4 lg:mx-5 mt-3 shrink-0" />
 
-        <div className="px-5 pt-3 shrink-0">
-          <div className="flex items-start gap-2 rounded-xl bg-blue-50/70 border border-blue-100 px-3.5 py-2.5">
+        <div className="px-4 lg:px-5 pt-3 shrink-0">
+          <div className="flex items-start gap-2 rounded-xl bg-blue-50/70 border border-blue-100 px-3 py-2.5">
             <ShieldCheck size={13} className="text-blue-500 shrink-0 mt-0.5" />
             <p className="text-[11px] text-blue-700 leading-relaxed">
               Approving only lets the requester open this division's folder. It does not
@@ -450,7 +452,7 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto px-4 lg:px-5 py-4 space-y-3">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-sm text-slate-400 gap-2">
               <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
@@ -477,7 +479,7 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
         </div>
 
         {requests.length > 0 && (
-          <div className="px-5 py-3.5 border-t border-slate-100 shrink-0">
+          <div className="px-4 lg:px-5 py-3.5 pb-[calc(0.875rem+env(safe-area-inset-bottom))] border-t border-slate-100 shrink-0">
             <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 mb-1.5">
               <span>{reviewedCount} of {requests.length} reviewed</span>
               <span>{reviewedPct}%</span>

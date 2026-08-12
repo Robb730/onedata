@@ -98,10 +98,9 @@ export default function FileAccessRequestModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-[0_32px_80px_rgba(15,23,42,0.22)] border border-slate-200 overflow-hidden">
-        {/* Header */}
-        <div className="flex items-start gap-4 px-6 pt-6 pb-5 border-b border-slate-100">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/50 p-0 sm:p-4">
+      <div className="w-full max-w-md max-h-[92dvh] overflow-y-auto bg-white rounded-t-2xl sm:rounded-2xl shadow-[0_32px_80px_rgba(15,23,42,0.22)] border border-slate-200">
+        <div className="flex items-start gap-3 sm:gap-4 px-4 sm:px-6 pt-5 sm:pt-6 pb-4 sm:pb-5 border-b border-slate-100">
           <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
             <Lock size={20} className="text-white" />
           </div>
@@ -124,7 +123,7 @@ export default function FileAccessRequestModal({
         </div>
 
         {/* File checklist */}
-        <div className="px-6 pt-4 max-h-64 overflow-y-auto">
+        <div className="px-4 sm:px-6 pt-4 max-h-64 overflow-y-auto">
           <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">
             Files to request ({selectedIds.size} selected)
           </p>
@@ -167,7 +166,7 @@ export default function FileAccessRequestModal({
         </div>
 
         {/* Reason for access (required, short) */}
-        <div className="px-6 pt-4">
+        <div className="px-4 sm:px-6 pt-4">
           <div className="flex items-center justify-between mb-1.5">
             <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
               Reason for access
@@ -200,7 +199,7 @@ export default function FileAccessRequestModal({
         </div>
 
         {/* Disclaimer */}
-        <div className="px-6 pt-4">
+        <div className="px-4 sm:px-6 pt-4">
           <div className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3">
             <p className="text-[12px] text-blue-700 leading-relaxed">
               If approved, you'll be able to view and download the selected
@@ -211,7 +210,7 @@ export default function FileAccessRequestModal({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3 px-6 py-6">
+        <div className="flex gap-3 px-4 sm:px-6 py-5 sm:py-6 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-6">
           <button
             onClick={onClose}
             disabled={isSubmitting}

@@ -18,6 +18,10 @@ const contacts = [
 
 export function Footer() {
   const handleNav = (href) => {
+    if (href === "#home") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     const el = document.querySelector(href);
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
@@ -29,10 +33,10 @@ export function Footer() {
         background: "linear-gradient(180deg, #0f172a 0%, #0b111f 100%)",
       }}
     >
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-16 pb-10">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 pt-12 md:pt-16 pb-8 md:pb-10">
 
         {/* Top grid — 3 columns: Brand, Quick Links, Contact */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-14">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 mb-10 md:mb-14">
 
           {/* Brand column */}
           <div className="md:col-span-1">
@@ -107,7 +111,7 @@ export function Footer() {
         <div className="h-px bg-gradient-to-r from-transparent via-slate-700/50 to-transparent mb-7" />
 
         {/* Bottom bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <p className="text-[0.7rem] text-slate-600 font-medium">
             © {new Date().getFullYear()} OneData · DepED Baliwag Division · All rights reserved.
           </p>

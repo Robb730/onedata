@@ -39,21 +39,20 @@ export default function FileRequestsPanel({ isOpen, onClose, requests = [], isLo
     let raf1, raf2, t2;
     if (isOpen) {
       setShouldRender(true);
-      // Double rAF: the first rAF still fires before the browser has painted
-      // the initial (off-screen) state in some cases, which skips the
-      // transition entirely. Waiting a full extra frame guarantees a paint
-      // happens with animateIn=false before we flip it to true.
+      document.body.style.overflow = "hidden";
       raf1 = requestAnimationFrame(() => {
         raf2 = requestAnimationFrame(() => setAnimateIn(true));
       });
     } else {
       setAnimateIn(false);
+      document.body.style.overflow = "";
       t2 = setTimeout(() => setShouldRender(false), 320);
     }
     return () => {
       if (raf1) cancelAnimationFrame(raf1);
       if (raf2) cancelAnimationFrame(raf2);
       if (t2) clearTimeout(t2);
+      document.body.style.overflow = "";
     };
   }, [isOpen]);
 
@@ -64,26 +63,31 @@ export default function FileRequestsPanel({ isOpen, onClose, requests = [], isLo
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex justify-end transition-colors duration-300 ease-out ${
+      className={`fixed inset-0 z-[60] transition-colors duration-300 ease-out ${
         animateIn ? "bg-slate-950/40 backdrop-blur-[2px]" : "bg-slate-950/0"
       }`}
       onClick={onClose}
     >
       <div
-        className={`w-full max-w-md h-full bg-white shadow-[-24px_0_60px_rgba(15,23,42,0.18)] flex flex-col transform transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          animateIn ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed bg-white flex flex-col shadow-[0_0_60px_rgba(15,23,42,0.18)]
+          left-0 right-0 bottom-0 max-h-[92dvh] rounded-t-2xl
+          lg:left-auto lg:top-0 lg:right-0 lg:h-dvh lg:max-h-none lg:w-full lg:max-w-md lg:rounded-none
+          transform transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]
+          ${animateIn ? "translate-y-0 lg:translate-x-0" : "translate-y-full lg:translate-y-0 lg:translate-x-full"}
+        `}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-slate-100 shrink-0 bg-gradient-to-b from-slate-50/80 to-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center shadow-sm shadow-blue-200">
+        <div className="lg:hidden flex justify-center pt-2.5 pb-1 shrink-0">
+          <div className="h-1 w-10 rounded-full bg-slate-200" />
+        </div>
+        <div className="px-4 pt-2 pb-3 lg:px-6 lg:pt-6 lg:pb-4 border-b border-slate-100 shrink-0 bg-gradient-to-b from-slate-50/80 to-white">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl lg:rounded-2xl bg-blue-600 flex items-center justify-center shadow-sm shadow-blue-200 shrink-0">
                 <Inbox size={18} className="text-white" />
               </div>
-              <div>
-                <h2 className="text-[1.1rem] font-black text-slate-800 tracking-[-0.01em] leading-tight">
+              <div className="min-w-0">
+                <h2 className="text-[1rem] lg:text-[1.1rem] font-black text-slate-800 tracking-[-0.01em] leading-tight">
                   Files Requested
                 </h2>
                 <p className="text-[0.72rem] text-slate-400 font-medium mt-0.5">
@@ -93,7 +97,7 @@ export default function FileRequestsPanel({ isOpen, onClose, requests = [], isLo
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+              className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0"
             >
               <X size={18} />
             </button>
@@ -129,7 +133,7 @@ export default function FileRequestsPanel({ isOpen, onClose, requests = [], isLo
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-3 bg-slate-50/30">
+        <div className="flex-1 overflow-y-auto px-4 lg:px-5 py-4 lg:py-5 space-y-3 bg-slate-50/30 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           {isLoading ? (
             <div className="flex items-center justify-center py-16 gap-2 text-sm text-slate-400">
               <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />

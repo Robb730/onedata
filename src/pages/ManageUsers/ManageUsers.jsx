@@ -421,7 +421,7 @@ export default function ManageUsers() {
   // ─── UI ──────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50/40 flex items-center justify-center">
+      <div className="min-h-full bg-slate-50/40 flex items-center justify-center py-16">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-500 border-t-transparent" />
           <p className="text-[0.78rem] font-semibold text-slate-400">Loading users...</p>
@@ -431,16 +431,18 @@ export default function ManageUsers() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/40">
-      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
+    <div className="min-h-full overflow-x-hidden bg-slate-50/40">
+      <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 py-5 sm:py-8">
         {/* Toast Notification */}
         <div
-          className={`fixed bottom-8 right-8 z-50 flex bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${showToast
-            ? "translate-x-0 opacity-100 pointer-events-auto"
-            : "translate-x-[120%] opacity-0 pointer-events-none"
-            }`}
+          className={`fixed left-4 right-4 sm:left-auto sm:right-6 sm:w-[380px] z-50 flex bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-8 ${
+            showToast
+              ? "translate-y-0 sm:translate-x-0 opacity-100 pointer-events-auto"
+              : "translate-y-4 sm:translate-y-0 sm:translate-x-[120%] opacity-0 pointer-events-none"
+          }`}
           style={{
-            width: "380px",
+            maxWidth: "380px",
+            marginLeft: "auto",
             height: "76px",
             borderRadius: "16px",
             boxShadow: showToast
@@ -490,21 +492,22 @@ export default function ManageUsers() {
           </div>
         </div>
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
+        <div className="mb-5 sm:mb-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-2">
             <div>
-              <h1 className="text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
+              <h1 className="text-xl sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
                 Manage Users
               </h1>
-              <p className="text-[0.78rem] text-slate-400 font-medium mt-1">
+              <p className="hidden lg:block text-[0.78rem] text-slate-400 font-medium mt-1">
                 Manage user accounts and access permissions
               </p>
             </div>
 
             <button
               id="manage-users-add-btn"
+              type="button"
               onClick={() => setAddingNewUser(true)}
-              className="inline-flex items-center gap-2 rounded-[10px] bg-blue-500 px-4 py-2.5 text-[0.8rem] font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer shrink-0"
+              className="hidden lg:inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 min-h-[44px] px-4 py-2.5 text-[0.8rem] font-semibold text-white shadow-sm shadow-blue-600/20 hover:bg-blue-700 active:scale-[0.98] transition-all cursor-pointer shrink-0"
             >
               <UserPlus size={15} />
               Add New User
@@ -512,27 +515,24 @@ export default function ManageUsers() {
           </div>
 
           {/* ── Summary / Stat Cards Row ────────────────────── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-7">
             {statCardsData.map((stat) => (
               <div
                 key={stat.label}
-                className="group relative rounded-[16px] border border-slate-100/80 bg-white p-5 transition-all duration-300 hover:shadow-[0_8px_28px_rgba(15,23,42,0.08)] hover:-translate-y-[2px]"
-                style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
+                className="group relative rounded-2xl border border-slate-200/80 bg-white p-3.5 sm:p-5 transition-all duration-300 hover:shadow-[0_8px_28px_rgba(15,23,42,0.08)] lg:hover:-translate-y-[2px] shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
               >
-                {/* Top row: Circle Icon (Left) + Large Metric Value (Right) */}
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
                   <div
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white shadow-sm transition-transform duration-300 group-hover:scale-105"
+                    className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full text-white shadow-sm transition-transform duration-300 group-hover:scale-105"
                     style={{ background: stat.gradient }}
                   >
                     {stat.icon}
                   </div>
-                  <p className="text-[1.75rem] font-black text-slate-800 tracking-tight leading-none">
+                  <p className="text-xl sm:text-[1.75rem] font-black text-slate-800 tracking-tight leading-none">
                     {stat.value}
                   </p>
                 </div>
-                {/* Bottom row: Label */}
-                <p className="text-[0.6rem] font-bold text-slate-400 uppercase tracking-[0.08em]">
+                <p className="text-[0.55rem] sm:text-[0.6rem] font-bold text-slate-400 uppercase tracking-[0.06em] sm:tracking-[0.08em] leading-snug">
                   {stat.label}
                 </p>
               </div>
@@ -540,10 +540,7 @@ export default function ManageUsers() {
           </div>
 
           {/* ── Search & Filter Controls ─────────────────────── */}
-          <div
-            className="rounded-[14px] border border-slate-100/80 bg-white p-3.5 mb-8 flex flex-col sm:flex-row items-center justify-between gap-3"
-            style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.04)" }}
-          >
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-3.5 mb-5 sm:mb-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
             <div className="relative flex-1 w-full">
               <Search
                 size={15}
@@ -555,20 +552,20 @@ export default function ManageUsers() {
                 placeholder="Search by name, ID, or division..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-[10px] border border-slate-200/80 bg-slate-50/50 pl-9 pr-4 py-2 text-[0.8rem] font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                className="w-full min-h-[44px] rounded-xl border border-slate-200/80 bg-slate-50/50 pl-9 pr-4 py-2 text-[0.8rem] font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:bg-white transition-all"
               />
             </div>
 
-            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
-              <span className="text-[0.78rem] font-semibold text-slate-500">
+            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+              <span className="text-[0.78rem] font-semibold text-slate-500 shrink-0">
                 Division:
               </span>
-              <div className="relative flex items-center">
+              <div className="relative flex items-center flex-1 sm:flex-none min-w-0">
                 <select
                   id="user-division-filter"
                   value={selectedDivision}
                   onChange={(e) => setSelectedDivision(e.target.value)}
-                  className="rounded-[10px] border border-slate-200/80 bg-slate-50/50 pl-3.5 pr-8 py-2 text-[0.78rem] font-semibold text-slate-700 outline-none cursor-pointer focus:border-blue-500 focus:bg-white transition-all appearance-none"
+                  className="w-full sm:w-auto min-h-[44px] rounded-xl border border-slate-200/80 bg-slate-50/50 pl-3.5 pr-8 py-2 text-[0.78rem] font-semibold text-slate-700 outline-none cursor-pointer focus:border-blue-500 focus:bg-white transition-all appearance-none"
                 >
                   {divisions.map((div) => (
                     <option key={div} value={div}>
@@ -586,7 +583,7 @@ export default function ManageUsers() {
 
           {/* ── Users Grouped by Division (Categories Sections) ── */}
           {filteredUsers.length > 0 ? (
-            <div className="space-y-9">
+            <div className="space-y-7 sm:space-y-9">
               {Object.entries(groupedUsers)
                 .sort(([a], [b]) => {
                   if (a === "Administrators") return -1;
@@ -595,44 +592,40 @@ export default function ManageUsers() {
                 })
                 .map(([division, divisionUsers]) => (
                   <div key={division}>
-                    {/* Division Category Header */}
-                    <div className="flex items-baseline justify-between mb-4 pb-2 border-b border-slate-200/60">
-                      <h2 className="text-[1.1rem] font-bold text-slate-800 tracking-[-0.01em]">
+                    <div className="flex items-baseline justify-between mb-3 sm:mb-4 pb-2 border-b border-slate-200/60 gap-3">
+                      <h2 className="text-base sm:text-[1.1rem] font-bold text-slate-800 tracking-[-0.01em] truncate">
                         {division}
                       </h2>
-                      <span className="text-[0.75rem] font-semibold text-slate-400">
+                      <span className="text-[0.72rem] sm:text-[0.75rem] font-semibold text-slate-400 shrink-0">
                         {divisionUsers.length} {divisionUsers.length === 1 ? "user" : "users"}
                       </span>
                     </div>
 
-                    {/* User Cards Flex Container for this Division */}
-                    <div className="flex overflow-x-auto gap-5 pb-4 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-slate-50 [&::-webkit-scrollbar-thumb]:bg-slate-200 hover:[&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full snap-x snap-mandatory">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:flex lg:overflow-x-auto lg:gap-5 lg:pb-4 lg:[&::-webkit-scrollbar]:h-1.5 lg:[&::-webkit-scrollbar-track]:bg-slate-50 lg:[&::-webkit-scrollbar-thumb]:bg-slate-200 lg:hover:[&::-webkit-scrollbar-thumb]:bg-slate-300 lg:[&::-webkit-scrollbar-thumb]:rounded-full lg:snap-x lg:snap-mandatory">
                       {divisionUsers.map((user) => (
                         <div
                           key={user.id}
                           onClick={() => setViewingLogsUser(user)}
-                          className="shrink-0 w-[300px] snap-start group relative flex flex-col justify-between rounded-[24px] border border-slate-100 bg-white p-5 transition-all duration-300 hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)] hover:-translate-y-[2px] cursor-pointer"
-                          style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
+                          className="w-full lg:shrink-0 lg:w-[300px] lg:snap-start group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 transition-all duration-300 hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)] lg:hover:-translate-y-[2px] cursor-pointer shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
                         >
-                          {/* Avatar & User Details (Row) */}
-                          <div className="flex gap-4 mb-5 items-start">
+                          <div className="flex gap-3 sm:gap-4 mb-4 sm:mb-5 items-start">
                             <div className="relative shrink-0">
-                              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-black text-[1.1rem] shadow-sm">
+                              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-black text-base sm:text-[1.1rem] shadow-sm">
                                 {user.avatar}
                               </div>
-                              {/* Active dot */}
                               <span
-                                className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-[2.5px] border-white ${user.status === "Active" ? "bg-emerald-500" : "bg-slate-400"
-                                  }`}
+                                className={`absolute bottom-0 right-0 h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full border-[2.5px] border-white ${
+                                  user.status === "Active" ? "bg-emerald-500" : "bg-slate-400"
+                                }`}
                               />
                             </div>
-                            <div className="flex flex-col pt-1 min-w-0">
-                              <h3 className="font-bold text-slate-800 text-[1rem] tracking-tight leading-tight truncate">
+                            <div className="flex flex-col pt-0.5 sm:pt-1 min-w-0 flex-1">
+                              <h3 className="font-bold text-slate-800 text-[0.95rem] sm:text-[1rem] tracking-tight leading-tight truncate">
                                 {user.name}
                               </h3>
                               <div className="mt-1.5 flex items-center">
                                 <span
-                                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[0.7rem] font-bold ${getRoleBadgeColor(
+                                  className={`inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 rounded-full text-[0.65rem] sm:text-[0.7rem] font-bold ${getRoleBadgeColor(
                                     user.role,
                                   )}`}
                                 >
@@ -647,46 +640,94 @@ export default function ManageUsers() {
                             </div>
                           </div>
 
-                          {/* List details */}
-                          <div className="flex flex-col rounded-[12px] border border-slate-100 divide-y divide-slate-100 bg-slate-50/50">
-                            {/* Email */}
+                          <div className="flex flex-col rounded-xl border border-slate-100 divide-y divide-slate-100 bg-slate-50/50">
                             <div className="flex items-center gap-3 px-3 py-2">
                               <Mail size={14} className="text-slate-400 shrink-0" />
-                              <p className="text-[0.78rem] font-medium text-slate-600 truncate">
+                              <p className="text-[0.75rem] sm:text-[0.78rem] font-medium text-slate-600 truncate">
                                 {user.email || "No email provided"}
                               </p>
                             </div>
-                            {/* Division / Section */}
                             <div className="flex items-center gap-3 px-3 py-2">
                               <Building2 size={14} className="text-slate-400 shrink-0" />
                               <div className="flex items-center gap-1.5 min-w-0">
-                                <p className="text-[0.78rem] font-medium text-slate-600 truncate">
+                                <p className="text-[0.75rem] sm:text-[0.78rem] font-medium text-slate-600 truncate">
                                   {user.division}
                                 </p>
-                                {user.role !== "division_focal" && user.section && user.section !== "—" && (
-                                  <>
-                                    <span className="text-slate-300">•</span>
-                                    <span className="text-[0.78rem] font-medium text-slate-600 truncate">
-                                      {user.section}
-                                    </span>
-                                  </>
-                                )}
+                                {user.role !== "division_focal" &&
+                                  user.section &&
+                                  user.section !== "—" && (
+                                    <>
+                                      <span className="text-slate-300 shrink-0">•</span>
+                                      <span className="text-[0.75rem] sm:text-[0.78rem] font-medium text-slate-600 truncate">
+                                        {user.section}
+                                      </span>
+                                    </>
+                                  )}
                               </div>
                             </div>
-                            {/* User ID */}
                             <div className="flex items-center gap-3 px-3 py-2">
                               <Hash size={14} className="text-slate-400 shrink-0" />
-                              <p className="text-[0.78rem] font-medium text-slate-600 truncate">
+                              <p className="text-[0.75rem] sm:text-[0.78rem] font-medium text-slate-600 truncate">
                                 User ID: {user.idNumber ?? "—"}
                               </p>
                             </div>
                           </div>
 
-                          {/* Action Buttons (visible on hover) */}
-                          <div className="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-out">
+                          {/* Mobile / tablet: actions always visible */}
+                          <div className="pt-3 sm:pt-4 flex items-center justify-between gap-2 lg:hidden">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingUser(user);
+                              }}
+                              className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 min-h-[40px] py-2 text-[0.75rem] font-bold text-blue-600 hover:bg-blue-100 transition-colors cursor-pointer"
+                            >
+                              <Edit2 size={12} /> Edit
+                            </button>
+
+                            {user.status === "Inactive" ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActivatingUser(user);
+                                }}
+                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 min-h-[40px] py-2 text-[0.75rem] font-bold text-emerald-600 hover:bg-emerald-100 transition-colors cursor-pointer"
+                              >
+                                <UserCheck size={12} /> Activate
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeactivatingUser(user);
+                                }}
+                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 min-h-[40px] py-2 text-[0.75rem] font-bold text-amber-600 hover:bg-amber-100 transition-colors cursor-pointer"
+                              >
+                                <UserX size={12} /> Deactivate
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingUser(user);
+                              }}
+                              className="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors cursor-pointer"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+
+                          {/* Desktop: actions on hover */}
+                          <div className="hidden lg:grid grid-rows-[0fr] group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-out">
                             <div className="overflow-hidden">
                               <div className="pt-4 flex items-center justify-between gap-2">
                                 <button
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setEditingUser(user);
@@ -698,6 +739,7 @@ export default function ManageUsers() {
 
                                 {user.status === "Inactive" ? (
                                   <button
+                                    type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setActivatingUser(user);
@@ -708,6 +750,7 @@ export default function ManageUsers() {
                                   </button>
                                 ) : (
                                   <button
+                                    type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setDeactivatingUser(user);
@@ -719,6 +762,7 @@ export default function ManageUsers() {
                                 )}
 
                                 <button
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setDeletingUser(user);
@@ -737,11 +781,7 @@ export default function ManageUsers() {
                 ))}
             </div>
           ) : (
-            /* Empty State */
-            <div
-              className="rounded-[16px] border border-slate-100/80 bg-white p-12 text-center"
-              style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
-            >
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-8 sm:p-12 text-center shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
               <UsersIcon className="mx-auto text-slate-300 opacity-60 mb-3" size={36} strokeWidth={1.5} />
               <h3 className="text-[0.95rem] font-bold text-slate-700 mb-1">
                 No users found
@@ -783,6 +823,17 @@ export default function ManageUsers() {
               onAdd={handleAddNewUser}
             />
           )}
+
+          {/* Mobile FAB — Add New User */}
+          <button
+            type="button"
+            onClick={() => setAddingNewUser(true)}
+            aria-label="Add New User"
+            title="Add New User"
+            className="lg:hidden fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-[0_12px_30px_rgba(37,99,235,0.35)] hover:bg-blue-700 active:scale-95 transition-all"
+          >
+            <UserPlus size={22} strokeWidth={2.25} />
+          </button>
           {successEmail && (
             <SuccessModal
               isOpen={!!successEmail}

@@ -81,7 +81,7 @@ export function FolderColorPicker({ currentColorId = "teal", onColorChange }) {
           setOpen((v) => !v);
         }}
         ref={btnRef}
-        className="flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-500 transition-all hover:border-slate-300 hover:text-slate-700 hover:shadow-sm"
+        className="flex items-center justify-center rounded-full border border-slate-200/80 bg-white p-1.5 sm:px-2.5 sm:py-1.5 text-[11px] font-medium text-slate-500 transition-all hover:border-slate-300 hover:text-slate-700 hover:shadow-sm"
         title="Change folder color"
       >
         <Palette size={12} />

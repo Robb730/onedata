@@ -102,6 +102,357 @@ function LockedFileButton({ Icon, label, onClick }) {
   );
 }
 
+function VerifyStatusPill({
+  isVerified,
+  canVerify,
+  isVerifying,
+  onVerify,
+  compact = false,
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!canVerify || isVerifying) return;
+        onVerify?.();
+      }}
+      disabled={!canVerify || isVerifying}
+      title={
+        canVerify
+          ? isVerified
+            ? "Click to unverify"
+            : "Click to verify"
+          : undefined
+      }
+      className={`inline-flex items-center gap-1 rounded-full font-bold border transition-colors ${
+        compact
+          ? "px-1.5 py-0.5 text-[9px]"
+          : "px-2 py-0.5 text-[10px]"
+      } ${
+        isVerified
+          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+          : "bg-slate-100 text-slate-500 border-slate-200"
+      } ${
+        canVerify
+          ? "cursor-pointer hover:brightness-95"
+          : "cursor-default"
+      } disabled:opacity-60 disabled:cursor-not-allowed`}
+    >
+      {isVerified ? (
+        <>
+          <CheckCircle2 size={compact ? 8 : 10} />
+          Verified
+        </>
+      ) : (
+        <>
+          <XCircle size={compact ? 8 : 10} className="opacity-60" />
+          Unverified
+        </>
+      )}
+    </button>
+  );
+}
+
+function MobileFileActionBtn({
+  onClick,
+  disabled,
+  title,
+  children,
+  danger = false,
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.(e);
+      }}
+      disabled={disabled}
+      title={title}
+      className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-colors disabled:opacity-40 ${
+        danger
+          ? "border-slate-100 bg-white text-slate-400 hover:border-red-100 hover:bg-red-50 hover:text-red-500"
+          : "border-slate-100 bg-white text-slate-400 hover:border-blue-100 hover:bg-blue-50 hover:text-blue-600"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Dense enterprise row for mobile list view */
+function MobileFileListCard({
+  file,
+  canEdit,
+  canVerify,
+  isVerifying,
+  isSelected,
+  downloadingId,
+  deletingId,
+  hasAccess,
+  requestStatus,
+  onSelectOrVerify,
+  onVerify,
+  onPreview,
+  onDownload,
+  onDelete,
+  onRequestAccess,
+}) {
+  const { Icon, color, bg } = getFileIcon(file.type);
+  const uploaded = formatRelativeDate(file.rawCreatedAt);
+  const isVerified = file.status === "Verified";
+
+  const actions = canEdit ? (
+    <>
+      <MobileFileActionBtn title="Preview" onClick={onPreview}>
+        <Eye size={15} />
+      </MobileFileActionBtn>
+      <MobileFileActionBtn
+        title="Download"
+        onClick={onDownload}
+        disabled={downloadingId === file.id}
+      >
+        <Download size={15} />
+      </MobileFileActionBtn>
+      <MobileFileActionBtn
+        title="Delete"
+        onClick={onDelete}
+        disabled={deletingId === file.id}
+        danger
+      >
+        <Trash2 size={15} />
+      </MobileFileActionBtn>
+    </>
+  ) : hasAccess ? (
+    <>
+      <MobileFileActionBtn title="Preview" onClick={onPreview}>
+        <Eye size={15} />
+      </MobileFileActionBtn>
+      <MobileFileActionBtn
+        title="Download"
+        onClick={onDownload}
+        disabled={downloadingId === file.id}
+      >
+        <Download size={15} />
+      </MobileFileActionBtn>
+    </>
+  ) : requestStatus === "pending" ? (
+    <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-600 whitespace-nowrap">
+      <Clock size={10} />
+      Requested
+    </span>
+  ) : (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onRequestAccess?.();
+      }}
+      className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-blue-100 bg-blue-50 px-2.5 text-[0.68rem] font-semibold text-blue-700 whitespace-nowrap"
+    >
+      <Lock size={12} />
+      Request
+    </button>
+  );
+
+  return (
+    <article
+      className={`rounded-2xl border bg-white/90 backdrop-blur-sm p-3.5 transition-all ${
+        isSelected
+          ? "border-blue-300 shadow-md ring-1 ring-blue-100"
+          : "border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectOrVerify?.(e);
+          }}
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-all ${
+            isSelected
+              ? "border-blue-200 bg-blue-50 text-blue-600"
+              : `${bg} border-transparent`
+          }`}
+          aria-label={isSelected ? "Deselect file" : "Select file"}
+        >
+          {isSelected ? (
+            <CheckCircle2 size={18} />
+          ) : (
+            <Icon size={18} className={color} />
+          )}
+        </button>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <button
+              type="button"
+              onClick={onPreview}
+              className="min-w-0 text-left"
+            >
+              <p className="text-[0.84rem] font-semibold text-slate-800 leading-snug line-clamp-2 break-words">
+                {file.name}
+              </p>
+            </button>
+            <VerifyStatusPill
+              isVerified={isVerified}
+              canVerify={canVerify}
+              isVerifying={isVerifying}
+              onVerify={onVerify}
+              compact
+            />
+          </div>
+
+          <p className="mt-1 text-[0.7rem] font-medium text-slate-400 truncate">
+            <span className={color}>{file.type}</span>
+            <span className="text-slate-300"> · </span>
+            {file.size}
+            <span className="text-slate-300"> · </span>
+            {uploaded.relative}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-2.5 flex items-center justify-end gap-1.5">
+        {actions}
+      </div>
+    </article>
+  );
+}
+
+/** Compact enterprise tile for mobile/desktop grid */
+function MobileFileGridCard({
+  file,
+  canEdit,
+  canVerify,
+  isVerifying,
+  isSelected,
+  downloadingId,
+  deletingId,
+  hasAccess,
+  requestStatus,
+  onSelectOrVerify,
+  onVerify,
+  onPreview,
+  onDownload,
+  onDelete,
+  onRequestAccess,
+}) {
+  const { Icon, color, bg } = getFileIcon(file.type);
+  const uploaded = formatRelativeDate(file.rawCreatedAt);
+  const isVerified = file.status === "Verified";
+
+  return (
+    <article
+      className={`group relative flex flex-col rounded-2xl border bg-white p-3 transition-all ${
+        isSelected
+          ? "border-blue-300 shadow-md ring-1 ring-blue-100"
+          : "border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.04)] hover:border-slate-300 hover:shadow-md"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2 mb-2.5">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectOrVerify?.(e);
+          }}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all ${
+            isSelected
+              ? "border-blue-200 bg-blue-50 text-blue-600"
+              : `${bg} border-transparent`
+          }`}
+          aria-label={isSelected ? "Deselect file" : "Select file"}
+        >
+          {isSelected ? (
+            <CheckCircle2 size={16} />
+          ) : (
+            <Icon size={18} className={color} />
+          )}
+        </button>
+
+        <VerifyStatusPill
+          isVerified={isVerified}
+          canVerify={canVerify}
+          isVerifying={isVerifying}
+          onVerify={onVerify}
+          compact
+        />
+      </div>
+
+      <button type="button" onClick={onPreview} className="text-left min-w-0 mb-1">
+        <p className="text-[0.78rem] sm:text-[0.8rem] font-semibold text-slate-800 leading-snug line-clamp-2 break-words min-h-[2.4em]">
+          {file.name}
+        </p>
+      </button>
+
+      <p className="text-[0.65rem] sm:text-[0.7rem] font-medium text-slate-400 mb-3 truncate">
+        {file.size}
+        <span className="text-slate-300"> · </span>
+        {uploaded.relative}
+      </p>
+
+      <div className="mt-auto pt-2.5 border-t border-slate-100 flex items-center gap-1.5">
+        {canEdit ? (
+          <>
+            <MobileFileActionBtn title="Preview" onClick={onPreview}>
+              <Eye size={14} />
+            </MobileFileActionBtn>
+            <MobileFileActionBtn
+              title="Download"
+              onClick={onDownload}
+              disabled={downloadingId === file.id}
+            >
+              <Download size={14} />
+            </MobileFileActionBtn>
+            <MobileFileActionBtn
+              title="Delete"
+              onClick={onDelete}
+              disabled={deletingId === file.id}
+              danger
+            >
+              <Trash2 size={14} />
+            </MobileFileActionBtn>
+          </>
+        ) : hasAccess ? (
+          <>
+            <MobileFileActionBtn title="Preview" onClick={onPreview}>
+              <Eye size={14} />
+            </MobileFileActionBtn>
+            <MobileFileActionBtn
+              title="Download"
+              onClick={onDownload}
+              disabled={downloadingId === file.id}
+            >
+              <Download size={14} />
+            </MobileFileActionBtn>
+          </>
+        ) : requestStatus === "pending" ? (
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 px-1">
+            <Clock size={11} />
+            Requested
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRequestAccess?.();
+            }}
+            className="flex-1 inline-flex min-h-9 items-center justify-center gap-1 rounded-xl border border-blue-100 bg-blue-50 px-2 text-[0.68rem] font-semibold text-blue-700"
+          >
+            <Lock size={11} />
+            Request
+          </button>
+        )}
+      </div>
+    </article>
+  );
+}
+
+
 const FILE_TYPE_TABS = ["All", "PDF", "Excel", "Word", "Image"];
 
 // ── Pagination options ─────────────────────────────────────────
@@ -1574,9 +1925,9 @@ export default function RepositoryFolderDetailPage() {
   // ─────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50/40 pb-20">
-      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
+      <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 py-5 sm:py-8">
         {/* ── Breadcrumb ─────────────────────────────────────── */}
-        <nav className="flex items-center gap-1.5 text-[12px] text-slate-400 mb-5 font-medium">
+        <nav className="flex items-center gap-1.5 text-[12px] text-slate-400 mb-4 sm:mb-5 font-medium overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button
             onClick={() => navigate("/repository")}
             className="hover:text-slate-600 transition-colors"
@@ -1601,12 +1952,12 @@ export default function RepositoryFolderDetailPage() {
         </nav>
 
         {/* ── Page Header ────────────────────────────────────── */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-[1.65rem] font-black text-slate-800 tracking-[-0.02em] leading-tight">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 mb-5 sm:mb-6">
+          <div className="min-w-0">
+            <h1 className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em] leading-tight">
               {decodedName}
             </h1>
-            <p className="text-[0.78rem] text-slate-400 font-medium mt-1">
+            <p className="hidden lg:block text-[0.78rem] text-slate-400 font-medium mt-1">
               {loading
                 ? "Loading…"
                 : `${yearFilteredFiles.length} files · ${verifiedCount} verified`}
@@ -1619,10 +1970,11 @@ export default function RepositoryFolderDetailPage() {
                   setShowFileRequestsPanel(true);
                   fetchMyFileRequests();
                 }}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-all"
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-all"
               >
                 <Inbox size={15} />
-                Files Requested
+                <span className="hidden sm:inline">Files Requested</span>
+                <span className="sm:hidden">Requested</span>
                 {myFileRequests.length > 0 && (
                   <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
                     {myFileRequests.length}
@@ -1631,7 +1983,7 @@ export default function RepositoryFolderDetailPage() {
               </button>
               <button
                 onClick={() => setShowFileRequestModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm hover:shadow-md transition-all"
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold shadow-sm hover:shadow-md transition-all"
               >
                 <FileUp size={15} />
                 Request File
@@ -1691,7 +2043,7 @@ export default function RepositoryFolderDetailPage() {
         </div>
 
         {/* ── Search / Sort / View Toggle ────────────────── */}
-        <div className="mb-6 rounded-[28px] border border-white/70 bg-white/85 p-4 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-5">
+        <div className="mb-5 sm:mb-6 rounded-2xl sm:rounded-[28px] border border-white/70 bg-white/85 p-3 sm:p-5 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
           <RepositorySearchBar
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -1707,7 +2059,7 @@ export default function RepositoryFolderDetailPage() {
 
           {/* Type filter pills */}
           <div className="mt-4 border-t border-slate-100 pt-4">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {FILE_TYPE_TABS.map((tab) => {
                 const isActive = activeType === tab;
 
@@ -1726,7 +2078,7 @@ export default function RepositoryFolderDetailPage() {
                   <button
                     key={tab}
                     onClick={() => setActiveType(tab)}
-                    className={`px-3.5 py-1.5 text-[11px] font-semibold rounded-full transition-all border ${isActive
+                    className={`shrink-0 px-3.5 py-1.5 text-[11px] font-semibold rounded-full transition-all border ${isActive
                         ? activeColors
                         : "text-slate-500 hover:bg-slate-50 border-slate-200 bg-white"
                       }`}
@@ -1835,9 +2187,42 @@ export default function RepositoryFolderDetailPage() {
           </div>
         ) : viewMode === "list" ? (
           /* ── LIST VIEW ───────────────────────────────────── */
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <>
+            {/* Mobile / tablet — dense enterprise cards (no cramped table) */}
+            <div className="lg:hidden space-y-2.5">
+              {paginated.map((file) => (
+                <MobileFileListCard
+                  key={file.id}
+                  file={file}
+                  canEdit={canEdit}
+                  canVerify={canVerify}
+                  isVerifying={isVerifying}
+                  isSelected={selectedIds.has(file.id)}
+                  downloadingId={downloadingId}
+                  deletingId={deletingId}
+                  hasAccess={hasFileAccess(file)}
+                  requestStatus={fileRequestStatus(file)}
+                  onSelectOrVerify={() => {
+                    if (canVerify) {
+                      if (isVerifying) return;
+                      setVerifyTarget(file);
+                    } else {
+                      toggleSelect(file.id);
+                    }
+                  }}
+                  onVerify={() => setVerifyTarget(file)}
+                  onPreview={() => setEditingFile(file)}
+                  onDownload={(e) => handleDownloadClick(e, file)}
+                  onDelete={() => handleDeleteFile(file)}
+                  onRequestAccess={() => openRequestModal(file)}
+                />
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden lg:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-x-auto">
             {/* TABLE using real <table> for perfect alignment */}
-            <table className="w-full border-collapse table-fixed">
+            <table className="w-full min-w-[640px] border-collapse table-fixed">
               <thead>
                 <tr className="border-b border-slate-100">
                   <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-50/80 rounded-tl-[15px]">
@@ -2115,7 +2500,7 @@ export default function RepositoryFolderDetailPage() {
                       {/* Actions */}
                       <td className="px-3 py-3.5 pr-4 w-40">
                         {canEdit ? (
-                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-150">
+                          <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-150">
                             <button
                               onClick={() => setEditingFile(file)}
                               className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-300 hover:text-blue-600 transition-colors"
@@ -2189,180 +2574,38 @@ export default function RepositoryFolderDetailPage() {
               </tbody>
             </table>
           </div>
+          </>
         ) : (
           /* ── GRID VIEW ───────────────────────────────────── */
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4">
-              {paginated.map((file) => {
-                const { Icon, color, bg } = getFileIcon(file.type);
-                const isSelected = selectedIds.has(file.id);
-                const isVerified = file.status === "Verified";
-                const uploaded = formatRelativeDate(file.rawCreatedAt);
-
-                return (
-                  <div
-                    key={file.id}
-                    className={`relative bg-white rounded-2xl border p-4 transition-all cursor-pointer group ${isSelected
-                        ? "border-blue-300 shadow-md ring-1 ring-blue-100"
-                        : "border-slate-100 hover:shadow-md hover:border-slate-200 shadow-sm"
-                      }`}
-                  >
-                    {/* Checkbox */}
-                    {/* Checkbox */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (canVerify) {
-                          if (isVerifying) return;
-                          setVerifyTarget(file);
-                        } else {
-                          toggleSelect(file.id);
-                        }
-                      }}
-                      className={`absolute top-3 left-3 w-5 h-5 rounded border flex items-center justify-center transition-all ${isSelected
-                          ? "bg-blue-600 border-blue-600 text-white opacity-100"
-                          : "bg-white border-slate-300 text-transparent opacity-0 group-hover:opacity-100 hover:border-blue-400"
-                        }`}
-                    >
-                      {isSelected && (
-                        <svg
-                          width="10"
-                          height="10"
-                          viewBox="0 0 12 12"
-                          fill="none"
-                        >
-                          <path
-                            d="M2 6l3 3 5-5"
-                            stroke="white"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      )}
-                    </button>
-
-                    {/* Status + verify (verify-eligible roles only) */}
-                    <div className="flex justify-end mb-3">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!canVerify || isVerifying) return;
-                          setVerifyTarget(file);
-                        }}
-                        disabled={!canVerify || isVerifying}
-                        title={
-                          canVerify
-                            ? isVerified
-                              ? "Click to unverify"
-                              : "Click to verify"
-                            : undefined
-                        }
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border transition-colors ${isVerified
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : "bg-slate-100 text-slate-500 border-slate-200"
-                          } ${canVerify
-                            ? "cursor-pointer hover:brightness-95"
-                            : "cursor-default"
-                          } disabled:opacity-60 disabled:cursor-not-allowed`}
-                      >
-                        {isVerified ? (
-                          <>
-                            <CheckCircle2 size={8} /> Verified
-                          </>
-                        ) : (
-                          <>
-                            <XCircle size={8} /> Unverified
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    <div
-                      className={`w-11 h-11 ${bg} rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-105`}
-                    >
-                      <Icon size={22} className={color} />
-                    </div>
-                    <p className="text-[12px] font-semibold text-slate-800 leading-tight mb-1 line-clamp-2">
-                      {file.name}
-                    </p>
-                    <p className="text-[10px] text-slate-400 mb-3">
-                      {file.size} · {uploaded.relative}
-                    </p>
-
-                    {canEdit ? (
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDownloadFile(file);
-                          }}
-                          disabled={downloadingId === file.id}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
-                        >
-                          <Download size={11} /> Download
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingFile(file);
-                          }}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
-                        >
-                          <Eye size={11} /> Preview
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteFile(file);
-                          }}
-                          disabled={deletingId === file.id}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors text-[10px] font-medium disabled:opacity-40"
-                        >
-                          <Trash2 size={11} /> Delete
-                        </button>
-                      </div>
-                    ) : hasFileAccess(file) ? (
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDownloadFile(file);
-                          }}
-                          disabled={downloadingId === file.id}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
-                        >
-                          <Download size={11} /> Download
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingFile(file);
-                          }}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
-                        >
-                          <Eye size={11} /> Preview
-                        </button>
-                      </div>
-                    ) : fileRequestStatus(file) === "pending" ? (
-                      <div className="flex items-center justify-center gap-1 py-1.5 text-[10px] font-semibold text-amber-600">
-                        <Clock size={11} /> Requested
-                      </div>
-                    ) : (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openRequestModal(file);
-                        }}
-                        className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors text-[10px] font-medium"
-                      >
-                        <Lock size={11} /> Request Access
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+          <div className="rounded-2xl sm:rounded-[28px] border border-white/70 bg-white/85 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl overflow-hidden">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-3 p-2.5 sm:p-4">
+              {paginated.map((file) => (
+                <MobileFileGridCard
+                  key={file.id}
+                  file={file}
+                  canEdit={canEdit}
+                  canVerify={canVerify}
+                  isVerifying={isVerifying}
+                  isSelected={selectedIds.has(file.id)}
+                  downloadingId={downloadingId}
+                  deletingId={deletingId}
+                  hasAccess={hasFileAccess(file)}
+                  requestStatus={fileRequestStatus(file)}
+                  onSelectOrVerify={() => {
+                    if (canVerify) {
+                      if (isVerifying) return;
+                      setVerifyTarget(file);
+                    } else {
+                      toggleSelect(file.id);
+                    }
+                  }}
+                  onVerify={() => setVerifyTarget(file)}
+                  onPreview={() => setEditingFile(file)}
+                  onDownload={(e) => handleDownloadClick(e, file)}
+                  onDelete={() => handleDeleteFile(file)}
+                  onRequestAccess={() => openRequestModal(file)}
+                />
+              ))}
             </div>
           </div>
         )}

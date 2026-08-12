@@ -22,24 +22,25 @@ export function Navbar() {
 
   const handleNav = (href) => {
     setMobileOpen(false);
+    if (href === "#home") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     const el = document.querySelector(href);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const solid = scrolled;
+
   return (
     <nav
-      className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
-      style={{
-        backgroundColor: scrolled ? "rgba(255,255,255,0.92)" : "transparent",
-        backdropFilter: scrolled ? "blur(16px) saturate(1.6)" : "none",
-        borderBottom: scrolled
-          ? "1px solid rgba(203,213,225,0.3)"
-          : "1px solid transparent",
-        boxShadow: scrolled ? "0 1px 12px rgba(15,23,42,0.06)" : "none",
-      }}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        solid
+          ? "bg-white/95 backdrop-blur-xl border-b border-slate-200/40 shadow-[0_1px_12px_rgba(15,23,42,0.06)]"
+          : "bg-white/10 backdrop-blur-xl border-b border-white/15"
+      }`}
     >
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between h-[64px]">
-        {/* Logo */}
+      <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 flex items-center justify-between h-[64px]">
         <button
           onClick={() => handleNav("#home")}
           className="flex items-center gap-2 cursor-pointer bg-transparent border-none"
@@ -48,100 +49,89 @@ export function Navbar() {
             <img src={logo} alt="OneData Logo" className="w-7 h-7 object-contain" />
           </div>
           <span
-            className="text-[1.15rem] font-bold tracking-tight transition-colors duration-300"
-            style={{ color: scrolled ? "#0f172a" : "#ffffff" }}
+            className={`text-[1.15rem] font-bold tracking-tight transition-colors duration-300 ${
+              solid ? "text-slate-900" : "text-white"
+            }`}
           >
             One<span className="text-emerald-400">Data</span>
           </span>
         </button>
 
-        {/* Desktop links */}
         <div className="hidden md:flex items-center gap-1">
           {navItems.map((item) => (
             <button
               key={item.label}
               onClick={() => handleNav(item.href)}
-              className="px-4 py-2 rounded-lg text-[0.8rem] font-medium bg-transparent border-none cursor-pointer transition-all duration-200"
-              style={{
-                color: scrolled ? "#475569" : "rgba(255,255,255,0.75)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = scrolled ? "#3b82f6" : "#fff";
-                e.currentTarget.style.backgroundColor = scrolled
-                  ? "rgba(59,130,246,0.06)"
-                  : "rgba(255,255,255,0.08)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = scrolled
-                  ? "#475569"
-                  : "rgba(255,255,255,0.75)";
-                e.currentTarget.style.backgroundColor = "transparent";
-              }}
+              className={`px-4 py-2 rounded-lg text-[0.8rem] font-medium bg-transparent border-none cursor-pointer transition-all duration-200 ${
+                solid
+                  ? "text-slate-500 hover:text-blue-500 hover:bg-blue-50/70"
+                  : "text-white/80 hover:text-white hover:bg-white/10"
+              }`}
             >
               {item.label}
             </button>
           ))}
 
-          {/* Login CTA */}
           <Link
             to="/login"
-            className="ml-3 inline-flex items-center gap-1.5 rounded-[10px] px-5 py-[7px] text-[0.8rem] font-semibold transition-all duration-300 no-underline"
-            style={{
-              background: scrolled
-                ? "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)"
-                : "rgba(255,255,255,0.12)",
-              color: "#fff",
-              border: scrolled ? "none" : "1px solid rgba(255,255,255,0.2)",
-              boxShadow: scrolled ? "0 2px 10px rgba(99,102,241,0.3)" : "none",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-1px)";
-              e.currentTarget.style.boxShadow = scrolled
-                ? "0 4px 16px rgba(99,102,241,0.4)"
-                : "0 2px 12px rgba(255,255,255,0.15)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = scrolled
-                ? "0 2px 10px rgba(99,102,241,0.3)"
-                : "none";
-            }}
+            className={`ml-3 inline-flex items-center gap-1.5 rounded-[10px] px-5 py-[7px] text-[0.8rem] font-semibold transition-all duration-300 no-underline ${
+              solid
+                ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-[0_2px_10px_rgba(99,102,241,0.3)]"
+                : "bg-white/12 text-white border border-white/20"
+            }`}
           >
             Log in <ArrowRight size={14} />
           </Link>
         </div>
 
-        {/* Mobile toggle */}
         <button
-          className="md:hidden rounded-lg p-2 bg-transparent border-none cursor-pointer"
-          style={{ color: scrolled ? "#0f172a" : "#fff" }}
-          onClick={() => setMobileOpen(!mobileOpen)}
+          className={`md:hidden rounded-lg p-2 bg-transparent border-none cursor-pointer transition-transform duration-300 ${
+            solid ? "text-slate-900" : "text-white"
+          } ${mobileOpen ? "rotate-90" : "rotate-0"}`}
+          onClick={() => setMobileOpen((open) => !open)}
+          aria-expanded={mobileOpen}
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
         >
           {mobileOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
 
-      {/* Mobile drawer */}
-      {mobileOpen && (
-        <div className="md:hidden bg-white/95 backdrop-blur-xl border-t border-slate-100/50 px-6 py-4 flex flex-col gap-1">
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => handleNav(item.href)}
-              className="text-slate-600 hover:text-blue-500 hover:bg-blue-50/50 py-3 px-4 rounded-xl text-[0.9rem] font-medium text-left bg-transparent border-none cursor-pointer transition-all"
-            >
-              {item.label}
-            </button>
-          ))}
-          <Link
-            to="/login"
-            className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-xl px-5 py-3 text-[0.85rem] font-semibold text-white no-underline"
-            style={{ background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)" }}
+      <div
+        className={`md:hidden grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          mobileOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div
+            className={`px-5 py-3 flex flex-col gap-1 backdrop-blur-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              solid
+                ? "bg-white/70 border-t border-slate-200/40"
+                : "bg-white/10 border-t border-white/15"
+            } ${mobileOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"}`}
           >
-            Log in <ArrowRight size={14} />
-          </Link>
+            {navItems.map((item) => (
+              <button
+                key={item.label}
+                onClick={() => handleNav(item.href)}
+                className={`py-3 px-4 rounded-xl text-[0.9rem] font-medium text-left bg-transparent border-none cursor-pointer transition-all ${
+                  solid
+                    ? "text-slate-600 hover:text-blue-500 hover:bg-white/50"
+                    : "text-white/90 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+            <Link
+              to="/login"
+              className="mt-2 mb-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-5 py-3 text-[0.85rem] font-semibold text-white no-underline"
+              style={{ background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)" }}
+            >
+              Log in <ArrowRight size={14} />
+            </Link>
+          </div>
         </div>
-      )}
+      </div>
     </nav>
   );
 }

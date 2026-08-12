@@ -212,7 +212,7 @@ export function FolderCard({
       id={cardId}
       onClick={handleClick}
       onMouseMove={handleMouseMove}
-      className={`group relative flex cursor-pointer flex-col rounded-[22px] p-[1.5px] transition-all duration-300 hover:-translate-y-[3px] hover:shadow-[0_18px_42px_rgba(15,23,42,0.10)] ${locked ? "opacity-80" : ""}`}
+      className={`group relative flex min-w-0 cursor-pointer flex-col rounded-[18px] sm:rounded-[22px] p-[1.5px] transition-all duration-300 hover:-translate-y-[3px] hover:shadow-[0_18px_42px_rgba(15,23,42,0.10)] ${locked ? "opacity-80" : ""}`}
       style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
       role="button"
       tabIndex={0}
@@ -227,16 +227,16 @@ export function FolderCard({
       />
       
       {/* Inner White Card */}
-      <div className="relative flex w-full h-full flex-col overflow-hidden rounded-[21px] bg-white p-5">
+      <div className="relative flex w-full h-full flex-col overflow-hidden rounded-[16px] sm:rounded-[21px] bg-white p-3 sm:p-5">
 
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-2 sm:mb-4 flex items-center justify-between gap-1">
         <div>
           {onColorChange && (
             <FolderColorPicker currentColorId={colorId} onColorChange={onColorChange} />
           )}
         </div>
         <span
-          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${locked
+          className={`inline-flex items-center gap-1 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-semibold border ${locked
             ? "bg-rose-50 text-rose-700 border-rose-200"
             : "bg-emerald-50 text-emerald-700 border-emerald-200"
             }`}
@@ -245,38 +245,48 @@ export function FolderCard({
         </span>
       </div>
 
-      <div className="mb-4 flex flex-col items-center gap-3 text-center">
+      <div className="mb-2 sm:mb-4 flex flex-col items-center gap-2 sm:gap-3 text-center">
         <div
-          className={`w-14 h-14 ${locked ? "bg-gray-100" : dynamicIconBg
-            } rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-[1.04] group-hover:shadow-lg`}
+          className={`w-10 h-10 sm:w-14 sm:h-14 ${locked ? "bg-gray-100" : dynamicIconBg
+            } rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-[1.04] group-hover:shadow-lg`}
         >
           {locked ? (
-            <FolderOpen size={24} className="text-slate-400" />
+            <FolderOpen size={20} className="text-slate-400" />
           ) : (
             <lord-icon
               src="/folder-outline.json"
               trigger="hover"
               target={`#${cardId}`}
               colors={`primary:${lordColor}`}
-              style={{ width: "28px", height: "28px" }}
+              style={{ width: "24px", height: "24px" }}
             ></lord-icon>
           )}
         </div>
 
-        <div className="flex w-full flex-col items-center gap-1">
-          <h3 className="w-full break-words text-center text-sm font-semibold leading-snug text-slate-900">
+        <div className="flex w-full min-w-0 flex-col items-center gap-1">
+          <h3 className="w-full line-clamp-2 break-words text-center text-[11px] sm:text-sm font-semibold leading-snug text-slate-900">
             {name}
           </h3>
           {typeof sectionCount === "number" && (
-            <span className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+            <span className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] sm:text-[11px] font-medium text-slate-600">
               {sectionCount} {sectionCount === 1 ? "section" : "sections"}
             </span>
           )}
         </div>
       </div>
 
-      <div className="mt-auto">
-        <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 transition-colors">
+      <div className="mt-auto min-w-0">
+        <div className="flex items-center justify-center gap-1 min-w-0 sm:hidden">
+          <User size={10} className="text-slate-400 shrink-0" />
+          <span className="truncate text-[10px] font-medium text-slate-500">
+            {managerList.length === 0
+              ? "Unassigned"
+              : managerList.length === 1
+                ? managerList[0]
+                : `${managerList[0]} +${managerList.length - 1}`}
+          </span>
+        </div>
+        <div className="hidden sm:block rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 transition-colors">
           <div className="mb-1 flex items-center gap-1.5 text-[11px] text-slate-500">
             <User size={11} className="text-slate-400 shrink-0" />
             <span>Managed by</span>
@@ -292,7 +302,7 @@ export function FolderCard({
             </div>
           )}
         </div>
-        </div>
+      </div>
       </div>
     </div>
   );

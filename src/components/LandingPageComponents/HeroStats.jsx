@@ -39,7 +39,7 @@ const CustomTooltip = ({ active, payload, label, totalForPercent }) => {
 
 function ChartCard({ title, subtitle, children, className = "" }) {
   return (
-    <div className={`rounded-2xl border border-slate-200/70 bg-white p-6 transition-all duration-300 hover:shadow-[0_12px_40px_rgba(15,23,42,0.09)] hover:-translate-y-[2px] ${className}`}>
+    <div className={`rounded-2xl border border-slate-200/70 bg-white p-4 sm:p-6 transition-all duration-300 hover:shadow-[0_12px_40px_rgba(15,23,42,0.09)] hover:-translate-y-[2px] ${className}`}>
       {title && <h4 className="text-[0.88rem] font-bold text-slate-800 leading-tight">{title}</h4>}
       {subtitle && <p className="text-[0.7rem] text-slate-400 mt-0.5 mb-3">{subtitle}</p>}
       {children}
@@ -69,7 +69,7 @@ function YearPicker({ selectedYear, onYearChange, availableYears }) {
   }, []);
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative shrink-0">
       <button
         onClick={() => setOpen((v) => !v)}
         className="relative flex items-center gap-2 h-[38px] rounded-[10px] border border-slate-200/80 bg-white pl-3 pr-8 hover:border-slate-300 transition-colors min-w-[130px] w-max shadow-sm cursor-pointer"
@@ -136,12 +136,12 @@ function SchoolDirectory({ schoolList }) {
             className="w-full h-[38px] rounded-[10px] border border-slate-200/80 bg-slate-50/60 pl-9 pr-3 text-[0.8rem] font-medium text-slate-700 placeholder:text-slate-350 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 transition-all"
           />
         </div>
-        <div className="flex gap-1.5 rounded-[10px] bg-slate-50/60 border border-slate-200/80 p-1 w-max">
+        <div className="flex gap-1.5 rounded-[10px] bg-slate-50/60 border border-slate-200/80 p-1 w-full sm:w-max">
           {["All", "Public", "Private"].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 h-[30px] rounded-[8px] text-[0.72rem] font-bold transition-all ${filter === f
+              className={`flex-1 sm:flex-none px-3 h-[30px] rounded-[8px] text-[0.72rem] font-bold transition-all ${filter === f
                 ? "bg-white text-blue-700 shadow-sm"
                 : "text-slate-400 hover:text-slate-600"
                 }`}
@@ -245,10 +245,14 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
   const noSchools = schools.total === 0;
 
   return (
-    <section className="relative z-20 pt-4 pb-20" style={{ background: "linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%)" }}>
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-1">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-[0.72rem] text-slate-400 font-medium">Live enrollment data</p>
+    <section
+      id="analytics"
+      className="relative z-20 pt-6 md:pt-4 pb-12 md:pb-20"
+      style={{ background: "linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%)" }}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-1">
+        <div className="flex items-center justify-between gap-3 mb-5">
+          <p className="text-[0.72rem] text-slate-400 font-medium shrink-0">Live enrollment data</p>
           <YearPicker
             selectedYear={selectedYear}
             onYearChange={onYearChange}
@@ -260,49 +264,49 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
             <button
               onClick={() => scrollToSection(learnersRef)}
-              className="text-left rounded-[16px] bg-white px-5 py-5 transition-all duration-300 hover:-translate-y-[3px] cursor-pointer border-none"
+              className="text-left rounded-[16px] bg-white px-3.5 py-4 sm:px-5 sm:py-5 transition-all duration-300 hover:-translate-y-[3px] cursor-pointer border-none"
               style={{ boxShadow: "0 2px 12px rgba(15,23,42,0.06), 0 0 0 1px rgba(15,23,42,0.04)" }}
             >
               <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full mb-4" style={{ background: "linear-gradient(135deg, #818cf8 0%, #4338ca 100%)" }}>
                 <Users size={18} color="#fff" strokeWidth={2} />
               </div>
-              <p className="text-[1.65rem] font-black text-slate-800 tracking-tight leading-none">{learners.total.toLocaleString()}</p>
+              <p className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-tight leading-none">{learners.total.toLocaleString()}</p>
               <p className="text-[0.7rem] font-semibold text-slate-400 mt-1.5 tracking-wide">Learners</p>
             </button>
 
             <button
               onClick={() => scrollToSection(schoolsRef)}
-              className="text-left rounded-[16px] bg-white px-5 py-5 transition-all duration-300 hover:-translate-y-[3px] cursor-pointer border-none"
+              className="text-left rounded-[16px] bg-white px-3.5 py-4 sm:px-5 sm:py-5 transition-all duration-300 hover:-translate-y-[3px] cursor-pointer border-none"
               style={{ boxShadow: "0 2px 12px rgba(15,23,42,0.06), 0 0 0 1px rgba(15,23,42,0.04)" }}
             >
               <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full mb-4" style={{ background: "linear-gradient(135deg, #5b9bff 0%, #2352d6 100%)" }}>
                 <School size={18} color="#fff" strokeWidth={2} />
               </div>
-              <p className="text-[1.65rem] font-black text-slate-800 tracking-tight leading-none">{schools.total.toLocaleString()}</p>
+              <p className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-tight leading-none">{schools.total.toLocaleString()}</p>
               <p className="text-[0.7rem] font-semibold text-slate-400 mt-1.5 tracking-wide">Schools</p>
             </button>
 
             <button
               onClick={() => scrollToSection(teachersRef)}
-              className="text-left rounded-[16px] bg-white px-5 py-5 transition-all duration-300 hover:-translate-y-[3px] cursor-pointer border-none"
+              className="text-left rounded-[16px] bg-white px-3.5 py-4 sm:px-5 sm:py-5 transition-all duration-300 hover:-translate-y-[3px] cursor-pointer border-none"
               style={{ boxShadow: "0 2px 12px rgba(15,23,42,0.06), 0 0 0 1px rgba(15,23,42,0.04)" }}
             >
               <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full mb-4" style={{ background: "linear-gradient(135deg, #34d399 0%, #047857 100%)" }}>
                 <GraduationCap size={18} color="#fff" strokeWidth={2} />
               </div>
-              <p className="text-[1.65rem] font-black text-slate-800 tracking-tight leading-none">—</p>
+              <p className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-tight leading-none">—</p>
               <p className="text-[0.7rem] font-semibold text-slate-400 mt-1.5 tracking-wide">Teachers</p>
             </button>
 
             <button
               onClick={() => scrollToSection(numSchoolsRef)}
-              className="text-left rounded-[16px] bg-white px-5 py-5 transition-all duration-300 hover:-translate-y-[3px] cursor-pointer border-none"
+              className="text-left rounded-[16px] bg-white px-3.5 py-4 sm:px-5 sm:py-5 transition-all duration-300 hover:-translate-y-[3px] cursor-pointer border-none"
               style={{ boxShadow: "0 2px 12px rgba(15,23,42,0.06), 0 0 0 1px rgba(15,23,42,0.04)" }}
             >
               <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full mb-4" style={{ background: "linear-gradient(135deg, #fbbf24 0%, #b45309 100%)" }}>
                 <Building size={18} color="#fff" strokeWidth={2} />
               </div>
-              <p className="text-[1.65rem] font-black text-slate-800 tracking-tight leading-none">—</p>
+              <p className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-tight leading-none">—</p>
               <p className="text-[0.7rem] font-semibold text-slate-400 mt-1.5 tracking-wide">Number of Schools</p>
             </button>
           </div>
@@ -319,7 +323,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
         {!loading && !error && (
           <>
             {/* ── Learners section ─────────────────── */}
-            <div ref={learnersRef} className="mb-14">
+            <div ref={learnersRef} className="mb-10 md:mb-14 scroll-mt-20">
               <SectionHeader
                 label="Dashboard Overview"
                 title="Learners"
@@ -381,7 +385,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                   )}
 
                   {!noLearners && (
-                    <div className="flex justify-center gap-3 mt-3">
+                    <div className="flex justify-center gap-3 mt-3 flex-wrap">
                       {learnerPieData.map((d) => {
                         const pct = learners.total > 0 ? Math.round((d.value / learners.total) * 100) : 0;
                         return (
@@ -488,7 +492,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
             </div>
 
             {/* ── Schools section ──────────────────── */}
-            <div ref={schoolsRef} className="mb-14">
+            <div ref={schoolsRef} className="mb-10 md:mb-14 scroll-mt-20">
               <SectionHeader
                 label="Dashboard Overview"
                 title="Schools"
@@ -540,7 +544,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
             </div>
 
             {/* ── Teachers section (placeholder) ───── */}
-            <div ref={teachersRef} className="mb-14">
+            <div ref={teachersRef} className="mb-10 md:mb-14 scroll-mt-20">
               <SectionHeader
                 label="Dashboard Overview"
                 title="Teachers"
@@ -552,7 +556,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
             </div>
 
             {/* ── Number of Schools section (placeholder) ── */}
-            <div ref={numSchoolsRef} className="mb-14">
+            <div ref={numSchoolsRef} className="mb-10 md:mb-14 scroll-mt-20">
               <SectionHeader
                 label="Dashboard Overview"
                 title="Number of Schools"

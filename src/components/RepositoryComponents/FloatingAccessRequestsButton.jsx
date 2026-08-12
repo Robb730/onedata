@@ -34,7 +34,7 @@ export default function FloatingAccessRequestsButton({ userProfile, onClick, ref
   return (
     <button
       onClick={onClick}
-      className="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 shadow-[0_12px_30px_rgba(37,99,235,0.35)] flex items-center justify-center transition-all hover:scale-105"
+      className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-30 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 shadow-[0_12px_30px_rgba(37,99,235,0.35)] flex items-center justify-center transition-all hover:scale-105 lg:bottom-6 lg:right-6"
       title="Access Requests"
     >
       <lord-icon

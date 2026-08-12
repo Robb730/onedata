@@ -32,16 +32,16 @@ export function StatCard({
   const isComparing = compareValue !== undefined && compareValue !== null;
 
   const iconClasses = gradient
-    ? "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white transition-transform duration-300 group-hover:scale-105"
-    : `flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-transform duration-300 group-hover:scale-105 ${iconBg} ${iconColor}`;
+    ? "flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full text-white transition-transform duration-300 group-hover:scale-105"
+    : `flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full transition-transform duration-300 group-hover:scale-105 ${iconBg} ${iconColor}`;
 
   return (
     <div
-      className="group relative rounded-[16px] border border-slate-100/80 bg-white p-5 transition-all duration-300 hover:shadow-[0_8px_28px_rgba(15,23,42,0.08)] hover:-translate-y-[2px]"
+      className="group relative rounded-[16px] border border-slate-100/80 bg-white p-4 sm:p-5 transition-all duration-300 hover:shadow-[0_8px_28px_rgba(15,23,42,0.08)] hover:-translate-y-[2px]"
       style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
     >
       {/* ── Top row: icon circle + trend badge ───────────── */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
         {/* Icon circle */}
         <div
           className={iconClasses}
@@ -74,7 +74,7 @@ export function StatCard({
 
       {/* ── Value ─────────────────────────────────────────── */}
       <p
-        className={`font-black text-slate-800 tracking-tight leading-none mb-1.5 ${isComparing ? "text-[1.3rem]" : "text-[1.55rem]"
+        className={`font-black text-slate-800 tracking-tight leading-none mb-1.5 ${isComparing ? "text-[1.15rem] sm:text-[1.3rem]" : "text-[1.25rem] sm:text-[1.55rem]"
           }`}
       >
         {value}

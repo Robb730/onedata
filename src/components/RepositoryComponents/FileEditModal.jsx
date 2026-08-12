@@ -446,7 +446,7 @@ export default function FileEditModal({
   // ─────────────────────────────────────────────────────────────
   if (fileIsPdf) {
     return (
-      <div className="fixed inset-0 z-50 bg-[#0b0d12] flex flex-col">
+      <div className="fixed inset-0 z-50 bg-[#0b0d12] flex flex-col h-dvh">
         {/* Slim dark toolbar */}
         <div className="flex items-center justify-between gap-4 px-5 py-3 bg-[#15181f] border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
@@ -541,12 +541,12 @@ export default function FileEditModal({
       <div
         className={`relative bg-white shadow-2xl flex flex-col overflow-hidden transition-all ${
           isFullScreen
-            ? "w-screen h-screen rounded-none"
-            : "w-full max-w-6xl h-[85vh] rounded-xl"
+            ? "w-screen h-dvh rounded-none"
+            : "w-full max-w-6xl h-[85dvh] max-h-[85dvh] rounded-xl"
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 shrink-0">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-bold text-gray-900 truncate max-w-lg">

@@ -1,10 +1,11 @@
 import React from "react";
-import { Bell, Menu, LogOut, FolderOpen, Settings } from "lucide-react";
+import { Bell, LogOut, FolderOpen, Settings } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 // Adjust this relative path to match TopHeader's location in your tree
 // (this mirrors the import used in ManageUsers.jsx).
 import { useUser } from "../contexts/UserContext.jsx";
 import NotificationsPanel from "./NotificationsPanel.jsx";
+import iconSvg from "../assets/one_data-icon-v3.svg";
 
 /**
  * TopHeader — Persistent top bar with search, notifications, and user profile.
@@ -14,7 +15,6 @@ import NotificationsPanel from "./NotificationsPanel.jsx";
  * @param {string}   [userSection] — e.g. "Records Section"
  * @param {string}   [userDivision] — e.g. "Records Management Division"
  * @param {string}   [userInitials] — avatar initials (auto-derived if omitted)
- * @param {function} onMenuToggle — hamburger click handler (mobile sidebar toggle)
  * @param {function} onLogout
  */
 
@@ -72,7 +72,6 @@ export function TopHeader({
   userSection,
   userDivision,
   userInitials,
-  onMenuToggle,
   onLogout,
 }) {
   const { userProfile } = useUser();
@@ -129,24 +128,22 @@ export function TopHeader({
 
   return (
     <header
-      className="sticky top-0 z-30 flex items-center gap-5 bg-white/90 backdrop-blur-xl px-6 py-2.5"
+      className="sticky top-0 z-30 flex items-center gap-3 bg-white/90 backdrop-blur-xl px-4 sm:px-6 py-2.5 supports-[backdrop-filter]:bg-white/80"
       style={{
         borderBottom: "1px solid rgba(203,213,225,0.45)",
         boxShadow: "0 1px 8px rgba(15,23,42,0.04)",
       }}
     >
-      {/* Mobile hamburger */}
-      <button
-        onClick={onMenuToggle}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all lg:hidden cursor-pointer"
-        aria-label="Open sidebar"
-      >
-        <Menu size={18} />
-      </button>
-
-
-
-      {/* Right side */}
+      <div className="lg:hidden min-w-0 flex-1 flex items-center gap-2.5">
+        <img
+          src={iconSvg}
+          alt="OneData"
+          className="h-8 w-8 shrink-0 object-contain"
+        />
+        <p className="text-[0.95rem] font-bold text-slate-800 tracking-tight leading-none">
+          One<span className="text-emerald-500">Data</span>
+        </p>
+      </div>
       <div className="ml-auto flex items-center gap-2 relative" ref={notificationsRef}>
         {/* Notifications */}
         <div>

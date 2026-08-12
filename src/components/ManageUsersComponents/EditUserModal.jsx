@@ -105,8 +105,17 @@ export default function EditUserModal({ isOpen, onClose, user, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[92vh] sm:max-h-[90vh] flex flex-col">
+    <div
+      className="fixed inset-x-0 bottom-0 top-14 lg:inset-0 z-[60] flex items-end lg:items-center justify-center bg-slate-950/40 backdrop-blur-[2px] p-0 lg:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-t-2xl lg:rounded-xl shadow-2xl w-full max-w-lg max-h-[calc(100dvh-3.5rem)] lg:max-h-[92vh] flex flex-col border border-slate-200 border-b-0 lg:border-b"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="lg:hidden flex justify-center pt-2.5 shrink-0">
+          <div className="h-1 w-10 rounded-full bg-slate-200" />
+        </div>
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 shrink-0">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900">Edit User Details</h2>
@@ -237,7 +246,7 @@ export default function EditUserModal({ isOpen, onClose, user, onSave }) {
           )}
 
           {/* Actions */}
-          <div className="flex flex-col sm:flex-row items-stretch gap-3 pt-4 pb-1">
+          <div className="flex flex-col sm:flex-row items-stretch gap-3 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-1">
             <button
               type="button"
               onClick={onClose}
