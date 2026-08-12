@@ -100,7 +100,7 @@ export function LoginForm() {
       } else {
         triggerError(
           authError.message ||
-            "Failed to log in. Please check your credentials.",
+          "Failed to log in. Please check your credentials.",
         );
       }
       return;
@@ -132,7 +132,7 @@ export function LoginForm() {
     localStorage.setItem("userProfile", JSON.stringify(userData));
     setUserProfile(userData);
 
-    navigate("/dashboard");
+    navigate("/dashboard", { state: { justLoggedIn: true } });
     setLoading(false);
   };
 
@@ -153,11 +153,10 @@ export function LoginForm() {
       {/* ========================================================= */}
       {notification && (
         <div
-          className={`fixed top-6 right-6 z-50 flex max-w-sm w-[90vw] items-start gap-3 rounded-2xl border border-rose-200/90 bg-white/95 p-4 text-rose-900 shadow-[0_20px_50px_rgba(225,29,72,0.18),0_8px_20px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-350 ease-in-out ${
-            isExiting
+          className={`fixed top-6 right-6 z-50 flex max-w-sm w-[90vw] items-start gap-3 rounded-2xl border border-rose-200/90 bg-white/95 p-4 text-rose-900 shadow-[0_20px_50px_rgba(225,29,72,0.18),0_8px_20px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-350 ease-in-out ${isExiting
               ? "opacity-0 translate-x-12 scale-95 pointer-events-none"
               : "opacity-100 translate-x-0 scale-100 animate-[toastPopRight_0.4s_cubic-bezier(0.16,1,0.3,1)]"
-          }`}
+            }`}
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-600 shadow-sm mt-0.5">
             <AlertCircle size={20} strokeWidth={2.25} />

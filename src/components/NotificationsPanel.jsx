@@ -6,6 +6,7 @@ import { useNotifications } from "../hooks/useNotifications.js"; // adjust path 
 export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) {
   const { notificationsList, markAsRead, removeNotification, clearAll } = useNotifications();
   const [removingId, setRemovingId] = useState(null);
+  const [activeTab, setActiveTab] = useState("all");
 
   const handleRemove = (id) => {
     setRemovingId(id);
@@ -25,7 +26,12 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
     }
   }, [unreadCount, onUnreadChange]);
 
-  const groupedNotifications = notificationsList.reduce((acc, notif) => {
+  const visibleNotifications =
+    activeTab === "unread"
+      ? notificationsList.filter((n) => n.unread)
+      : notificationsList;
+
+  const groupedNotifications = visibleNotifications.reduce((acc, notif) => {
     if (!acc[notif.group]) acc[notif.group] = [];
     acc[notif.group].push(notif);
     return acc;
@@ -74,10 +80,22 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
 
       {/* Tabs */}
       <div className="flex items-center gap-2 px-5 py-2.5 border-b border-slate-100">
-        <button className="px-3.5 py-1.5 rounded-full bg-blue-50 text-blue-600 text-[0.82rem] font-bold transition-colors">
+        <button
+          onClick={() => setActiveTab("all")}
+          className={`px-3.5 py-1.5 rounded-full text-[0.82rem] font-bold transition-colors ${activeTab === "all"
+              ? "bg-blue-50 text-blue-600"
+              : "text-slate-500 hover:bg-slate-50"
+            }`}
+        >
           All
         </button>
-        <button className="px-3.5 py-1.5 rounded-full text-slate-500 hover:bg-slate-50 text-[0.82rem] font-bold transition-colors">
+        <button
+          onClick={() => setActiveTab("unread")}
+          className={`px-3.5 py-1.5 rounded-full text-[0.82rem] font-bold transition-colors ${activeTab === "unread"
+              ? "bg-blue-50 text-blue-600"
+              : "text-slate-500 hover:bg-slate-50"
+            }`}
+        >
           Unread ({unreadCount})
         </button>
       </div>
@@ -85,7 +103,7 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
       {/* Notifications List */}
       <div className="max-h-[380px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <div className="px-3 py-3">
-          {notificationsList.length > 0 ? (
+          {visibleNotifications.length > 0 ? (
             <div className="flex flex-col gap-4">
               {groupOrder.map((group) => {
                 const groupNotifs = groupedNotifications[group];
@@ -149,8 +167,12 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
               <div className="h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 mb-3">
                 <CheckCheck size={24} />
               </div>
-              <p className="text-slate-500 font-semibold text-[0.85rem]">You're all caught up!</p>
-              <p className="text-slate-400 text-[0.75rem] mt-1">No new notifications right now.</p>
+                <p className="text-slate-500 font-semibold text-[0.85rem]">
+                  {activeTab === "unread" ? "No unread notifications" : "You're all caught up!"}
+                </p>
+                <p className="text-slate-400 text-[0.75rem] mt-1">
+                  {activeTab === "unread" ? "You've read everything." : "No new notifications right now."}
+                </p>
             </div>
           )}
         </div>
