@@ -16,6 +16,7 @@ import {
   Download,
   X,
   Clock,
+  CheckCircle,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import {
@@ -41,6 +42,8 @@ import {
 } from "../../components/DashboardComponents";
 import { DEFAULT_CESPES_DATA } from "../../data/cespesTemplateData";
 import { getAllSchoolYearsForSelector } from "../../utils/schoolYearsApi"; // adjust path as needed
+import { useLocation, useNavigate } from "react-router-dom";
+import { useUser } from "../../contexts/UserContext";
 
 // ─── Sample data ────────────────────────────────────────────
 // In production this would come from Supabase or context/store.
@@ -157,6 +160,27 @@ async function fetchResourcesForYear(year) {
 // ─── Component ──────────────────────────────────────────────
 
 export default function Dashboard() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { userProfile } = useUser();
+
+  const [showWelcomeToast, setShowWelcomeToast] = useState(false);
+  const welcomeToastShownRef = useRef(false);
+
+  useEffect(() => {
+    if (location.state?.justLoggedIn && !welcomeToastShownRef.current) {
+      welcomeToastShownRef.current = true;
+      setShowWelcomeToast(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (!showWelcomeToast) return;
+    const t = setTimeout(() => setShowWelcomeToast(false), 5000);
+    return () => clearTimeout(t);
+  }, [showWelcomeToast]);
+
   const [selectedYear, setSelectedYear] = useState(null);
   const [rateView, setRateView] = useState("Dropout");
   const [enrollmentView, setEnrollmentView] = useState("Summary");
@@ -995,6 +1019,54 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50/40">
+      {/* ── Welcome toast (top-right) ─────────────────────── */}
+      <div
+        className={`fixed top-8 right-8 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${showWelcomeToast
+            ? "translate-x-0 opacity-100 pointer-events-auto"
+            : "translate-x-[120%] opacity-0 pointer-events-none"
+          }`}
+        style={{
+          width: "380px",
+          minHeight: "76px",
+          borderRadius: "16px",
+          boxShadow: showWelcomeToast
+            ? "0 4px 24px rgba(16, 185, 129, 0.25), 0 1px 3px rgba(0,0,0,0.05)"
+            : "0 12px 30px rgba(0,0,0,0)",
+          fontFamily: "Poppins, sans-serif",
+          border: "1px solid rgba(241, 245, 249, 1)",
+        }}
+      >
+        <div className="absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r from-emerald-100/60 to-transparent" />
+
+        <div
+          className="flex items-center relative z-10 py-4 flex-1"
+          style={{ padding: "0 20px", gap: "16px", minHeight: "76px" }}
+        >
+          <div
+            className="flex items-center justify-center shrink-0 bg-white rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.06),_0_1px_3px_rgba(0,0,0,0.03)]"
+            style={{ width: "42px", height: "42px" }}
+          >
+            <CheckCircle size={22} className="text-emerald-500" strokeWidth={2.5} />
+          </div>
+
+          <div className="flex flex-col justify-center flex-1">
+            <p style={{ fontSize: "15px", fontWeight: 700, color: "#0F172A", lineHeight: 1.2, margin: 0 }}>
+              Welcome{userProfile?.full_name ? `, ${userProfile.full_name}!` : "!"}
+            </p>
+            <p style={{ fontSize: "13px", fontWeight: 500, color: "#64748B", marginTop: "3px", margin: 0 }}>
+              You've successfully logged in.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowWelcomeToast(false)}
+            className="absolute top-1/2 -translate-y-1/2 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-md hover:bg-slate-100"
+            aria-label="Close notification"
+          >
+            <X size={18} strokeWidth={2.5} />
+          </button>
+        </div>
+      </div>
       <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
         {/* ── Page header ─────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-7">

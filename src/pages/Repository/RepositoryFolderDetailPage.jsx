@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   Shield,
   X,
+  CheckCircle,
   Clock,
   Inbox,
 } from "lucide-react";
@@ -257,11 +258,10 @@ function PaginationBar({
               <button
                 key={p}
                 onClick={() => onPageChange(p)}
-                className={`min-w-[28px] h-[28px] px-2 rounded-lg text-[11px] font-bold transition-colors ${
-                  p === currentPage
+                className={`min-w-[28px] h-[28px] px-2 rounded-lg text-[11px] font-bold transition-colors ${p === currentPage
                     ? "bg-blue-600 text-white shadow-sm"
                     : "bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                }`}
+                  }`}
               >
                 {p}
               </button>
@@ -625,14 +625,14 @@ function LastModifiedInfoCard({ rawDate, uploaderInfo }) {
   // Format full datetime string
   const fullDate = rawDate
     ? new Date(rawDate).toLocaleString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
     : "—";
 
   return (
@@ -807,14 +807,14 @@ export default function RepositoryFolderDetailPage() {
       );
 
       await notifyScope({
-  sectionId: section?.id,
-  divisionId: section?.division_id,
-  excludeUserId: userProfile?.id,
-  type: "file_access_request",
-  title: "File access request",
-  content: `${userProfile?.full_name} requested access to ${targetFiles.length} file(s) in ${section?.name}`,
-  meta: { section_id: section?.id, division_id: section?.division_id },
-});
+        sectionId: section?.id,
+        divisionId: section?.division_id,
+        excludeUserId: userProfile?.id,
+        type: "file_access_request",
+        title: "File access request",
+        content: `${userProfile?.full_name} requested access to ${targetFiles.length} file(s) in ${section?.name}`,
+        meta: { section_id: section?.id, division_id: section?.division_id },
+      });
 
       setRequestModalFiles(null);
       setSelectedIds(new Set());
@@ -1067,10 +1067,10 @@ export default function RepositoryFolderDetailPage() {
           requestedOn: r.created_at,
           dueDate: r.deadline
             ? new Date(r.deadline).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
             : "—",
           requestedBy: r.users?.full_name ?? "Unknown",
           requesterRole: getRoleDisplay(r.users?.role) ?? "",
@@ -1324,17 +1324,17 @@ export default function RepositoryFolderDetailPage() {
         prev.map((f) =>
           f.id === file.id
             ? {
-                ...f,
-                status: newStatus,
-                verifiedPdfPath:
-                  newStatus === "Verified" ? verifiedPdfPath : null,
-                verifiedByName:
-                  newStatus === "Verified"
-                    ? updatePayload.verified_by_name
-                    : null,
-                verifiedAt:
-                  newStatus === "Verified" ? updatePayload.verified_at : null,
-              }
+              ...f,
+              status: newStatus,
+              verifiedPdfPath:
+                newStatus === "Verified" ? verifiedPdfPath : null,
+              verifiedByName:
+                newStatus === "Verified"
+                  ? updatePayload.verified_by_name
+                  : null,
+              verifiedAt:
+                newStatus === "Verified" ? updatePayload.verified_at : null,
+            }
             : f,
         ),
       );
@@ -1726,11 +1726,10 @@ export default function RepositoryFolderDetailPage() {
                   <button
                     key={tab}
                     onClick={() => setActiveType(tab)}
-                    className={`px-3.5 py-1.5 text-[11px] font-semibold rounded-full transition-all border ${
-                      isActive
+                    className={`px-3.5 py-1.5 text-[11px] font-semibold rounded-full transition-all border ${isActive
                         ? activeColors
                         : "text-slate-500 hover:bg-slate-50 border-slate-200 bg-white"
-                    }`}
+                      }`}
                   >
                     {tab}
                     <span
@@ -1886,9 +1885,8 @@ export default function RepositoryFolderDetailPage() {
                   return (
                     <tr
                       key={file.id}
-                      className={`group relative transition-colors ${
-                        isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
-                      }`}
+                      className={`group relative transition-colors ${isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
+                        }`}
                     >
                       {/* File cell — with hover popover */}
                       <td className="px-3 py-3.5 min-w-[220px]">
@@ -1908,11 +1906,10 @@ export default function RepositoryFolderDetailPage() {
                                   toggleSelect(file.id);
                                 }
                               }}
-                              className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                                isSelected
+                              className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${isSelected
                                   ? "bg-blue-50 border border-blue-200 text-blue-600"
                                   : `border border-transparent group-hover:bg-slate-100 group-hover:border-slate-200 group-hover:text-slate-400 ${bg}`
-                              }`}
+                                }`}
                             >
                               {isSelected ? (
                                 <svg
@@ -1966,11 +1963,10 @@ export default function RepositoryFolderDetailPage() {
                           </div>
                           {/* File hover popover */}
                           <div
-                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
-                              isFileHovered
+                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${isFileHovered
                                 ? "opacity-100 visible scale-100 pointer-events-auto"
                                 : "opacity-0 invisible scale-95 pointer-events-none"
-                            }`}
+                              }`}
                           >
                             <FileInfoCard
                               file={file}
@@ -2005,15 +2001,13 @@ export default function RepositoryFolderDetailPage() {
                                 : "Click to verify"
                               : undefined
                           }
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${
-                            isVerified
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${isVerified
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : "bg-slate-100 text-slate-500 border-slate-200"
-                          } ${
-                            canVerify
+                            } ${canVerify
                               ? "cursor-pointer hover:brightness-95"
                               : "cursor-default"
-                          } disabled:opacity-60 disabled:cursor-not-allowed`}
+                            } disabled:opacity-60 disabled:cursor-not-allowed`}
                         >
                           {isVerified ? (
                             <>
@@ -2067,11 +2061,10 @@ export default function RepositoryFolderDetailPage() {
                           {/* User hover popover */}
                           {uploaderInfo && (
                             <div
-                              className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
-                                isUserHovered
+                              className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${isUserHovered
                                   ? "opacity-100 visible scale-100 pointer-events-auto"
                                   : "opacity-0 invisible scale-95 pointer-events-none"
-                              }`}
+                                }`}
                             >
                               <UserInfoCard info={uploaderInfo} />
                             </div>
@@ -2106,11 +2099,10 @@ export default function RepositoryFolderDetailPage() {
                           </div>
                           {/* Last Modified hover popover */}
                           <div
-                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
-                              hoveredModifiedId === file.id
+                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${hoveredModifiedId === file.id
                                 ? "opacity-100 visible scale-100 pointer-events-auto"
                                 : "opacity-0 invisible scale-95 pointer-events-none"
-                            }`}
+                              }`}
                           >
                             <LastModifiedInfoCard
                               rawDate={file.rawUpdatedAt || file.rawCreatedAt}
@@ -2210,11 +2202,10 @@ export default function RepositoryFolderDetailPage() {
                 return (
                   <div
                     key={file.id}
-                    className={`relative bg-white rounded-2xl border p-4 transition-all cursor-pointer group ${
-                      isSelected
+                    className={`relative bg-white rounded-2xl border p-4 transition-all cursor-pointer group ${isSelected
                         ? "border-blue-300 shadow-md ring-1 ring-blue-100"
                         : "border-slate-100 hover:shadow-md hover:border-slate-200 shadow-sm"
-                    }`}
+                      }`}
                   >
                     {/* Checkbox */}
                     {/* Checkbox */}
@@ -2228,11 +2219,10 @@ export default function RepositoryFolderDetailPage() {
                           toggleSelect(file.id);
                         }
                       }}
-                      className={`absolute top-3 left-3 w-5 h-5 rounded border flex items-center justify-center transition-all ${
-                        isSelected
+                      className={`absolute top-3 left-3 w-5 h-5 rounded border flex items-center justify-center transition-all ${isSelected
                           ? "bg-blue-600 border-blue-600 text-white opacity-100"
                           : "bg-white border-slate-300 text-transparent opacity-0 group-hover:opacity-100 hover:border-blue-400"
-                      }`}
+                        }`}
                     >
                       {isSelected && (
                         <svg
@@ -2269,15 +2259,13 @@ export default function RepositoryFolderDetailPage() {
                               : "Click to verify"
                             : undefined
                         }
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border transition-colors ${
-                          isVerified
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border transition-colors ${isVerified
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : "bg-slate-100 text-slate-500 border-slate-200"
-                        } ${
-                          canVerify
+                          } ${canVerify
                             ? "cursor-pointer hover:brightness-95"
                             : "cursor-default"
-                        } disabled:opacity-60 disabled:cursor-not-allowed`}
+                          } disabled:opacity-60 disabled:cursor-not-allowed`}
                       >
                         {isVerified ? (
                           <>
@@ -2472,90 +2460,81 @@ export default function RepositoryFolderDetailPage() {
       )}
 
       {/* ── Success toast ──────────────────────────────────── */}
-      {showDeleteToast && (
+      <div
+        className={`fixed bottom-8 right-8 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${showDeleteToast
+          ? "translate-x-0 opacity-100 pointer-events-auto"
+          : "translate-x-[120%] opacity-0 pointer-events-none"
+          }`}
+        style={{
+          width: "380px",
+          minHeight: "76px",
+          borderRadius: "16px",
+          boxShadow: showDeleteToast
+            ? "0 4px 24px rgba(16, 185, 129, 0.25), 0 1px 3px rgba(0,0,0,0.05)"
+            : "0 12px 30px rgba(0,0,0,0)",
+          fontFamily: "Poppins, sans-serif",
+          border: "1px solid rgba(241, 245, 249, 1)",
+        }}
+      >
+        <div className="absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r from-emerald-100/60 to-transparent" />
+
         <div
-          className="fixed top-6 right-6 z-50 flex bg-white overflow-hidden"
+          className="flex items-center relative z-10 py-4 flex-1"
           style={{
-            width: 360,
-            height: 72,
-            borderRadius: 12,
-            boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
-            fontFamily: "Poppins, sans-serif",
+            padding: "0 20px",
+            gap: "16px",
+            minHeight: "76px",
           }}
         >
           <div
-            style={{ width: 6, backgroundColor: "#43D45B", flexShrink: 0 }}
-          />
-          <div
-            className="flex items-center flex-1 relative"
-            style={{ padding: "0 14px", gap: 12 }}
+            className="flex items-center justify-center shrink-0 bg-white rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.06),_0_1px_3px_rgba(0,0,0,0.03)]"
+            style={{
+              width: "42px",
+              height: "42px",
+            }}
           >
-            <div
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: "50%",
-                backgroundColor: "#43D45B",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#fff"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </div>
-            <div>
-              <p
-                style={{
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: "#1F1F2E",
-                  lineHeight: 1.2,
-                  margin: 0,
-                }}
-              >
-                Success
-              </p>
-              <p
-                style={{
-                  fontSize: 12.5,
-                  fontWeight: 500,
-                  color: "#666",
-                  marginTop: 2,
-                  margin: 0,
-                }}
-              >
-                File deleted successfully.
-              </p>
-            </div>
-            <button
-              onClick={() => setShowDeleteToast(false)}
-              className="absolute top-2 right-2.5"
-              style={{
-                color: "#666",
-                background: "none",
-                border: "none",
-                fontSize: 16,
-                lineHeight: 1,
-                cursor: "pointer",
-              }}
-            >
-              ×
-            </button>
+            <CheckCircle
+              size={22}
+              className="text-emerald-500"
+              strokeWidth={2.5}
+            />
           </div>
+
+          <div className="flex flex-col justify-center flex-1">
+            <p
+              style={{
+                fontSize: "15px",
+                fontWeight: 700,
+                color: "#0F172A",
+                lineHeight: 1.2,
+                margin: 0,
+              }}
+            >
+              Success
+            </p>
+
+            <p
+              style={{
+                fontSize: "13px",
+                fontWeight: 500,
+                color: "#64748B",
+                marginTop: "3px",
+                margin: 0,
+              }}
+            >
+              File deleted successfully.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowDeleteToast(false)}
+            className="absolute top-1/2 -translate-y-1/2 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-md hover:bg-slate-100"
+            aria-label="Close notification"
+          >
+            <X size={18} strokeWidth={2.5} />
+          </button>
         </div>
-      )}
+      </div>
 
       {showFileRequestToast && (
         <div
@@ -2644,3 +2623,4 @@ export default function RepositoryFolderDetailPage() {
     </div>
   );
 }
+
