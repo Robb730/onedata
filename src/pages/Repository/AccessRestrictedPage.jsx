@@ -2,15 +2,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
-  ShieldX,
   Lock,
-  User,
   Shield,
   CheckCircle,
-  Users,
   Clock,
-  Building2,
   X,
+  FolderLock,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
@@ -18,6 +15,8 @@ import {
   createDivisionAccessRequest,
   fetchOwnDivisionRequest,
 } from "../../utils/divisionAccessRequestsApi";
+import { notifyScope } from "../../utils/notifications";
+import { RepositorySectionHeader } from "../../components/RepositoryComponents";
 
 const roleDisplayMap = {
   administrator: "Administrator",
@@ -25,6 +24,11 @@ const roleDisplayMap = {
   section_focal: "Section Focal Officer",
   section_personnel: "Section Personnel",
 };
+
+const glassPanel =
+  "rounded-2xl sm:rounded-[28px] border border-white/70 bg-white/85 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl";
+const glassStat =
+  "rounded-2xl sm:rounded-[24px] border border-white/70 bg-white/85 p-3 sm:p-4 shadow-[0_14px_44px_rgba(15,23,42,0.07)] backdrop-blur-xl min-w-0";
 
 export default function AccessRestrictedPage() {
   const navigate = useNavigate();
@@ -49,14 +53,11 @@ export default function AccessRestrictedPage() {
   const [existingRequest, setExistingRequest] = useState(null);
   const [checkingExisting, setCheckingExisting] = useState(false);
 
-  // ── Success toast state ──────────────────────────────────────
   const [showToast, setShowToast] = useState(false);
 
   const showSuccessToast = () => {
     setShowToast(true);
-    setTimeout(() => {
-      setShowToast(false);
-    }, 4000);
+    setTimeout(() => setShowToast(false), 4000);
   };
 
   const roleLabel =
@@ -228,6 +229,7 @@ export default function AccessRestrictedPage() {
       });
       setExistingRequest(req);
       setRequestOpen(false);
+      setRequestMessage("");
       showSuccessToast();
 
       await logAuditEvent({
@@ -280,310 +282,253 @@ export default function AccessRestrictedPage() {
     if (error) console.error("Audit log insert failed:", error.message);
   }
 
+  const status = existingRequest?.status;
+
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 font-medium transition-colors"
-        >
-          <ArrowLeft size={16} />
-          Back
-        </button>
-        <span className="text-gray-300">›</span>
-        <button
-          onClick={() => navigate("/repository")}
-          className="hover:text-gray-700 transition-colors"
-        >
-          Repository
-        </button>
-        <span className="text-gray-300">›</span>
-        <span className="text-gray-800 font-medium">{displayName}</span>
-      </div>
+    <div className="min-h-full overflow-x-hidden bg-slate-50/40">
+      <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 py-5 sm:py-8">
+        <RepositorySectionHeader
+          title={displayName}
+          subtitle="This folder is outside your current access scope in the repository."
+          onBack={() => navigate("/repository")}
+          backLabel="Repository"
+        />
 
-      <div className="bg-white rounded-xl border border-gray-200 px-6 py-4 mb-4 flex items-center gap-4">
-        <div className="relative">
-          <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-            <ShieldX size={22} className="text-gray-400" />
+        {/* Stats — same frosted pattern as division page */}
+        <div className="mb-5 sm:mb-6 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+          <div className={glassStat}>
+            <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.18em] text-slate-400">
+              Status
+            </p>
+            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-semibold text-rose-600 truncate flex items-center gap-1.5">
+              <Lock size={12} className="shrink-0" />
+              Restricted
+            </p>
           </div>
-          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center border-2 border-white">
-            <Lock size={9} className="text-white" />
-          </div>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-1 flex-wrap">
-            <h1 className="text-lg font-bold text-gray-900">{displayName}</h1>
-            <span className="flex items-center gap-1 text-[11px] font-semibold text-red-500 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
-              <Lock size={9} />
-              Restricted Access
-            </span>
-          </div>
-          <div className="flex items-center gap-4 text-xs text-gray-400 flex-wrap">
-            <span className="flex items-center gap-1">
-              <User size={11} />
+
+          <div className={glassStat}>
+            <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.18em] text-slate-400">
+              Managed by
+            </p>
+            <p
+              className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-semibold text-slate-900 truncate"
+              title={managerNames.join(", ")}
+            >
               {loading
-                ? "…"
-                : managerNames.length === 0
-                  ? "Unassigned"
-                  : managerNames.length === 1
-                    ? managerNames[0]
-                    : `${managerNames[0]} +${managerNames.length - 1} more`}
-            </span>
-            <span className="flex items-center gap-1">
-              <span>Modified {loading ? "…" : modifiedLabel}</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <span>{loading ? "…" : (folderInfo?.fileCount ?? 0)} files</span>
-            </span>
+                ? "—"
+                : managerNames.length
+                  ? managerNames.join(", ")
+                  : "Unassigned"}
+            </p>
+          </div>
+
+          <div className={glassStat}>
+            <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.18em] text-slate-400">
+              Your role
+            </p>
+            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-semibold text-slate-900 truncate">
+              {roleLabel}
+            </p>
+          </div>
+
+          <div className={glassStat}>
+            <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.18em] text-slate-400">
+              {ownContext.sectionName ? "Your section" : "Contents"}
+            </p>
+            <p
+              className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-semibold text-slate-900 truncate"
+              title={ownContextLabel || undefined}
+            >
+              {loading
+                ? "—"
+                : ownContextLabel ||
+                  `${folderInfo?.fileCount ?? 0} ${(folderInfo?.fileCount ?? 0) === 1 ? "item" : "items"} · ${modifiedLabel}`}
+            </p>
           </div>
         </div>
-      </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center text-center">
-        <div className="relative mb-6">
-          <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center">
-            <Shield size={36} className="text-red-300" />
-          </div>
-          <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-            <Lock size={14} className="text-white" />
-          </div>
-        </div>
+        {/* Main restricted panel */}
+        <div className={`${glassPanel} px-4 sm:px-8 py-10 sm:py-14 lg:py-16`}>
+          <div className="mx-auto max-w-lg flex flex-col items-center text-center">
+            <div className="mb-5 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 border border-slate-200/80">
+              <FolderLock size={28} strokeWidth={1.75} />
+            </div>
 
-        <h2 className="text-xl font-bold text-gray-900 mb-2">
-          Access Restricted
-        </h2>
-        <p className="text-sm text-gray-500 mb-1">
-          You don't have permission to view the contents of this folder.
-        </p>
-        <p className="text-xs text-gray-400 max-w-sm mb-8">
-          Your current role ({roleLabel}
-          {ownContextLabel ? ` · ${ownContextLabel}` : ""}) does not have access
-          to this folder in the repository flow.
-        </p>
+            <h2 className="text-[1.15rem] sm:text-[1.35rem] font-black text-slate-800 tracking-[-0.02em]">
+              Access restricted
+            </h2>
+            <p className="mt-2 text-sm text-slate-500 font-medium leading-relaxed">
+              You don&apos;t have permission to open this folder.
+            </p>
+            <p className="mt-2 text-[0.78rem] text-slate-400 font-medium leading-relaxed max-w-md">
+              Your account ({roleLabel}
+              {ownContextLabel ? ` · ${ownContextLabel}` : ""}) is not in the
+              access path for this repository location. Request access from the
+              division officer if you need it.
+            </p>
 
-        <div className="flex items-stretch gap-3 mb-8 flex-wrap justify-center">
-          <div className="flex items-start gap-2 border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50 max-w-xs">
-            <Users size={13} className="text-gray-400 mt-0.5 shrink-0" />
-            <div className="text-left">
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-1">
-                Managed By
+            {/* Soft notice strip */}
+            <div className="mt-6 w-full rounded-xl border border-amber-200/80 bg-amber-50/70 px-3.5 py-3 flex items-start gap-2.5 text-left">
+              <Shield size={15} className="text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-[0.75rem] text-amber-800/90 font-medium leading-relaxed">
+                Folder contents stay hidden until access is approved. Pending
+                requests are reviewed by the assigned division focal.
               </p>
-              {loading ? (
-                <p className="text-sm font-semibold text-gray-800">—</p>
-              ) : managerNames.length === 0 ? (
-                <p className="text-sm font-semibold text-gray-800">
-                  Unassigned
-                </p>
+            </div>
+
+            {/* Actions */}
+            <div className="mt-7 w-full flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-center gap-2.5 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => navigate("/repository")}
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <ArrowLeft size={15} />
+                Back to Repository
+              </button>
+
+              {status === "pending" ? (
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-amber-100 px-5 py-2.5 text-sm font-semibold text-amber-700 cursor-not-allowed"
+                >
+                  <Clock size={15} />
+                  Request pending
+                </button>
+              ) : status === "approved" ? (
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-emerald-100 px-5 py-2.5 text-sm font-semibold text-emerald-700 cursor-not-allowed"
+                >
+                  <CheckCircle size={15} />
+                  Access approved
+                </button>
               ) : (
-                <div className="flex flex-wrap gap-1">
-                  {managerNames.map((name, i) => (
-                    <span
-                      key={`${name}-${i}`}
-                      className="inline-flex items-center px-2 py-0.5 rounded-full bg-white border border-gray-200 text-[11px] font-semibold text-gray-800"
-                    >
-                      {name}
-                    </span>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    resolvedDivisionId
+                      ? setRequestOpen(true)
+                      : navigate("/repository")
+                  }
+                  disabled={checkingExisting}
+                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-60 transition-all active:scale-[0.98]"
+                >
+                  <Lock size={15} />
+                  {status === "denied" ? "Request again" : "Request access"}
+                </button>
               )}
             </div>
           </div>
-
-          <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50">
-            <Lock size={13} className="text-red-400" />
-            <div className="text-left">
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">
-                Permission Level
-              </p>
-              <p className="text-sm font-semibold text-red-500">No Access</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50">
-            <Shield size={13} className="text-gray-400 shrink-0" />
-            <div className="text-left">
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">
-                Your Role
-              </p>
-              <p className="text-sm font-semibold text-gray-800">{roleLabel}</p>
-            </div>
-          </div>
-
-          {ownContextLabel && (
-            <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50">
-              <Building2 size={13} className="text-gray-400 shrink-0" />
-              <div className="text-left">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">
-                  {ownContext.sectionName ? "Your Section" : "Your Division"}
-                </p>
-                <p
-                  className="text-sm font-semibold text-gray-800 max-w-[180px] truncate"
-                  title={ownContextLabel}
-                >
-                  {ownContextLabel}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate("/repository")}
-            className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-lg transition-colors"
-          >
-            <ArrowLeft size={15} />
-            Go Back
-          </button>
-          {(() => {
-            const status = existingRequest?.status;
-            if (status === "pending") {
-              return (
-                <button
-                  disabled
-                  className="flex items-center gap-2 px-6 py-2.5 bg-amber-100 text-amber-700 text-sm font-semibold rounded-lg cursor-not-allowed"
-                >
-                  <Clock size={15} />
-                  Request Pending
-                </button>
-              );
-            }
-            if (status === "approved") {
-              return (
-                <button
-                  disabled
-                  className="flex items-center gap-2 px-6 py-2.5 bg-emerald-100 text-emerald-700 text-sm font-semibold rounded-lg cursor-not-allowed"
-                >
-                  <CheckCircle size={15} />
-                  Access Approved
-                </button>
-              );
-            }
-            return (
-              <button
-                onClick={() =>
-                  resolvedDivisionId
-                    ? setRequestOpen(true)
-                    : navigate("/repository")
-                }
-                disabled={checkingExisting}
-                className="flex items-center gap-2 px-6 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-all active:scale-95 shadow-sm"
-              >
-                <CheckCircle size={15} />
-                {status === "denied" ? "Request Again" : "Request Access"}
-              </button>
-            );
-          })()}
         </div>
       </div>
 
+      {/* Request modal — bottom sheet mobile / centered desktop */}
       {requestOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-[2px] p-4">
-          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
-            <h3 className="text-base font-bold text-slate-800 mb-1">
-              Request access to {displayName}
-            </h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Sent to the division focal person(s) for review. You'll be able to
-              open this folder once approved.
-            </p>
-            <textarea
-              value={requestMessage}
-              onChange={(e) => setRequestMessage(e.target.value.slice(0, 200))}
-              rows={3}
-              maxLength={200}
-              placeholder="Add a note (optional) — why do you need access?"
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:border-teal-400 resize-none"
-            />
-            <div className="flex gap-3 mt-4">
+        <div
+          className="fixed inset-0 z-[60] flex items-end lg:items-center justify-center bg-slate-950/40 backdrop-blur-[2px] p-0 lg:p-4"
+          onClick={() => !submitting && setRequestOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-t-2xl lg:rounded-2xl shadow-[0_24px_70px_rgba(15,23,42,0.18)] border border-slate-200 border-b-0 lg:border-b overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="lg:hidden flex justify-center pt-2.5">
+              <div className="h-1 w-10 rounded-full bg-slate-200" />
+            </div>
+
+            <div className="flex items-start justify-between gap-3 px-4 sm:px-6 pt-4 sm:pt-6">
+              <div className="min-w-0">
+                <h3 className="text-[1.05rem] font-black text-slate-800 tracking-[-0.02em]">
+                  Request access
+                </h3>
+                <p className="text-[0.78rem] text-slate-400 font-medium mt-1">
+                  {displayName} — sent to the division focal for review.
+                </p>
+              </div>
               <button
+                type="button"
                 onClick={() => setRequestOpen(false)}
                 disabled={submitting}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
+                className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="px-4 sm:px-6 py-4">
+              <label className="block text-[0.72rem] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                Note (optional)
+              </label>
+              <textarea
+                value={requestMessage}
+                onChange={(e) => setRequestMessage(e.target.value.slice(0, 200))}
+                rows={3}
+                maxLength={200}
+                placeholder="Why do you need access to this folder?"
+                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 placeholder:text-slate-400 bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white resize-none transition-all"
+              />
+              <p className="mt-1.5 text-[0.7rem] text-slate-400 text-right font-medium">
+                {requestMessage.length}/200
+              </p>
+            </div>
+
+            <div className="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 px-4 sm:px-6 pb-[calc(1.25rem+env(safe-area-inset-bottom))] lg:pb-6">
+              <button
+                type="button"
+                onClick={() => setRequestOpen(false)}
+                disabled={submitting}
+                className="flex-1 min-h-[44px] px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleSubmitRequest}
                 disabled={submitting}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-sm font-bold disabled:opacity-50"
+                className="flex-1 min-h-[44px] px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold disabled:opacity-50 shadow-sm shadow-blue-600/20"
               >
-                {submitting ? "Sending…" : "Send Request"}
+                {submitting ? "Sending…" : "Send request"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Success Toast */}
+      {/* Success toast */}
       <div
-        className={`fixed bottom-8 right-8 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${
+        className={`fixed left-4 right-4 z-50 flex bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(5.75rem+env(safe-area-inset-bottom))] lg:bottom-8 sm:left-auto sm:right-8 sm:w-[380px] ${
           showToast
-            ? "translate-x-0 opacity-100 pointer-events-auto"
-            : "translate-x-[120%] opacity-0 pointer-events-none"
+            ? "translate-y-0 sm:translate-x-0 opacity-100 pointer-events-auto"
+            : "translate-y-4 sm:translate-y-0 sm:translate-x-[120%] opacity-0 pointer-events-none"
         }`}
         style={{
-          width: "380px",
           minHeight: "76px",
           borderRadius: "16px",
           boxShadow: showToast
             ? "0 4px 24px rgba(16, 185, 129, 0.25), 0 1px 3px rgba(0,0,0,0.05)"
             : "0 12px 30px rgba(0,0,0,0)",
-          fontFamily: "Poppins, sans-serif",
           border: "1px solid rgba(241, 245, 249, 1)",
         }}
       >
         <div className="absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r from-emerald-100/60 to-transparent" />
-
-        <div
-          className="flex items-center relative z-10 py-4 flex-1"
-          style={{
-            padding: "0 20px",
-            gap: "16px",
-            minHeight: "76px",
-          }}
-        >
-          <div
-            className="flex items-center justify-center shrink-0 bg-white rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.06),_0_1px_3px_rgba(0,0,0,0.03)]"
-            style={{
-              width: "42px",
-              height: "42px",
-            }}
-          >
-            <CheckCircle
-              size={22}
-              className="text-emerald-500"
-              strokeWidth={2.5}
-            />
+        <div className="flex items-center relative z-10 flex-1 px-5 gap-4 min-h-[76px]">
+          <div className="flex h-[42px] w-[42px] items-center justify-center shrink-0 bg-white rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.06)]">
+            <CheckCircle size={22} className="text-emerald-500" strokeWidth={2.5} />
           </div>
-
-          <div className="flex flex-col justify-center flex-1">
-            <p
-              style={{
-                fontSize: "15px",
-                fontWeight: 700,
-                color: "#0F172A",
-                lineHeight: 1.2,
-                margin: 0,
-              }}
-            >
+          <div className="flex flex-col justify-center flex-1 pr-8">
+            <p className="text-[15px] font-bold text-slate-900 leading-tight m-0">
               Success
             </p>
-
-            <p
-              style={{
-                fontSize: "13px",
-                fontWeight: 500,
-                color: "#64748B",
-                marginTop: "3px",
-                margin: 0,
-              }}
-            >
+            <p className="text-[13px] font-medium text-slate-500 m-0 mt-0.5">
               Access request sent successfully.
             </p>
           </div>
-
           <button
+            type="button"
             onClick={() => setShowToast(false)}
             className="absolute top-1/2 -translate-y-1/2 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-md hover:bg-slate-100"
             aria-label="Close notification"

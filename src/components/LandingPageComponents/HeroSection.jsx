@@ -16,7 +16,7 @@ export function HeroSection() {
   return (
     <section
       id="home"
-      className="relative w-full min-h-[90vh] lg:h-screen lg:max-h-[1080px] max-w-[1920px] mx-auto flex items-center overflow-x-clip bg-[#0c192e] select-none"
+      className="relative w-full min-h-[90vh] lg:h-screen lg:max-h-[1080px] max-w-[1920px] mx-auto hidden md:flex items-center overflow-x-clip bg-[#0c192e] select-none"
     >
       {/* ── 1. Photo Background Layer with Smooth Entrance Animation ── */}
       <div className="absolute inset-0 z-0 overflow-hidden">

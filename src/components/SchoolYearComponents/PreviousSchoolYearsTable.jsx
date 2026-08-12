@@ -1,8 +1,7 @@
 import { Archive, RotateCcw, Lock } from "lucide-react";
 
 /**
- * StatusBadge — Visually distinct badge per status, instead of every
- * status sharing the same gray pill.
+ * StatusBadge — Visually distinct badge per status.
  */
 function StatusBadge({ status }) {
   const styles = {
@@ -26,15 +25,82 @@ function StatusBadge({ status }) {
   );
 }
 
+function YearActions({ year, onReopen, onClose, alwaysVisible = false }) {
+  const isReopened = year.status === "Reopened";
+  const visibility = alwaysVisible
+    ? "opacity-100"
+    : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100";
+
+  if (isReopened) {
+    return (
+      <button
+        onClick={() => onClose(year.id)}
+        className={`inline-flex items-center gap-1.5 text-[0.75rem] font-semibold text-slate-500 hover:text-slate-700 border border-slate-200 hover:bg-slate-50 px-2.5 py-1.5 rounded-[8px] transition-colors cursor-pointer ${visibility}`}
+      >
+        <Lock size={12} />
+        Close
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => onReopen(year.id)}
+      className={`inline-flex items-center gap-1.5 text-[0.75rem] font-semibold text-blue-600 hover:text-blue-700 border border-blue-200 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-[8px] transition-colors cursor-pointer ${visibility}`}
+    >
+      <RotateCcw size={12} />
+      Reopen
+    </button>
+  );
+}
+
 /**
- * SchoolYearRow — A single row in the Previous School Years table.
+ * Mobile card row — replaces the wide table on small screens.
+ */
+function SchoolYearCard({ year, onReopen, onClose }) {
+  const isReopened = year.status === "Reopened";
+
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_1px_4px_rgba(15,23,42,0.04)]">
+      <div className="flex items-start gap-3">
+        <div
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+            isReopened ? "bg-amber-50 text-amber-500" : "bg-slate-100 text-slate-400"
+          }`}
+        >
+          <Archive size={14} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[0.88rem] font-semibold text-slate-800 leading-tight truncate">
+                {year.label}
+              </p>
+              <p className="text-[0.72rem] text-slate-400 mt-0.5">{year.dateRange}</p>
+            </div>
+            <StatusBadge status={year.status} />
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="text-[0.78rem] text-slate-500">
+              <span className="text-[1.05rem] font-black text-slate-800">{year.totalFiles}</span>{" "}
+              files
+            </p>
+            <YearActions year={year} onReopen={onReopen} onClose={onClose} alwaysVisible />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Desktop table row.
  */
 function SchoolYearRow({ year, onReopen, onClose }) {
   const isReopened = year.status === "Reopened";
 
   return (
     <tr className="group border-b border-slate-100 last:border-b-0 transition-colors duration-150 hover:bg-slate-50/80">
-      {/* School Year */}
       <td className="px-5 py-4 align-middle">
         <div className="flex items-center gap-3">
           <div
@@ -54,61 +120,34 @@ function SchoolYearRow({ year, onReopen, onClose }) {
           </div>
         </div>
       </td>
-
-      {/* Status */}
       <td className="px-5 py-4 align-middle">
         <StatusBadge status={year.status} />
       </td>
-
-      {/* Total Files */}
       <td className="px-5 py-4 align-middle text-right">
         <p className="text-[1.15rem] font-black text-slate-800 leading-none">
           {year.totalFiles}
         </p>
         <p className="text-[0.68rem] text-slate-400 mt-0.5">files</p>
       </td>
-
-      {/* Actions */}
       <td className="px-5 py-4 align-middle text-right">
-        {isReopened ? (
-          <button
-            onClick={() => onClose(year.id)}
-            className="inline-flex items-center gap-1.5 text-[0.75rem] font-semibold text-slate-500 hover:text-slate-700 border border-slate-200 hover:bg-slate-50 px-2.5 py-1.5 rounded-[8px] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100"
-          >
-            <Lock size={12} />
-            Close
-          </button>
-        ) : (
-          <button
-            onClick={() => onReopen(year.id)}
-            className="inline-flex items-center gap-1.5 text-[0.75rem] font-semibold text-blue-600 hover:text-blue-700 border border-blue-200 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-[8px] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100"
-          >
-            <RotateCcw size={12} />
-            Reopen
-          </button>
-        )}
+        <YearActions year={year} onReopen={onReopen} onClose={onClose} />
       </td>
     </tr>
   );
 }
 
 /**
- * PreviousSchoolYearsTable — Table listing archived school years.
- *
- * @param {{ id, label, dateRange, status, totalFiles }[]} years
- * @param {function} onReopen — called with a year's id when "Reopen" is clicked
- * @param {function} onClose  — called with a year's id when "Close" is clicked
- *                              on a currently-reopened year
+ * PreviousSchoolYearsTable — Archived school years list.
+ * Cards on mobile, table from `sm` up.
  */
 export default function PreviousSchoolYearsTable({ years = [], onReopen, onClose }) {
   const reopenedCount = years.filter((y) => y.status === "Reopened").length;
 
   return (
     <div>
-      {/* Section header */}
       <div className="flex items-baseline justify-between mb-3">
-        <div>
-          <h2 className="text-[1.05rem] font-bold text-slate-800">
+        <div className="min-w-0">
+          <h2 className="text-[1rem] sm:text-[1.05rem] font-bold text-slate-800">
             Previous School Years{" "}
             <span className="text-[0.78rem] font-semibold text-slate-400 ml-1">
               {years.length}
@@ -117,56 +156,82 @@ export default function PreviousSchoolYearsTable({ years = [], onReopen, onClose
           <p className="text-[0.72rem] text-slate-400 font-medium mt-0.5">
             {reopenedCount > 0
               ? `${reopenedCount} year${reopenedCount > 1 ? "s" : ""} currently reopened for late submissions`
-              : "Archived years are read-only · Hover a row to see actions"}
+              : "Archived years are read-only"}
           </p>
         </div>
       </div>
 
-      {/* Table card */}
+      {/* Mobile cards */}
+      <div className="space-y-3 sm:hidden">
+        {years.length > 0 ? (
+          years.map((year) => (
+            <SchoolYearCard
+              key={year.id}
+              year={year}
+              onReopen={onReopen}
+              onClose={onClose}
+            />
+          ))
+        ) : (
+          <div className="rounded-2xl border border-slate-100 bg-white px-5 py-12 text-center">
+            <p className="text-[0.95rem] font-medium text-slate-500">
+              No previous school years available.
+            </p>
+          </div>
+        )}
+        <p className="text-[11px] text-slate-400 px-1 pt-1">
+          ○ Use <span className="font-semibold text-blue-500">Reopen</span> for late
+          submissions, or <span className="font-semibold text-slate-500">Close</span> to
+          lock again.
+        </p>
+      </div>
+
+      {/* Desktop table */}
       <div
-        className="overflow-hidden rounded-[16px] border border-slate-100/80 bg-white"
+        className="hidden sm:block overflow-hidden rounded-[16px] border border-slate-100/80 bg-white"
         style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
       >
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/70">
-              <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                School Year
-              </th>
-              <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                Status
-              </th>
-              <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                Total Files
-              </th>
-              <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {years.length > 0 ? (
-              years.map((year) => (
-                <SchoolYearRow
-                  key={year.id}
-                  year={year}
-                  onReopen={onReopen}
-                  onClose={onClose}
-                />
-              ))
-            ) : (
-              <tr>
-                <td colSpan="4" className="px-5 py-12 text-center">
-                  <p className="text-[0.95rem] font-medium text-slate-500">
-                    No previous school years available.
-                  </p>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[520px]">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/70">
+                <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  School Year
+                </th>
+                <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  Status
+                </th>
+                <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  Total Files
+                </th>
+                <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {years.length > 0 ? (
+                years.map((year) => (
+                  <SchoolYearRow
+                    key={year.id}
+                    year={year}
+                    onReopen={onReopen}
+                    onClose={onClose}
+                  />
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="px-5 py-12 text-center">
+                    <p className="text-[0.95rem] font-medium text-slate-500">
+                      No previous school years available.
+                    </p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
 
-        {/* Table footer */}
         <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 rounded-b-[16px]">
           <p className="text-[11px] text-slate-400">
             ○ Archived years are read-only. Use{" "}

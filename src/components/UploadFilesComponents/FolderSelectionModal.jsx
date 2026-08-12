@@ -104,34 +104,58 @@ export default function FolderSelectionModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 flex flex-col max-h-[80vh]">
+    <div
+      className="fixed inset-0 z-[60] flex items-end lg:items-center justify-center bg-slate-950/40 backdrop-blur-[2px] p-0 lg:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-t-2xl lg:rounded-2xl shadow-2xl w-full max-w-md mx-0 lg:mx-4 flex flex-col max-h-[90dvh] lg:max-h-[80vh] border border-slate-200 border-b-0 lg:border-b overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Drag handle — mobile */}
+        <div className="lg:hidden flex justify-center pt-2.5 pb-1">
+          <div className="h-1 w-10 rounded-full bg-slate-200" />
+        </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">Select Section</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 flex-shrink-0">
+          <div className="min-w-0 pr-3">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+              Select Section
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5 truncate">
               {isDivisionMode
                 ? `Sections under ${divisionName || "your division"}`
                 : "Choose which section to upload into"}
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-            <X size={24} />
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 p-2 -mr-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            aria-label="Close"
+          >
+            <X size={20} />
           </button>
         </div>
 
         {/* Search */}
-        <div className="p-4 border-b border-gray-100 flex-shrink-0">
+        <div className="px-4 py-3 border-b border-slate-100 flex-shrink-0">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={16}
+            />
             <input
               type="text"
-              placeholder={isDivisionMode ? "Search sections..." : "Search divisions or sections..."}
+              placeholder={
+                isDivisionMode
+                  ? "Search sections..."
+                  : "Search divisions or sections..."
+              }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="w-full pl-9 pr-4 py-2.5 min-h-[44px] border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
             />
           </div>
         </div>
@@ -139,18 +163,19 @@ export default function FolderSelectionModal({
         {/* Content */}
         <div className="overflow-y-auto flex-1 p-3">
           {loading ? (
-            <div className="flex items-center justify-center py-12 gap-2 text-sm text-gray-400">
+            <div className="flex items-center justify-center py-12 gap-2 text-sm text-slate-400">
               <Loader size={16} className="animate-spin" /> Loading…
             </div>
           ) : error ? (
             <p className="text-center py-8 text-sm text-red-400">{error}</p>
           ) : isDivisionMode ? (
-            // ── Flat list, no division header/expand ──
             filteredFlatSections.length === 0 ? (
               <div className="text-center py-8">
-                <FolderOpen className="mx-auto text-gray-300 mb-2" size={32} />
-                <p className="text-sm text-gray-400">
-                  {divisionId ? "No sections found" : "No division assigned to your account"}
+                <FolderOpen className="mx-auto text-slate-300 mb-2" size={32} />
+                <p className="text-sm text-slate-400">
+                  {divisionId
+                    ? "No sections found"
+                    : "No division assigned to your account"}
                 </p>
               </div>
             ) : (
@@ -158,11 +183,14 @@ export default function FolderSelectionModal({
                 {filteredFlatSections.map((section) => (
                   <button
                     key={section.id}
-                    onClick={() => handleSectionPick(section, divisionName, divisionId)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-blue-50 transition-colors text-left group"
+                    type="button"
+                    onClick={() =>
+                      handleSectionPick(section, divisionName, divisionId)
+                    }
+                    className="w-full flex items-center gap-3 px-3 py-3 min-h-[44px] rounded-xl hover:bg-blue-50 transition-colors text-left group"
                   >
-                    <div className="w-1.5 h-1.5 rounded-full bg-gray-300 group-hover:bg-blue-400 flex-shrink-0" />
-                    <span className="text-sm text-gray-700 group-hover:text-blue-800 font-medium">
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-300 group-hover:bg-blue-400 flex-shrink-0" />
+                    <span className="text-sm text-slate-700 group-hover:text-blue-800 font-medium">
                       {section.name}
                     </span>
                   </button>
@@ -171,8 +199,8 @@ export default function FolderSelectionModal({
             )
           ) : filteredDivisions.length === 0 ? (
             <div className="text-center py-8">
-              <FolderOpen className="mx-auto text-gray-300 mb-2" size={32} />
-              <p className="text-sm text-gray-400">No results found</p>
+              <FolderOpen className="mx-auto text-slate-300 mb-2" size={32} />
+              <p className="text-sm text-slate-400">No results found</p>
             </div>
           ) : (
             filteredDivisions.map((div) => {
@@ -182,34 +210,45 @@ export default function FolderSelectionModal({
               return (
                 <div key={div.id} className="mb-1">
                   <button
+                    type="button"
                     onClick={() =>
-                      setExpandedDivision(isExpanded && !searchQuery ? null : div.id)
+                      setExpandedDivision(
+                        isExpanded && !searchQuery ? null : div.id,
+                      )
                     }
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-3 py-3 min-h-[44px] rounded-xl hover:bg-slate-50 transition-colors text-left"
                   >
-                    <FolderOpen size={17} className="text-blue-500 flex-shrink-0" />
-                    <span className="text-sm font-semibold text-gray-800 flex-1">
+                    <FolderOpen
+                      size={17}
+                      className="text-blue-500 flex-shrink-0"
+                    />
+                    <span className="text-sm font-semibold text-slate-800 flex-1">
                       {div.name}
                     </span>
                     <ChevronRight
                       size={15}
-                      className={`text-gray-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                      className={`text-slate-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
                     />
                   </button>
 
                   {isExpanded && (
-                    <div className="ml-6 mt-0.5 space-y-0.5">
+                    <div className="ml-4 sm:ml-6 mt-0.5 space-y-0.5">
                       {sections.length === 0 ? (
-                        <p className="text-xs text-gray-400 px-3 py-2">No sections</p>
+                        <p className="text-xs text-slate-400 px-3 py-2">
+                          No sections
+                        </p>
                       ) : (
                         sections.map((section) => (
                           <button
                             key={section.id}
-                            onClick={() => handleSectionPick(section, div.name, div.id)}
-                            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors text-left group"
+                            type="button"
+                            onClick={() =>
+                              handleSectionPick(section, div.name, div.id)
+                            }
+                            className="w-full flex items-center gap-3 px-3 py-2.5 min-h-[40px] rounded-xl hover:bg-blue-50 transition-colors text-left group"
                           >
-                            <div className="w-1.5 h-1.5 rounded-full bg-gray-300 group-hover:bg-blue-400 flex-shrink-0" />
-                            <span className="text-sm text-gray-700 group-hover:text-blue-800 font-medium">
+                            <div className="w-1.5 h-1.5 rounded-full bg-slate-300 group-hover:bg-blue-400 flex-shrink-0" />
+                            <span className="text-sm text-slate-700 group-hover:text-blue-800 font-medium">
                               {section.name}
                             </span>
                           </button>
@@ -224,10 +263,11 @@ export default function FolderSelectionModal({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-100 flex-shrink-0">
+        <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-4 border-t border-slate-100 flex-shrink-0">
           <button
+            type="button"
             onClick={onClose}
-            className="w-full px-4 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 text-sm font-medium transition-colors"
+            className="w-full min-h-[44px] px-4 py-2.5 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 text-sm font-semibold transition-colors"
           >
             Cancel
           </button>

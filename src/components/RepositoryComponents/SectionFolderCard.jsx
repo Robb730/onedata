@@ -133,13 +133,13 @@ export function SectionFolderCard({
       <button
         type="button"
         onClick={onClick}
-        className="group flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-[22px] border border-dashed border-slate-200 bg-white/85 p-5 text-center transition-all duration-300 hover:-translate-y-1 hover:border-emerald-300 hover:bg-emerald-50/40 hover:shadow-[0_18px_42px_rgba(15,23,42,0.10)]"
+        className="group flex min-h-[140px] sm:min-h-[220px] min-w-0 flex-col items-center justify-center gap-2 sm:gap-3 rounded-[18px] sm:rounded-[22px] border border-dashed border-slate-200 bg-white/85 p-3 sm:p-5 text-center transition-all duration-300 hover:-translate-y-1 hover:border-emerald-300 hover:bg-emerald-50/40 hover:shadow-[0_18px_42px_rgba(15,23,42,0.10)]"
       >
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 transition-colors group-hover:bg-emerald-100/70">
+        <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-slate-50 transition-colors group-hover:bg-emerald-100/70">
           <Plus size={18} className="text-slate-400 transition-colors group-hover:text-emerald-600" />
         </div>
-        <p className="text-sm font-semibold text-slate-700">Create section</p>
-        <p className="text-[11px] text-slate-400">Add a new folder to this division</p>
+        <p className="text-[11px] sm:text-sm font-semibold text-slate-700">Create section</p>
+        <p className="hidden sm:block text-[11px] text-slate-400">Add a new folder to this division</p>
       </button>
     );
   }
@@ -214,7 +214,7 @@ export function SectionFolderCard({
       onClick={onClick}
       onKeyDown={(e) => e.key === "Enter" && onClick?.()}
       onMouseMove={handleMouseMove}
-      className="group relative flex cursor-pointer flex-col rounded-[22px] p-[1.5px] transition-all duration-300 hover:-translate-y-[3px] hover:shadow-[0_18px_42px_rgba(15,23,42,0.10)]"
+      className="group relative flex min-w-0 cursor-pointer flex-col rounded-[18px] sm:rounded-[22px] p-[1.5px] transition-all duration-300 hover:-translate-y-[3px] hover:shadow-[0_18px_42px_rgba(15,23,42,0.10)]"
       role="button"
       tabIndex={0}
     >
@@ -228,35 +228,45 @@ export function SectionFolderCard({
       />
 
       {/* Inner White Card */}
-      <div className="relative flex w-full h-full flex-col overflow-hidden rounded-[21px] bg-white p-5">
+      <div className="relative flex w-full h-full flex-col overflow-hidden rounded-[16px] sm:rounded-[21px] bg-white p-3 sm:p-5">
 
       {/* Top bar — Active badge */}
-      <div className="mb-4 flex items-center justify-end">
-        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+      <div className="mb-2 sm:mb-4 flex items-center justify-end">
+        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[11px] font-semibold text-emerald-700">
           ● Active
         </span>
       </div>
 
       {/* Icon + name */}
-      <div className="mb-4 flex flex-col items-center gap-3 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 transition-all duration-300 group-hover:scale-[1.04] group-hover:shadow-md">
+      <div className="mb-2 sm:mb-4 flex flex-col items-center gap-2 sm:gap-3 text-center">
+        <div className="flex h-10 w-10 sm:h-14 sm:w-14 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-50 transition-all duration-300 group-hover:scale-[1.04] group-hover:shadow-md">
           <lord-icon
             src="/folder-outline.json"
             trigger="hover"
             target={`#${cardId}`}
             colors="primary:#047857"
-            style={{ width: "28px", height: "28px" }}
+            style={{ width: "24px", height: "24px" }}
           ></lord-icon>
         </div>
 
-        <h3 className="w-full break-words text-center text-sm font-semibold leading-snug text-slate-900">
+        <h3 className="w-full line-clamp-2 break-words text-center text-[11px] sm:text-sm font-semibold leading-snug text-slate-900">
           {name}
         </h3>
       </div>
 
-      {/* Managed by — full names visible, capped with expand toggle */}
-      <div className="mt-auto">
-        <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 transition-colors">
+      {/* Managed by — compact on mobile, full list from sm up */}
+      <div className="mt-auto min-w-0">
+        <div className="flex items-center justify-center gap-1 min-w-0 sm:hidden">
+          <User size={10} className="text-slate-400 shrink-0" />
+          <span className="truncate text-[10px] font-medium text-slate-500">
+            {managerList.length === 0
+              ? "Unassigned"
+              : managerList.length === 1
+                ? managerList[0]
+                : `${managerList[0]} +${managerList.length - 1}`}
+          </span>
+        </div>
+        <div className="hidden sm:block rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 transition-colors">
           <div className="mb-1 flex items-center gap-1.5 text-[11px] text-slate-500">
             <User size={11} className="text-slate-400 shrink-0" />
             <span>Managed by</span>

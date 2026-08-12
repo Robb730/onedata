@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
   Navbar,
   HeroSection,
+  MobileIntro,
   HeroStats,
   AnalyticsPreview,
   Footer,
@@ -13,8 +14,9 @@ export default function LandingPage() {
   const [selectedYear, setSelectedYear] = useState(AVAILABLE_YEARS[1]); // default: 2025-2026, the one with data
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-hidden">
       <Navbar />
+      <MobileIntro />
       <HeroSection />
       <HeroStats
         selectedYear={selectedYear}

@@ -11,7 +11,7 @@ import loginImage from "../../assets/login-image.png";
 export function LoginBranding() {
   return (
     <div
-      className="login-branding relative flex flex-col items-center justify-between overflow-hidden rounded-l-2xl select-none"
+      className="login-branding relative hidden md:flex flex-col items-center justify-between overflow-hidden rounded-l-2xl select-none"
       style={{ flex: "0 0 46%", minHeight: "540px" }}
     >
       {/* Background Image */}

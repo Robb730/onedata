@@ -92,10 +92,19 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+    <div
+      className="fixed inset-x-0 bottom-0 top-14 lg:inset-0 z-[60] flex items-end lg:items-center justify-center bg-slate-950/40 backdrop-blur-[2px] p-0 lg:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-t-2xl lg:rounded-xl shadow-2xl w-full max-w-md max-h-[calc(100dvh-3.5rem)] lg:max-h-[90vh] flex flex-col overflow-hidden border border-slate-200 border-b-0 lg:border-b"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="lg:hidden flex justify-center pt-2.5 shrink-0">
+          <div className="h-1 w-10 rounded-full bg-slate-200" />
+        </div>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 shrink-0">
           <h2 className="text-xl font-bold text-gray-900">Add New User</h2>
           <button
             onClick={onClose}
@@ -106,7 +115,7 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
           {/* Name */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -241,7 +250,7 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
           )}
 
           {/* Actions */}
-          <div className="flex items-center gap-3 pt-4">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch gap-3 pt-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] lg:pb-0">
             <button
               type="button"
               onClick={onClose}

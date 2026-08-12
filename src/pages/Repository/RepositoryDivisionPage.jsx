@@ -196,7 +196,7 @@ export default function RepositoryDivisionPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/40 pb-10">
-      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
+      <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 py-5 sm:py-8">
         <RepositorySectionHeader
           title={loading ? "Loading…" : (division?.name ?? "Division")}
           subtitle={
@@ -209,22 +209,22 @@ export default function RepositoryDivisionPage() {
         />
 
         {/* ── Stats row ─────────────────────────────────────────── */}
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-[24px] border border-white/70 bg-white/85 p-4 shadow-[0_14px_44px_rgba(15,23,42,0.07)] backdrop-blur-xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+        <div className="mb-5 sm:mb-6 grid grid-cols-3 gap-2 sm:gap-4">
+          <div className="rounded-2xl sm:rounded-[24px] border border-white/70 bg-white/85 p-3 sm:p-4 shadow-[0_14px_44px_rgba(15,23,42,0.07)] backdrop-blur-xl min-w-0">
+            <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.18em] text-slate-400">
               Sections
             </p>
-            <p className="mt-2 text-sm font-semibold text-slate-900">
+            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-semibold text-slate-900 truncate">
               {loading
                 ? "—"
                 : `${sections.length} ${sections.length === 1 ? "folder" : "folders"}`}
             </p>
           </div>
-          <div className="rounded-[24px] border border-white/70 bg-white/85 p-4 shadow-[0_14px_44px_rgba(15,23,42,0.07)] backdrop-blur-xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+          <div className="rounded-2xl sm:rounded-[24px] border border-white/70 bg-white/85 p-3 sm:p-4 shadow-[0_14px_44px_rgba(15,23,42,0.07)] backdrop-blur-xl min-w-0">
+            <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.18em] text-slate-400">
               Managed by
             </p>
-            <p className="mt-2 text-sm font-semibold text-slate-900">
+            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-semibold text-slate-900 truncate" title={divisionManagers.join(", ")}>
               {loading
                 ? "—"
                 : divisionManagers.length
@@ -232,13 +232,13 @@ export default function RepositoryDivisionPage() {
                   : "—"}
             </p>
           </div>
-          <div className="rounded-[24px] border border-white/70 bg-white/85 p-4 shadow-[0_14px_44px_rgba(15,23,42,0.07)] backdrop-blur-xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+          <div className="rounded-2xl sm:rounded-[24px] border border-white/70 bg-white/85 p-3 sm:p-4 shadow-[0_14px_44px_rgba(15,23,42,0.07)] backdrop-blur-xl min-w-0">
+            <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.18em] text-slate-400">
               Status
             </p>
-            <p className="mt-2 text-sm font-semibold text-slate-900">
+            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-semibold text-slate-900 truncate">
               {loading
-                ? "Loading access…"
+                ? "Loading…"
                 : error
                   ? "Needs attention"
                   : "Accessible"}
@@ -247,7 +247,7 @@ export default function RepositoryDivisionPage() {
         </div>
 
         {/* ── Search / Sort / View Toggle ────────────────── */}
-        <div className="mb-6 rounded-[28px] border border-white/70 bg-white/85 p-4 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-5">
+        <div className="mb-5 sm:mb-6 rounded-2xl sm:rounded-[28px] border border-white/70 bg-white/85 p-3 sm:p-5 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
           <RepositorySearchBar
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -268,15 +268,15 @@ export default function RepositoryDivisionPage() {
 
         {/* ── States: loading / error / grid ────────────────────── */}
         {loading ? (
-          <div className="rounded-[28px] border border-white/70 bg-white/85 px-6 py-24 text-center text-sm text-slate-500 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+          <div className="rounded-2xl sm:rounded-[28px] border border-white/70 bg-white/85 px-4 sm:px-6 py-16 sm:py-24 text-center text-sm text-slate-500 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
             Loading sections…
           </div>
         ) : error ? (
-          <div className="rounded-[28px] border border-rose-100 bg-rose-50/80 px-6 py-24 text-center text-sm text-rose-600 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+          <div className="rounded-2xl sm:rounded-[28px] border border-rose-100 bg-rose-50/80 px-4 sm:px-6 py-16 sm:py-24 text-center text-sm text-rose-600 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
             Failed to load sections: {error}
           </div>
         ) : filteredFolders.length === 0 ? (
-          <div className="rounded-[28px] border border-white/70 bg-white/85 px-6 py-24 text-center text-sm text-slate-500 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+          <div className="rounded-2xl sm:rounded-[28px] border border-white/70 bg-white/85 px-4 sm:px-6 py-16 sm:py-24 text-center text-sm text-slate-500 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
             {searchQuery
               ? `No sections matching "${searchQuery}"`
               : "No sections found."}

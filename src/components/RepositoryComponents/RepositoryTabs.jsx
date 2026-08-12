@@ -17,7 +17,7 @@ export function RepositoryTabs({
   counts = {},
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-[22px] bg-slate-100/70 p-2">
+    <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto rounded-[18px] sm:rounded-[22px] bg-slate-100/70 p-1.5 sm:p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {tabs.map((tab) => {
         const isActive = activeTab === tab;
         const count = counts[tab];
@@ -26,7 +26,7 @@ export function RepositoryTabs({
           <button
             key={tab}
             onClick={() => onTabChange(tab)}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-full transition-all border ${
+            className={`inline-flex shrink-0 items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold rounded-full transition-all border ${
               isActive
                 ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                 : "text-slate-500 hover:bg-white/80 border-transparent bg-transparent hover:text-slate-800"

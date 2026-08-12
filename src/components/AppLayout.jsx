@@ -1,7 +1,8 @@
 // eslint-disable-next-line no-unused-vars
-import React, { use, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
+import { MobileBottomNav } from "./MobileBottomNav";
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
@@ -27,7 +28,7 @@ export function AppLayout({
 
   useEffect(() => {
     setIsAnimating(true);
-    const timer = setTimeout(() => setIsAnimating(false), 400); // 400ms matches CSS duration
+    const timer = setTimeout(() => setIsAnimating(false), 400);
     return () => clearTimeout(timer);
   }, [location.pathname]);
 
@@ -45,8 +46,12 @@ export function AppLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#f0f4f9" }}>
-
+    // Mobile: document scroll (lets browser chrome collapse like the landing page).
+    // Desktop: fixed viewport + inner scroll so the sidebar stays put.
+    <div
+      className="flex min-h-dvh lg:h-dvh lg:overflow-hidden"
+      style={{ background: "#f0f4f9" }}
+    >
       <ChangePasswordModal
         isOpen={mustChange}
         onSuccess={handlePasswordChange}
@@ -59,26 +64,28 @@ export function AppLayout({
       />
 
       {/* Main content area */}
-      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+      <div className="flex flex-1 flex-col min-w-0 lg:min-h-0 lg:overflow-hidden">
         {/* Top header */}
         <TopHeader
           userName={userProfile?.full_name || "User"}
           userRole={userProfile?.role || "Role"}
-          onMenuToggle={() => setSidebarCollapsed((v) => !v)}
           onLogout={handleLogout}
         />
 
-        {/* Page content — scrollable */}
-        <main key={location.pathname} className={`flex-1 overflow-y-auto ${isAnimating ? 'animate-page-in' : ''}`}>
+        <main
+          key={location.pathname}
+          className={`flex-1 pb-[calc(6.25rem+env(safe-area-inset-bottom))] lg:min-h-0 lg:overflow-y-auto lg:pb-0 ${isAnimating ? "animate-page-in" : ""}`}
+        >
           {children}
         </main>
       </div>
 
+      <MobileBottomNav />
+
       {showPasswordToast && (
         <div
-          className="fixed top-6 right-6 z-50 flex bg-white overflow-hidden animate-toast-in"
+          className="fixed top-4 left-4 right-4 z-50 flex bg-white overflow-hidden animate-toast-in sm:left-auto sm:right-6 sm:w-[360px]"
           style={{
-            width: "360px",
             height: "72px",
             borderRadius: "12px",
             boxShadow: "0 12px 30px rgba(0,0,0,0.12)",

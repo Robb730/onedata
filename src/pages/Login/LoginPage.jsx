@@ -1,5 +1,6 @@
 import React from "react";
 import { LoginBranding, LoginForm } from "../../components/LoginPageComponents";
+import logo from "../../assets/one-data-logo.png";
 
 /**
  * LoginPage — Full-screen login page.
@@ -11,32 +12,29 @@ export default function LoginPage() {
   return (
     <div
       id="login-page"
-      className="relative flex min-h-screen items-center justify-center overflow-hidden p-4"
+      className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-6 sm:p-4"
       style={{
         background: "linear-gradient(-45deg, #c9defa, #dce8fa, #e3f0fd, #d8f0ea, #c4e8dc, #d4e6f9)",
         backgroundSize: "400% 400%",
         animation: "subtleGradientMove 18s ease infinite",
       }}
     >
-      {/* === 1. Ambient Moving Blue Gradient Blob === */}
       <div
-        className="pointer-events-none absolute -top-32 -left-32 h-[34rem] w-[34rem] rounded-full blur-3xl opacity-80"
+        className="pointer-events-none absolute -top-32 -left-32 h-[22rem] w-[22rem] sm:h-[34rem] sm:w-[34rem] rounded-full blur-3xl opacity-80"
         style={{
           background: "radial-gradient(circle, rgba(41, 134, 232, 0.45) 0%, rgba(26, 111, 224, 0.25) 45%, transparent 70%)",
           animation: "blueBlobIdle 22s ease-in-out infinite",
         }}
       />
 
-      {/* === 2. Ambient Moving Green Gradient Blob === */}
       <div
-        className="pointer-events-none absolute -bottom-40 -right-40 h-[38rem] w-[38rem] rounded-full blur-3xl opacity-80"
+        className="pointer-events-none absolute -bottom-40 -right-40 h-[24rem] w-[24rem] sm:h-[38rem] sm:w-[38rem] rounded-full blur-3xl opacity-80"
         style={{
           background: "radial-gradient(circle, rgba(39, 174, 122, 0.42) 0%, rgba(29, 170, 116, 0.22) 45%, transparent 70%)",
           animation: "greenBlobIdle 26s ease-in-out infinite",
         }}
       />
 
-      {/* Subtle noise texture overlay */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.025]"
         style={{
@@ -45,19 +43,21 @@ export default function LoginPage() {
         }}
       />
 
-      {/* === Login Card === */}
       <div
         id="login-card"
-        className="relative z-10 flex w-full max-w-[920px] overflow-hidden rounded-2xl bg-white"
+        className="relative z-10 flex w-full max-w-[920px] flex-col overflow-hidden rounded-2xl bg-white md:min-h-[540px] md:flex-row"
         style={{
-          minHeight: "540px",
           boxShadow: "0 25px 60px rgba(15,50,100,0.12), 0 8px 24px rgba(15,50,100,0.08), 0 0 0 1px rgba(255,255,255,0.6)",
         }}
       >
-        {/* Left panel — branding */}
-        <LoginBranding />
+        <div className="flex flex-col items-center pt-8 pb-2 px-6 md:hidden">
+          <img src={logo} alt="OneData Logo" className="h-12 w-auto" />
+          <h2 className="mt-1.5 text-xl font-extrabold tracking-wider" style={{ color: "#282828" }}>
+            OneData
+          </h2>
+        </div>
 
-        {/* Right panel — form */}
+        <LoginBranding />
         <LoginForm />
       </div>
 

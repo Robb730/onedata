@@ -41,9 +41,9 @@ export default function FileRequestModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)] overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/45 p-0 sm:p-4">
+      <div className="w-full max-w-md max-h-[92dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100">
           <div>
             <h2 className="text-lg font-bold text-slate-900">Request a File</h2>
             <p className="text-[12px] text-slate-400 font-medium mt-0.5">
@@ -58,7 +58,7 @@ export default function FileRequestModal({
           </button>
         </div>
 
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-4 sm:px-6 py-5 space-y-4">
           <div>
             <label className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-600 mb-1.5">
               <FileText size={13} /> File Name
@@ -103,7 +103,7 @@ export default function FileRequestModal({
           )}
         </div>
 
-        <div className="flex gap-3 px-6 pb-6">
+        <div className="flex gap-3 px-4 sm:px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-6">
           <button
             onClick={handleClose}
             disabled={isSubmitting}

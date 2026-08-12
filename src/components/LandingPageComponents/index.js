@@ -1,5 +1,6 @@
 export { Navbar } from "./Navbar";
 export { HeroSection } from "./HeroSection";
+export { MobileIntro } from "./MobileIntro";
 export { HeroStats } from "./HeroStats";
 export { SectionHeader } from "./SectionHeader";
 export { AboutSection } from "./AboutSection";

@@ -13,7 +13,13 @@
   box-sizing: border-box;
 }
 
+html {
+  /* Keep document as the scroll root on mobile so browser chrome can collapse. */
+  height: auto;
+}
+
 body {
+  min-height: 100%;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -21,6 +27,10 @@ body {
   color: #1e293b;
   background-color: var(--bg-base);
   line-height: 1.6;
+}
+
+#root {
+  min-height: 100%;
 }
 
 /* Headings — slightly tighter line-height */
@@ -77,4 +87,83 @@ button {
 
 .animate-page-in {
   animation: pageIn 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Mobile nav: liquid glass + Apple-style spring pill ── */
+.liquid-glass-bar {
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.28) 45%,
+      rgba(255, 255, 255, 0.18) 100%
+    );
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  box-shadow:
+    0 10px 40px rgba(15, 23, 42, 0.12),
+    0 2px 8px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.liquid-glass-panel {
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background:
+    linear-gradient(
+      165deg,
+      rgba(255, 255, 255, 0.72) 0%,
+      rgba(255, 255, 255, 0.42) 100%
+    );
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  box-shadow:
+    0 16px 54px rgba(15, 23, 42, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.liquid-glass-pill {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.92) 0%,
+      rgba(241, 245, 249, 0.78) 55%,
+      rgba(226, 232, 240, 0.7) 100%
+    );
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 4px 14px rgba(15, 23, 42, 0.08),
+    0 1px 3px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(148, 163, 184, 0.12);
+  /* Apple-like spring: overshoot then settle */
+  transition: transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+}
+
+@keyframes navIconBounce {
+  0% {
+    transform: scale(0.88);
+  }
+  55% {
+    transform: scale(1.14);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.nav-icon-bounce {
+  animation: navIconBounce 480ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-glass-pill {
+    transition: transform 180ms ease;
+  }
+
+  .nav-icon-bounce {
+    animation: none;
+  }
 }

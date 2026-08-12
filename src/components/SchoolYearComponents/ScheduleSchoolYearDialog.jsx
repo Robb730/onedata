@@ -67,22 +67,22 @@ export default function ScheduleSchoolYearDialog({
   return (
     /* Backdrop */
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-[2px] p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/40 backdrop-blur-[2px] p-0 sm:p-4"
       onClick={onClose}
     >
       {/* Dialog */}
       <div
-        className="relative w-full max-w-[480px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]"
+        className="relative w-full max-w-[480px] max-h-[92dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Header ───────────────────────────────────── */}
-        <div className="flex items-start justify-between px-6 pt-6 pb-5 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50">
+        <div className="flex items-start justify-between gap-3 px-4 sm:px-6 pt-5 sm:pt-6 pb-4 sm:pb-5 border-b border-slate-100">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 shrink-0">
               <CalendarClock size={18} className="text-blue-500" />
             </div>
-            <div>
-              <h2 className="text-[1rem] font-bold text-slate-800 leading-tight">
+            <div className="min-w-0">
+              <h2 className="text-[0.95rem] sm:text-[1rem] font-bold text-slate-800 leading-tight">
                 Schedule School Year Transition
               </h2>
               <p className="text-[0.73rem] text-slate-400 font-medium mt-0.5">
@@ -92,14 +92,14 @@ export default function ScheduleSchoolYearDialog({
           </div>
           <button
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer shrink-0"
           >
             <X size={15} />
           </button>
         </div>
 
         {/* ── Body ─────────────────────────────────────── */}
-        <div className="px-6 py-5 space-y-5">
+        <div className="px-4 sm:px-6 py-5 space-y-5">
           {/* Upcoming School Year */}
           <div>
             <label className="block text-[0.68rem] font-bold uppercase tracking-[0.12em] text-slate-400 mb-1.5">
@@ -141,7 +141,7 @@ export default function ScheduleSchoolYearDialog({
           </div>
 
           {/* Date + Time row */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[0.68rem] font-bold uppercase tracking-[0.12em] text-slate-400 mb-1.5">
                 Transition Date
@@ -177,7 +177,7 @@ export default function ScheduleSchoolYearDialog({
         </div>
 
         {/* ── Footer ───────────────────────────────────── */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 px-4 sm:px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4 border-t border-slate-100 bg-slate-50/50">
           <button
             onClick={onClose}
             className="px-4 py-2.5 rounded-[10px] border border-slate-200 text-[0.82rem] font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
@@ -187,7 +187,7 @@ export default function ScheduleSchoolYearDialog({
           <button
             onClick={handleConfirm}
             disabled={!canSubmit}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-blue-500 text-[0.82rem] font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-[10px] bg-blue-500 text-[0.82rem] font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
           >
             <CalendarClock size={14} />
             Confirm Schedule

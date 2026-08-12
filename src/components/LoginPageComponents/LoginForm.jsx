@@ -147,13 +147,13 @@ export function LoginForm() {
   };
 
   return (
-    <div className="relative flex flex-1 flex-col justify-center px-8 py-10 lg:px-12">
+    <div className="relative flex flex-1 flex-col justify-center px-5 py-6 sm:px-8 sm:py-10 lg:px-12">
       {/* ========================================================= */}
       {/* Floating Top-Right Notification Overlay */}
       {/* ========================================================= */}
       {notification && (
         <div
-          className={`fixed top-6 right-6 z-50 flex max-w-sm w-[90vw] items-start gap-3 rounded-2xl border border-rose-200/90 bg-white/95 p-4 text-rose-900 shadow-[0_20px_50px_rgba(225,29,72,0.18),0_8px_20px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-350 ease-in-out ${isExiting
+          className={`fixed top-4 right-4 left-4 z-50 flex max-w-sm sm:left-auto sm:w-[90vw] items-start gap-3 rounded-2xl border border-rose-200/90 bg-white/95 p-4 text-rose-900 shadow-[0_20px_50px_rgba(225,29,72,0.18),0_8px_20px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-350 ease-in-out ${isExiting
               ? "opacity-0 translate-x-12 scale-95 pointer-events-none"
               : "opacity-100 translate-x-0 scale-100 animate-[toastPopRight_0.4s_cubic-bezier(0.16,1,0.3,1)]"
             }`}
@@ -181,7 +181,7 @@ export function LoginForm() {
       {/* Header */}
       <div className="mb-6 text-center">
         <h1
-          className="text-[1.9rem] font-extrabold tracking-tight"
+          className="text-[1.6rem] sm:text-[1.9rem] font-extrabold tracking-tight"
           style={{
             background:
               "linear-gradient(135deg, #1a6fe0 0%, #2986e8 60%, #1daa74 100%)",
@@ -260,7 +260,7 @@ export function LoginForm() {
       </form>
 
       {/* Footer */}
-      <p className="mt-auto pt-6 text-center text-xs text-gray-300 tracking-widest font-medium">
+      <p className="mt-auto pt-5 sm:pt-6 text-center text-xs text-gray-300 tracking-widest font-medium">
         OneData © {new Date().getFullYear()}
       </p>
 

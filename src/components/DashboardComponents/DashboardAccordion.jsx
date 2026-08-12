@@ -35,7 +35,7 @@ export function DashboardAccordion({
       <button
         id={`accordion-${title?.replace(/\s+/g, "-").toLowerCase()}`}
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3.5 px-5 py-4 text-left transition-colors hover:bg-slate-50/40 cursor-pointer"
+        className="flex w-full items-center gap-3 px-4 sm:px-5 py-3.5 sm:py-4 text-left transition-colors hover:bg-slate-50/40 cursor-pointer"
       >
         {/* Icon */}
         {icon && <div className="shrink-0">{icon}</div>}
@@ -73,7 +73,7 @@ export function DashboardAccordion({
           }`}
       >
         <div
-          className="border-t border-slate-100/60 px-5 py-5"
+          className="border-t border-slate-100/60 px-4 py-4 sm:px-5 sm:py-5"
           style={accentBg ? { background: accentBg } : undefined}
         >
           {children}

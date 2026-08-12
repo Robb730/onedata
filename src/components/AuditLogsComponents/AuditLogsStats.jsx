@@ -24,13 +24,11 @@ function MetricCard({
 
   return (
     <div
-      className="group relative rounded-[16px] border border-slate-100/80 bg-white p-5 transition-all duration-300 hover:shadow-[0_8px_28px_rgba(15,23,42,0.08)] hover:-translate-y-[2px]"
-      style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
+      className="group relative rounded-2xl border border-slate-200/80 bg-white p-3.5 sm:p-5 transition-all duration-300 hover:shadow-[0_8px_28px_rgba(15,23,42,0.08)] lg:hover:-translate-y-[2px] shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
     >
-      <div className="flex items-start justify-between gap-3 mb-4">
-        {/* Gradient circle icon */}
+      <div className="flex items-start justify-between gap-3 mb-2 sm:mb-4">
         <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white shadow-md transition-transform duration-300 group-hover:scale-105"
+          className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full text-white shadow-md transition-transform duration-300 group-hover:scale-105"
           style={{
             background: gradient,
             boxShadow: `0 4px 14px ${glowColor}`,
@@ -39,10 +37,9 @@ function MetricCard({
           {icon}
         </div>
 
-        {/* Change badge */}
         {change !== undefined && change !== null && change !== "" && (
           <div
-            className={`flex items-center gap-1 rounded-full ${tone.bg} ${tone.border} border px-2.5 py-1 text-[11px] font-semibold ${tone.color}`}
+            className={`flex items-center gap-1 rounded-full ${tone.bg} ${tone.border} border px-2 sm:px-2.5 py-1 text-[10px] sm:text-[11px] font-semibold ${tone.color}`}
           >
             <ToneIcon size={12} strokeWidth={2.5} />
             <span>{change}</span>
@@ -51,10 +48,10 @@ function MetricCard({
       </div>
 
       <div className="mt-1">
-        <p className="text-[1.55rem] font-black text-slate-800 tracking-tight leading-none mb-1.5">
+        <p className="text-xl sm:text-[1.55rem] font-black text-slate-800 tracking-tight leading-none mb-1 sm:mb-1.5">
           {value}
         </p>
-        <p className="text-[0.68rem] font-bold uppercase tracking-[0.08em] text-slate-400">
+        <p className="text-[0.62rem] sm:text-[0.68rem] font-bold uppercase tracking-[0.08em] text-slate-400">
           {label}
         </p>
       </div>
@@ -118,10 +115,10 @@ export default function AuditLogsStats({
   ];
 
   return (
-  <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-    {cards.map(({ key, ...card }) => (
-      <MetricCard key={key} {...card} />
-    ))}
-  </div>
-);
+    <div className="mb-5 sm:mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      {cards.map(({ key, ...card }) => (
+        <MetricCard key={key} {...card} />
+      ))}
+    </div>
+  );
 }

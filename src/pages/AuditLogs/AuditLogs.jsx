@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Download } from "lucide-react";
 import {
   AuditLogsHeader,
   AuditLogsStats,
@@ -384,8 +385,8 @@ export default function AuditLogs() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/40">
-      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
+    <div className="min-h-full overflow-x-hidden bg-slate-50/40">
+      <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 py-5 sm:py-8">
         <AuditLogsHeader onExport={handleExport} />
 
         <AuditLogsStats actionCounts={actionCounts} />
@@ -414,6 +415,17 @@ export default function AuditLogs() {
           shownCount={filteredLogs.length}
           totalCount={auditLogs.length}
         />
+
+        {/* Mobile FAB — Export Logs */}
+        <button
+          type="button"
+          onClick={handleExport}
+          aria-label="Export Logs"
+          title="Export Logs"
+          className="lg:hidden fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-[0_12px_30px_rgba(37,99,235,0.35)] hover:bg-blue-700 active:scale-95 transition-all"
+        >
+          <Download size={22} strokeWidth={2.25} />
+        </button>
       </div>
     </div>
   );

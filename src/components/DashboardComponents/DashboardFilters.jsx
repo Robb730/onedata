@@ -11,7 +11,7 @@ import React from "react";
 export function DashboardFilters({ options = [], active, onChange }) {
   return (
     <div
-      className="inline-flex items-center rounded-[10px] border border-slate-200/60 bg-slate-50/50 p-[3px]"
+      className="inline-flex max-w-full items-center overflow-x-auto rounded-[10px] border border-slate-200/60 bg-slate-50/50 p-[3px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       role="tablist"
     >
       {options.map((opt) => {
@@ -23,7 +23,7 @@ export function DashboardFilters({ options = [], active, onChange }) {
             aria-selected={isActive}
             onClick={() => onChange?.(opt)}
             className={`
-              relative rounded-[7px] px-3.5 py-[5px] text-[0.7rem] font-semibold transition-all duration-200 cursor-pointer
+              relative shrink-0 rounded-[7px] px-3 py-[5px] sm:px-3.5 text-[0.7rem] font-semibold transition-all duration-200 cursor-pointer
               ${isActive
                 ? "bg-white text-slate-700 shadow-sm"
                 : "text-slate-400 hover:text-slate-600"

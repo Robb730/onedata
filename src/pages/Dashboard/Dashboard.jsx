@@ -1021,12 +1021,11 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-50/40">
       {/* ── Welcome toast (top-right) ─────────────────────── */}
       <div
-        className={`fixed top-8 right-8 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${showWelcomeToast
+        className={`fixed top-4 left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] sm:left-auto sm:right-8 sm:w-[380px] ${showWelcomeToast
             ? "translate-x-0 opacity-100 pointer-events-auto"
             : "translate-x-[120%] opacity-0 pointer-events-none"
           }`}
         style={{
-          width: "380px",
           minHeight: "76px",
           borderRadius: "16px",
           boxShadow: showWelcomeToast
@@ -1067,19 +1066,19 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
-      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
+      <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 py-5 sm:py-8">
         {/* ── Page header ─────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-7">
-          <div>
-            <h1 className="text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
+        <div className="flex flex-col gap-4 mb-6 sm:mb-7 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-[1.4rem] sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
               Dashboard
             </h1>
-            <p className="text-[0.78rem] text-slate-400 font-medium mt-1">
+            <p className="hidden lg:block text-[0.78rem] text-slate-400 font-medium mt-1">
               SY {selectedYear} · SDO Baliwag Division
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0 pt-1">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {/* Primary year selector */}
             <div ref={yearDropdownRef} className="relative">
               <button

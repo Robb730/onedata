@@ -1,10 +1,5 @@
 /**
  * AuditLogsFooter — Results count, read-only note, and existing pagination controls.
- *
- * @param {number}   shownCount
- * @param {number}   totalCount
- * @param {string}   [disclaimer]
- * @param {React.ReactNode} [pagination] — existing pagination UI passed from the page
  */
 export default function AuditLogsFooter({
   shownCount,
@@ -13,9 +8,9 @@ export default function AuditLogsFooter({
   pagination,
 }) {
   return (
-    <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mt-4 sm:mt-5 mb-2 flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="space-y-1">
-        <p className="text-sm text-slate-500">
+        <p className="text-[0.8rem] sm:text-sm text-slate-500">
           Showing{" "}
           <span className="font-semibold text-slate-700">{shownCount}</span>
           {totalCount !== undefined && (
@@ -28,7 +23,7 @@ export default function AuditLogsFooter({
           results
         </p>
         {disclaimer && (
-          <p className="text-xs text-slate-400">{disclaimer}</p>
+          <p className="text-[0.7rem] sm:text-xs text-slate-400">{disclaimer}</p>
         )}
       </div>
 

@@ -3,11 +3,9 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Upload,
   FileText,
-  Search,
   FolderOpen,
   CheckCircle,
   Clock,
-  User,
   Tag,
   X,
   Loader,
@@ -134,7 +132,6 @@ export default function UploadFilesPage() {
   const [selectedFolder, setSelectedFolder] = useState(null);
   const toastTimeoutRef = useRef(null);
   const uploadInFlightRef = useRef(false);
-  console.log("ROLE:", role, "| userProfile:", userProfile);
 
   // selectedFolder is now { id, name, divisionId, divisionName } or null
   // ── Auto-resolve the assigned section for section_focal / section_personnel ──
@@ -986,35 +983,35 @@ export default function UploadFilesPage() {
 
   // ── Upload Area ───────────────────────────────────────────────────────────
   const renderUploadArea = () => (
-    <div className="rounded-[16px] border border-slate-100/80 bg-white p-6 shadow-[0_1px_4px_rgba(15,23,42,0.03)]">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          <h2 className="text-[1.1rem] font-bold text-slate-900 tracking-tight">
-            Upload Documents
-          </h2>
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-1 bg-orange-50 text-orange-700 rounded text-xs font-semibold">
-              ● {pendingCount} Pending
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+        <h2 className="text-base sm:text-[1.1rem] font-bold text-slate-900 tracking-tight">
+          Upload Documents
+        </h2>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 rounded-md text-[11px] font-semibold border border-amber-100">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+            {pendingCount} Pending
+          </span>
+          {showFileRequestPanel && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-red-700 rounded-md text-[11px] font-semibold border border-red-100">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+              {overdueCount} Overdue
             </span>
-            {showFileRequestPanel && (
-              <span className="px-2 py-1 bg-red-50 text-red-700 rounded text-xs font-semibold">
-                ● {overdueCount} Overdue
-              </span>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
       {activeSubfolders.length > 0 && (
-        <div className="mb-4 flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
-          <Tag size={12} className="text-indigo-500 flex-shrink-0" />
-          <p className="text-xs text-indigo-700">
+        <div className="mb-4 flex items-start gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+          <Tag size={13} className="text-slate-500 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-slate-600 leading-relaxed">
             This section has{" "}
-            <span className="font-bold">
+            <span className="font-semibold text-slate-800">
               {activeSubfolders.length} categor
               {activeSubfolders.length === 1 ? "y" : "ies"}
             </span>
-            . You'll be asked to pick one on the next step.
+            . You&apos;ll pick one in the next step.
           </p>
         </div>
       )}
@@ -1023,32 +1020,37 @@ export default function UploadFilesPage() {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`border-2 border-dashed rounded-xl p-10 text-center transition-all ${isDragging
-          ? "border-indigo-400 bg-indigo-50"
-          : "border-gray-300 hover:border-gray-400"
-          }`}
+        className={`border-2 border-dashed rounded-xl px-4 py-8 sm:p-10 text-center transition-all ${
+          isDragging
+            ? "border-blue-400 bg-blue-50/80"
+            : "border-slate-200 bg-slate-50/40 hover:border-slate-300 hover:bg-slate-50/70"
+        }`}
       >
         <div className="flex flex-col items-center justify-center">
           <div
-            className={`w-14 h-14 rounded-full flex items-center justify-center mb-4 ${isDragging ? "bg-indigo-100" : "bg-gray-100"}`}
+            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center mb-3 sm:mb-4 ${
+              isDragging ? "bg-blue-100" : "bg-white border border-slate-200"
+            }`}
           >
             <Upload
-              className={isDragging ? "text-indigo-400" : "text-gray-400"}
-              size={26}
+              className={isDragging ? "text-blue-600" : "text-slate-400"}
+              size={24}
             />
           </div>
-          <h3 className="text-base font-semibold text-gray-900 mb-1">
-            Drag and drop files here
+          <h3 className="text-sm sm:text-base font-semibold text-slate-900 mb-1">
+            <span className="hidden sm:inline">Drag and drop files here</span>
+            <span className="sm:hidden">Add files to upload</span>
           </h3>
-          <p className="text-sm text-gray-500 mb-1">or</p>
+          <p className="hidden sm:block text-sm text-slate-500 mb-1">or</p>
           <button
+            type="button"
             onClick={handleBrowseFiles}
-            className="mt-2 px-5 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors inline-flex items-center gap-2 text-sm"
+            className="mt-3 sm:mt-2 w-full sm:w-auto min-h-[44px] px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 active:scale-[0.98] font-semibold transition-all inline-flex items-center justify-center gap-2 text-sm shadow-sm shadow-blue-600/20"
           >
             <Upload size={16} /> Browse Files
           </button>
-          <p className="text-xs text-slate-400 mt-3">
-            PDF, DOCX, XLS, XLSX, JPG, JPEG, PNG, PPTX (max 1GB)
+          <p className="text-[11px] sm:text-xs text-slate-400 mt-3 max-w-[280px] sm:max-w-none leading-relaxed">
+            PDF, DOCX, XLS, XLSX, JPG, PNG, PPTX · Max 1GB
           </p>
         </div>
       </div>
@@ -1067,15 +1069,15 @@ export default function UploadFilesPage() {
     };
 
     return (
-      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm h-full flex flex-col overflow-hidden">
+      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)] flex flex-col overflow-hidden lg:h-full">
         {/* Header */}
-        <div className="px-5 pt-5 pb-4 border-b border-slate-100">
+        <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
               <FileText size={17} className="text-blue-600" />
             </div>
-            <div>
-              <h3 className="text-[1rem] font-black text-slate-800 tracking-[-0.01em] leading-tight">
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-[1rem] font-bold text-slate-800 tracking-tight leading-tight">
                 File Requests
               </h3>
               <p className="text-[0.7rem] text-slate-400 font-medium">
@@ -1084,18 +1086,20 @@ export default function UploadFilesPage() {
             </div>
           </div>
 
-          {/* Filter tabs */}
-          <div className="grid grid-cols-4 gap-1.5 mt-4">
+          {/* Filter tabs — scrollable on narrow screens */}
+          <div className="flex gap-1.5 mt-4 overflow-x-auto pb-0.5 -mx-0.5 px-0.5 scrollbar-none">
             {["All", "Pending", "Overdue", "Completed"].map((f) => {
               const isActive = fileRequestFilter === f;
               return (
                 <button
                   key={f}
+                  type="button"
                   onClick={() => setFileRequestFilter(f)}
-                  className={`flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl text-[10.5px] font-bold transition-colors ${isActive
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "bg-slate-50 text-slate-500 hover:bg-slate-100"
-                    }`}
+                  className={`flex flex-col items-center justify-center gap-0.5 min-w-[4.5rem] flex-1 py-2 px-2 rounded-xl text-[10.5px] font-bold transition-colors shrink-0 ${
+                    isActive
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100"
+                  }`}
                 >
                   <span className="text-[13px] leading-none">{counts[f]}</span>
                   <span className="leading-none">{f}</span>
@@ -1106,10 +1110,10 @@ export default function UploadFilesPage() {
         </div>
 
         {/* List */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3 max-h-[28rem] lg:max-h-none">
           {filteredRequests.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-14 text-center">
-              <div className="w-11 h-11 rounded-full bg-slate-50 flex items-center justify-center mb-3">
+            <div className="flex flex-col items-center justify-center py-10 sm:py-14 text-center">
+              <div className="w-11 h-11 rounded-full bg-slate-50 flex items-center justify-center mb-3 border border-slate-100">
                 <FileText
                   className="text-slate-300"
                   size={20}
@@ -1120,7 +1124,7 @@ export default function UploadFilesPage() {
                 No requests here
               </p>
               <p className="text-[0.72rem] text-slate-400 mt-0.5">
-                You're all caught up.
+                You&apos;re all caught up.
               </p>
             </div>
           ) : (
@@ -1139,11 +1143,10 @@ export default function UploadFilesPage() {
               return (
                 <div
                   key={req.id}
-                  className="relative flex rounded-2xl border border-slate-100 overflow-hidden bg-white hover:border-slate-200 hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)] transition-all"
+                  className="relative flex rounded-xl sm:rounded-2xl border border-slate-100 overflow-hidden bg-white hover:border-slate-200 hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)] transition-all"
                 >
                   <div className={`w-[3px] shrink-0 ${accent}`} />
-                  <div className="flex-1 p-4">
-                    {/* Title row */}
+                  <div className="flex-1 p-3.5 sm:p-4 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
@@ -1160,7 +1163,6 @@ export default function UploadFilesPage() {
                       </span>
                     </div>
 
-                    {/* Requester + due date */}
                     <div className="flex items-center gap-2.5 mb-3">
                       <div
                         className={`w-7 h-7 ${avatarBg} rounded-full flex items-center justify-center shrink-0`}
@@ -1173,7 +1175,7 @@ export default function UploadFilesPage() {
                         <p className="text-[11.5px] font-semibold text-slate-700 truncate leading-tight">
                           {req.requestedBy}
                         </p>
-                        <p className="text-[10px] text-slate-400 leading-tight mt-0.5">
+                        <p className="text-[10px] text-slate-400 leading-tight mt-0.5 truncate">
                           {req.requesterRole} ·{" "}
                           {formatRelative(req.requestedOn)}
                         </p>
@@ -1190,11 +1192,10 @@ export default function UploadFilesPage() {
                       </div>
                     </div>
 
-                    {/* Message */}
                     {req.message && (
                       <div className="flex items-start gap-1.5 bg-slate-50 rounded-lg px-2.5 py-2 mb-3">
                         <span className="text-slate-300 text-[13px] leading-none mt-px">
-                          "
+                          &ldquo;
                         </span>
                         <p className="text-[11px] text-slate-500 italic leading-snug line-clamp-2">
                           {req.message}
@@ -1202,11 +1203,11 @@ export default function UploadFilesPage() {
                       </div>
                     )}
 
-                    {/* Action */}
                     {!isDone && (
                       <button
+                        type="button"
                         onClick={() => handleRequestUpload(req)}
-                        className="w-full flex items-center justify-center gap-1.5 text-[11.5px] font-semibold px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] transition-all"
+                        className="w-full flex items-center justify-center gap-1.5 text-[11.5px] font-semibold min-h-[40px] px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] transition-all"
                       >
                         <Upload size={12} /> Upload File
                       </button>
@@ -1232,17 +1233,19 @@ export default function UploadFilesPage() {
 
   // ── Recent Uploads ────────────────────────────────────────────────────────
   const renderRecentUploads = () => (
-    <div className="rounded-[16px] border border-slate-100/80 bg-white p-6 shadow-[0_1px_4px_rgba(15,23,42,0.03)]">
-      <h3 className="text-[1.1rem] font-bold text-slate-900 tracking-tight mb-4">
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+      <h3 className="text-base sm:text-[1.1rem] font-bold text-slate-900 tracking-tight mb-3 sm:mb-4">
         Recent Uploads
       </h3>
       {uploadedFiles.length === 0 ? (
-        <p className="text-sm text-slate-400 text-center py-6 font-medium">
-          No uploads yet this session.
-        </p>
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-8 text-center">
+          <p className="text-sm text-slate-400 font-medium">
+            No uploads yet this session.
+          </p>
+        </div>
       ) : (
         <>
-          <div className="space-y-3">
+          <div className="space-y-2.5 sm:space-y-3">
             {paginatedUploads.map((file) => {
               const codeMatch = file.name.match(
                 /^([A-Z0-9]{1,4})-(\d{4}-\d{4})-/,
@@ -1250,31 +1253,32 @@ export default function UploadFilesPage() {
               return (
                 <div
                   key={file.id}
-                  className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50"
+                  className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between p-3.5 sm:p-4 rounded-xl border border-slate-100 hover:bg-slate-50/80 transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <FileText
-                      className="text-blue-500 flex-shrink-0"
-                      size={20}
-                    />
-                    <div>
-                      <div className="flex items-center gap-2 mb-0.5">
+                  <div className="flex items-start sm:items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                      <FileText className="text-blue-600" size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5 min-w-0">
                         {codeMatch && (
-                          <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded font-mono border border-indigo-200">
+                          <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-bold rounded font-mono border border-slate-200 shrink-0">
                             {codeMatch[1]}
                           </span>
                         )}
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-slate-900 truncate">
                           {file.name}
                         </p>
                       </div>
-                      <p className="text-xs text-gray-500">
-                        {file.folder} · {file.schoolYear}
+                      <p className="text-xs text-slate-500 truncate">
+                        {file.folder}
+                        {file.schoolYear ? ` · ${file.schoolYear}` : ""}
+                        {file.uploadedOn ? ` · ${file.uploadedOn}` : ""}
                       </p>
                     </div>
                   </div>
                   <span
-                    className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${getStatusColor(file.status)}`}
+                    className={`self-start sm:self-auto flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border shrink-0 ${getStatusColor(file.status)}`}
                   >
                     {getStatusIcon(file.status)}
                     {file.status}
@@ -1285,14 +1289,14 @@ export default function UploadFilesPage() {
           </div>
 
           {totalUploadsPages > 1 && (
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-              <p className="text-xs text-gray-400">
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100 gap-3">
+              <p className="text-xs text-slate-400">
                 Page{" "}
-                <span className="font-semibold text-gray-600">
+                <span className="font-semibold text-slate-600">
                   {uploadsPage}
                 </span>{" "}
                 of{" "}
-                <span className="font-semibold text-gray-600">
+                <span className="font-semibold text-slate-600">
                   {totalUploadsPages}
                 </span>
               </p>
@@ -1301,7 +1305,7 @@ export default function UploadFilesPage() {
                   type="button"
                   onClick={() => setUploadsPage((p) => Math.max(1, p - 1))}
                   disabled={uploadsPage === 1}
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="min-h-[36px] rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Prev
                 </button>
@@ -1311,7 +1315,7 @@ export default function UploadFilesPage() {
                     setUploadsPage((p) => Math.min(totalUploadsPages, p + 1))
                   }
                   disabled={uploadsPage === totalUploadsPages}
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="min-h-[36px] rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Next
                 </button>
@@ -1323,73 +1327,91 @@ export default function UploadFilesPage() {
     </div>
   );
 
+  const renderDestinationPanel = () => (
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-[0_1px_3px_rgba(15,23,42,0.04)] lg:sticky lg:top-8">
+      <h3 className="text-sm sm:text-[1.05rem] font-bold text-slate-900 mb-0.5 tracking-tight">
+        Destination
+      </h3>
+      <p className="text-[0.72rem] sm:text-[0.75rem] text-slate-400 font-medium mb-3 sm:mb-4">
+        Section folder for this upload
+      </p>
+
+      {selectedFolder ? (
+        <div className="mb-3 sm:mb-4 p-3 bg-blue-50/80 border border-blue-100 rounded-xl">
+          <p className="text-[10px] text-blue-500 font-bold uppercase tracking-wide mb-1">
+            Section
+          </p>
+          <div className="flex items-center gap-2 min-w-0">
+            <FolderOpen className="text-blue-600 flex-shrink-0" size={15} />
+            <p className="text-sm font-semibold text-blue-900 truncate">
+              {selectedFolderName}
+            </p>
+          </div>
+          {selectedFolder.divisionName && (
+            <p className="text-xs text-blue-500/80 mt-1 ml-5 truncate">
+              {selectedFolder.divisionName}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="mb-3 sm:mb-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-3 py-4 text-center">
+          <p className="text-sm text-slate-400 font-medium">
+            No section selected
+          </p>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setShowFolderModal(true)}
+        className="w-full min-h-[44px] px-4 py-2.5 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 text-sm font-semibold transition-colors"
+      >
+        {selectedFolder ? "Change Section" : "Select Section"}
+      </button>
+    </div>
+  );
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-50/40">
-      <div className="mx-auto max-w-[1500px] px-6 sm:px-10 py-8">
-        <div className="mb-8">
-          <h1 className="text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
+    <div className="min-h-full overflow-x-hidden bg-slate-50/40">
+      <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 py-5 sm:py-8">
+        <div className="mb-5 sm:mb-8">
+          <h1 className="text-xl sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
             Upload Files
           </h1>
-          <p className="text-[0.78rem] text-slate-400 font-medium mt-1">
+          <p className="hidden lg:block text-[0.78rem] text-slate-400 font-medium mt-1">
             {selectedFolderName
               ? `Uploading to: ${selectedFolderName}`
               : showFolderPanel
                 ? "Select a section folder on the right before uploading"
                 : "Resolving your assigned section…"}
           </p>
+          {/* Mobile destination chip for section-scoped users */}
+          {selectedFolderName && !showFolderPanel && (
+            <div className="lg:hidden mt-2 inline-flex items-center gap-1.5 max-w-full rounded-lg bg-blue-50 border border-blue-100 px-2.5 py-1.5">
+              <FolderOpen size={13} className="text-blue-600 shrink-0" />
+              <span className="text-[11px] font-semibold text-blue-800 truncate">
+                {selectedFolderName}
+              </span>
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6 order-1">
+            {/* Destination first on mobile for admins/division focals */}
+            {showFolderPanel && (
+              <div className="lg:hidden">{renderDestinationPanel()}</div>
+            )}
             {renderUploadArea()}
             {renderRecentUploads()}
+            {showFileRequestPanel && (
+              <div className="lg:hidden">{renderFileRequestsPanel()}</div>
+            )}
           </div>
 
-          <div className="lg:col-span-1">
-            {showFolderPanel && (
-              <div className="rounded-[16px] border border-slate-100/80 bg-white p-6 shadow-[0_1px_4px_rgba(15,23,42,0.03)] sticky top-8">
-                <h3 className="text-[1.05rem] font-bold text-slate-900 mb-1 tracking-tight">
-                  Selected Section
-                </h3>
-                <p className="text-[0.75rem] text-slate-400 font-medium mb-4">
-                  Click to change the destination folder
-                </p>
-
-                {selectedFolder ? (
-                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-[11px] text-blue-500 font-bold uppercase tracking-wide mb-1">
-                      Section
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <FolderOpen
-                        className="text-blue-600 flex-shrink-0"
-                        size={15}
-                      />
-                      <p className="text-sm font-semibold text-blue-900 truncate">
-                        {selectedFolderName}
-                      </p>
-                    </div>
-                    {selectedFolder.divisionName && (
-                      <p className="text-xs text-blue-400 mt-1 ml-5">
-                        {selectedFolder.divisionName}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400 mb-4">
-                    No section selected
-                  </p>
-                )}
-
-                <button
-                  onClick={() => setShowFolderModal(true)}
-                  className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium transition-colors"
-                >
-                  {selectedFolder ? "Change Section" : "Select Section"}
-                </button>
-              </div>
-            )}
+          <div className="hidden lg:block lg:col-span-1 order-2">
+            {showFolderPanel && renderDestinationPanel()}
 
             {showFileRequestPanel && (
               <div className="sticky top-8 h-[calc(100vh-8rem)]">
@@ -1436,12 +1458,14 @@ export default function UploadFilesPage() {
 
         {/* Toast Notification */}
         <div
-          className={`fixed bottom-8 right-8 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${uploadToastStatus
-            ? "translate-x-0 opacity-100 pointer-events-auto"
-            : "translate-x-[120%] opacity-0 pointer-events-none"
-            }`}
+          className={`fixed left-4 right-4 sm:left-auto sm:right-6 sm:w-[380px] z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-8 ${
+            uploadToastStatus
+              ? "translate-y-0 sm:translate-x-0 opacity-100 pointer-events-auto"
+              : "translate-y-4 sm:translate-y-0 sm:translate-x-[120%] opacity-0 pointer-events-none"
+          }`}
           style={{
-            width: "380px",
+            maxWidth: "380px",
+            marginLeft: "auto",
             minHeight: "76px",
             borderRadius: "16px",
             boxShadow: uploadToastStatus
@@ -1455,22 +1479,20 @@ export default function UploadFilesPage() {
             border: "1px solid rgba(241, 245, 249, 1)",
           }}
         >
-          {/* Soft background gradient on the left */}
           <div
-            className={`absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r to-transparent ${uploadToastStatus === "success"
-              ? "from-emerald-100/60"
-              : uploadToastStatus === "error"
-                ? "from-red-100/60"
-                : "from-blue-100/60"
-              }`}
+            className={`absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r to-transparent ${
+              uploadToastStatus === "success"
+                ? "from-emerald-100/60"
+                : uploadToastStatus === "error"
+                  ? "from-red-100/60"
+                  : "from-blue-100/60"
+            }`}
           />
 
-          {/* Content */}
           <div
             className="flex items-center relative z-10 py-4 flex-1"
             style={{ padding: "0 20px", gap: "16px", minHeight: "76px" }}
           >
-            {/* Icon Box */}
             <div
               className="flex items-center justify-center shrink-0 bg-white rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.06),_0_1px_3px_rgba(0,0,0,0.03)]"
               style={{
@@ -1495,8 +1517,7 @@ export default function UploadFilesPage() {
               )}
             </div>
 
-            {/* Text */}
-            <div className="flex flex-col justify-center flex-1">
+            <div className="flex flex-col justify-center flex-1 min-w-0 pr-6">
               <p
                 style={{
                   fontSize: "15px",
@@ -1513,6 +1534,7 @@ export default function UploadFilesPage() {
                     : "Success"}
               </p>
               <p
+                className="line-clamp-2"
                 style={{
                   fontSize: "13px",
                   fontWeight: 500,
@@ -1529,11 +1551,11 @@ export default function UploadFilesPage() {
               </p>
             </div>
 
-            {/* Close button */}
             {uploadToastStatus !== "uploading" && (
               <button
+                type="button"
                 onClick={() => setUploadToastStatus(null)}
-                className="absolute top-1/2 -translate-y-1/2 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-md hover:bg-slate-100"
+                className="absolute top-1/2 -translate-y-1/2 right-3 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-md hover:bg-slate-100"
                 aria-label="Close notification"
               >
                 <X size={18} strokeWidth={2.5} />
@@ -1541,9 +1563,10 @@ export default function UploadFilesPage() {
             )}
           </div>
 
-          {/* Progress Bar (Only visible when uploading) */}
           <div
-            className={`w-full h-1 bg-slate-100 transition-all duration-300 ${uploadToastStatus === "uploading" ? "opacity-100" : "opacity-0 h-0"}`}
+            className={`w-full h-1 bg-slate-100 transition-all duration-300 ${
+              uploadToastStatus === "uploading" ? "opacity-100" : "opacity-0 h-0"
+            }`}
           >
             <div
               className="h-full bg-blue-500 transition-all duration-500 ease-out rounded-r-full"
