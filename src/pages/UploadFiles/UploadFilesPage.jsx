@@ -15,7 +15,7 @@ import FileUploadModal from "../../components/UploadFilesComponents/FileUploadMo
 import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
 import { runImport } from "../../utils/ExcelParsers";
-import { parseAndSyncStructuredData } from "../../utils/structuredDataSync";
+import { parseAndSyncStructuredData, deleteParsedDataForFile } from "../../utils/structuredDataSync";
 import { notifyScope } from "../../utils/notifications";
 
 // ── Subfolder registry ────────────────────────────────────────────────────────
@@ -847,6 +847,7 @@ export default function UploadFilesPage() {
     uploadType,
     fileOrFiles,
     linkedRequestId,
+    replaceFileIds = null
   ) => {
     if (uploadInFlightRef.current) return;
     uploadInFlightRef.current = true;
@@ -857,6 +858,12 @@ export default function UploadFilesPage() {
     setUploadToastStatus("uploading");
 
     try {
+      if (replaceFileIds && replaceFileIds.length > 0) {
+        for (const oldFileId of replaceFileIds) {
+          await deleteParsedDataForFile(uploadType, oldFileId);
+          await supabase.from("files").delete().eq("id", oldFileId);
+        }
+      }
       if (Array.isArray(fileOrFiles)) {
         for (const file of fileOrFiles) {
           await addToUploads(file.name, schoolYear, uploadType, file);
@@ -901,6 +908,8 @@ export default function UploadFilesPage() {
     schoolYear,
     uploadType,
     fileOrFiles,
+    linkedRequestId,
+    replaceFileIds = null
   ) => {
     if (uploadInFlightRef.current) return;
     uploadInFlightRef.current = true;
@@ -914,6 +923,13 @@ export default function UploadFilesPage() {
     setUploadToastStatus("uploading");
 
     try {
+      if (replaceFileIds && replaceFileIds.length > 0) {
+        for (const oldFileId of replaceFileIds) {
+          await deleteParsedDataForFile(uploadType, oldFileId);
+          await supabase.from("files").delete().eq("id", oldFileId);
+        }
+      }
+
       const { error } = await supabase
         .from("file_requests")
         .update({
@@ -1441,6 +1457,7 @@ export default function UploadFilesPage() {
               setPendingRequestUpload(null);
             }}
             selectedFolder={selectedFolderName || ""}
+            sectionId={typeof selectedFolder === "object" ? selectedFolder?.id : null}
             fileName={
               pendingFile?.name === "browse" ? "" : pendingFile?.name || ""
             }

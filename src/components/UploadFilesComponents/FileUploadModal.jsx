@@ -20,9 +20,11 @@ import {
   FileArchive,
   FileType,
   File,
+  AlertTriangle,
 } from "lucide-react";
 import { useState, useEffect, useRef, Fragment } from "react";
 import { getUploadableSchoolYears } from "../../utils/schoolYearsApi";
+import { supabase } from "../../lib/supabaseClient";
 
 function buildCodedFilename(originalName, code, year) {
   return `${code.toUpperCase()}-${year}-${originalName}`;
@@ -111,6 +113,7 @@ export default function FileUploadModal({
   subfolders = [],
   pendingRequests = [],
   isRequestFulfillment = false,
+  sectionId = null,
 }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [fileName, setFileName] = useState(initialFileName);
@@ -124,6 +127,10 @@ export default function FileUploadModal({
   const [uploadType, setUploadType] = useState("general");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  const [duplicateWarning, setDuplicateWarning] = useState(null);
+  const [parseTypeWarning, setParseTypeWarning] = useState(null);
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
 
   const [isYearOpen, setIsYearOpen] = useState(false);
   const yearRef = useRef(null);
@@ -176,6 +183,7 @@ export default function FileUploadModal({
     setUploadType("general");
     setIsYearOpen(false);
     setIsUploadTypeOpen(false);
+    setDuplicateWarning(null);
 
     let cancelled = false;
     setYearsLoading(true);
@@ -259,11 +267,13 @@ export default function FileUploadModal({
   const goNext = () => setStepIndex((i) => Math.min(i + 1, steps.length - 1));
   const goBack = () => setStepIndex((i) => Math.max(i - 1, 0));
 
-  const submitUpload = async () => {
+  const executeUpload = async (modifiedName = null, modifiedFiles = null, replaceFileIds = null) => {
     setIsUploading(true);
-    const finalName = codedName ?? fileName;
+    const finalName = modifiedName || (codedName ?? fileName);
+    const filesToUpload = modifiedFiles || selectedFiles;
+    
     try {
-      await onUpload(finalName, schoolYear, uploadType, selectedFiles, linkedRequestId);
+      await onUpload(finalName, schoolYear, uploadType, filesToUpload, linkedRequestId, replaceFileIds);
     } finally {
       setIsUploading(false);
       setStepIndex(0);
@@ -272,7 +282,75 @@ export default function FileUploadModal({
       setSelectedSubfolder(null);
       setLinkedRequestId(null);
       setUploadType("general");
+      setDuplicateWarning(null);
+      setParseTypeWarning(null);
     }
+  };
+
+  const submitUpload = async () => {
+    setIsCheckingDuplicates(true);
+    try {
+      const finalName = codedName ?? fileName;
+      
+      if (uploadType === "general") {
+        // Auto-rename General files
+        const { data: existingFiles } = await supabase
+          .from("files")
+          .select("file_name")
+          .eq("data_category", "general")
+          .eq("school_year", schoolYear)
+          .eq("section_id", sectionId || null);
+
+        const existingNames = new Set(existingFiles?.map((f) => f.file_name) || []);
+        const getUniqueName = (name) => {
+          if (!existingNames.has(name)) return name;
+          const match = name.match(/^(.*?)(\.[^.]+)?$/);
+          const base = match[1];
+          const ext = match[2] || "";
+          let counter = 1;
+          while (existingNames.has(`${base} (${counter})${ext}`)) {
+            counter++;
+          }
+          return `${base} (${counter})${ext}`;
+        };
+
+        let modifiedSelectedFiles = selectedFiles.map((f) => {
+          const newName = getUniqueName(f.name);
+          if (newName !== f.name) {
+            existingNames.add(newName);
+            return new File([f], newName, { type: f.type });
+          }
+          return f;
+        });
+
+        const modifiedFileName = modifiedSelectedFiles.length === 1
+          ? modifiedSelectedFiles[0].name
+          : `${modifiedSelectedFiles.length} files selected`;
+
+        setIsCheckingDuplicates(false);
+        await executeUpload(modifiedFileName, modifiedSelectedFiles);
+        return;
+      } else {
+        // Parse Type - Check if data already exists
+        const { data: existingDataFiles, error } = await supabase
+          .from("files")
+          .select("id, file_name, school_year")
+          .eq("data_category", uploadType)
+          .eq("school_year", schoolYear);
+
+        if (!error && existingDataFiles && existingDataFiles.length > 0) {
+          setParseTypeWarning({
+            existingFiles: existingDataFiles,
+          });
+          setIsCheckingDuplicates(false);
+          return; // Pause for user confirmation
+        }
+      }
+    } catch (err) {
+      console.error("Failed checking for duplicate/existing files:", err);
+    }
+    setIsCheckingDuplicates(false);
+    await executeUpload();
   };
 
   const handleStep1Submit = async (e) => {
@@ -352,10 +430,10 @@ export default function FileUploadModal({
       <button
         type={onPrimary ? "button" : "submit"}
         onClick={onPrimary}
-        disabled={primaryDisabled}
+        disabled={primaryDisabled || isCheckingDuplicates}
         className={primaryBtnClass}
       >
-        {primaryLabel}
+        {isCheckingDuplicates ? <Loader className="animate-spin" size={15} /> : primaryLabel}
       </button>
     </div>
   );
@@ -382,10 +460,10 @@ export default function FileUploadModal({
       <button
         type={submitType}
         onClick={onPrimary}
-        disabled={primaryDisabled}
+        disabled={primaryDisabled || isCheckingDuplicates}
         className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {primaryLabel}
+        {isCheckingDuplicates ? <Loader className="animate-spin" size={15} /> : primaryLabel}
       </button>
     </div>
   );
@@ -605,7 +683,79 @@ export default function FileUploadModal({
           </button>
         </div>
 
-        {isUploading ? (
+        {parseTypeWarning ? (
+          <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 min-h-[300px]">
+            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4 border border-blue-100">
+              <FileSpreadsheet className="text-blue-500" size={32} />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Existing Data Found</h3>
+            <p className="text-sm text-slate-500 text-center mb-6 max-w-sm">
+              Data already exists for this parse type. Would you like to replace the existing file?
+            </p>
+            <div className="flex gap-3 w-full max-w-sm">
+              <button
+                type="button"
+                onClick={() => setParseTypeWarning(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const replaceFileIds = parseTypeWarning.existingFiles.map(f => f.id);
+                  setParseTypeWarning(null);
+                  executeUpload(null, null, replaceFileIds);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+              >
+                Replace
+              </button>
+            </div>
+          </div>
+        ) : duplicateWarning ? (
+          <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 min-h-[400px]">
+            <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-4 border border-amber-100">
+              <AlertTriangle className="text-amber-500" size={32} />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Files Already Uploaded</h3>
+            <p className="text-sm text-slate-500 text-center mb-6 max-w-sm">
+              The following files have already been uploaded previously.
+            </p>
+            <div className="w-full max-w-md bg-slate-50 border border-slate-200 rounded-xl max-h-48 overflow-y-auto mb-6 p-1">
+              {duplicateWarning.map((dup, i) => (
+                <div key={i} className="flex items-center justify-between p-3 border-b border-slate-100 last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{dup.file_name}</p>
+                    <p className="text-[11px] text-slate-400">
+                      Uploaded in: <span className="font-medium text-slate-600">{dup.sections?.name || "General"}</span> 
+                      {dup.data_category !== "general" ? ` (${dup.data_category})` : ""}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3 w-full max-w-md">
+              <button
+                type="button"
+                onClick={() => setDuplicateWarning(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDuplicateWarning(null);
+                  executeUpload();
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-semibold hover:bg-amber-600 transition-colors shadow-sm"
+              >
+                Upload Anyway
+              </button>
+            </div>
+          </div>
+        ) : isUploading ? (
           <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
             <div className="relative flex items-center justify-center mb-5">
               <div className="w-14 h-14 border-[3px] border-slate-100 rounded-full" />
