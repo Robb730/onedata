@@ -19,8 +19,14 @@ export async function deleteParsedDataForFile(category, fileId) {
   }
 }
 
-async function processMultiSheet(prefix, data, schoolYear, uploaderName, fileId) {
+async function processMultiSheet(prefix, data, schoolYear, uploaderName, fileId, { replace, category }) {
   const { db, kes, jhs, shs, status } = data;
+
+  // Parsing already succeeded by the time we get here (runImport ran and
+  // returned `data` in the caller below) — safe to clear old rows now.
+  if (replace) {
+    await deleteParsedDataForFile(category, fileId);
+  }
 
   if (db?.records.length) {
     const recs = db.records.map((r) => ({
@@ -172,18 +178,22 @@ async function processMultiSheet(prefix, data, schoolYear, uploaderName, fileId)
 /**
  * Parses a file per its category and inserts rows tagged with file_id.
  * Pass { replace: true } to first wipe existing rows for that file (resync/edit flow).
+ *
+ * IMPORTANT ORDERING: we always parse (and let it throw on bad input) BEFORE
+ * deleting any existing rows for this file. Deleting first and parsing
+ * second meant a parse failure on a re-edit left the file with its old rows
+ * gone and nothing to replace them — the dashboard would just go blank for
+ * that file with no way to tell the difference between "no data" and
+ * "sync failed". Parsing first means a failure now leaves the previous,
+ * still-valid synced data untouched.
  */
 export async function parseAndSyncStructuredData(category, file, schoolYear, uploaderName, fileId, { replace = false, uploaderId = null } = {}) {
   if (category === "general") return;
 
-  if (replace) {
-    await deleteParsedDataForFile(category, fileId);
-  }
-
   if (category === "performance_indicators") {
     const { records, errors } = await runImport(file, "performance_indicators");
     if (errors?.length) console.warn("Performance Indicators parsing errors:", errors);
-    
+
     if (records?.length) {
       const dbRecords = records.map((r) => ({
         file_id: fileId,
@@ -197,6 +207,8 @@ export async function parseAndSyncStructuredData(category, file, schoolYear, upl
         uploaded_by: uploaderId,
       }));
 
+      // performance_indicators uses upsert (onConflict file_id+sheet_name),
+      // so it naturally overwrites in place — no separate delete needed.
       const { error } = await supabase
         .from("performance_indicators_data")
         .upsert(dbRecords, { onConflict: "file_id, sheet_name" });
@@ -215,6 +227,12 @@ export async function parseAndSyncStructuredData(category, file, schoolYear, upl
       senior_high_s1_data: r.seniorHighS1, senior_high_s2_data: r.seniorHighS2,
       grand_total: r.grandTotal, uploaded_by: uploaderName, file_id: fileId,
     }));
+
+    // Parse succeeded — only now is it safe to clear the old rows.
+    if (replace) {
+      await deleteParsedDataForFile(category, fileId);
+    }
+
     const { error } = await supabase.from("enrollment_data").insert(dbRecords);
     if (error) throw error;
     return;
@@ -223,6 +241,11 @@ export async function parseAndSyncStructuredData(category, file, schoolYear, upl
   if (category === "cespes") {
     const result = await runImport(file, "cespes");
     const common = { school_year: schoolYear, uploaded_by: uploaderName, file_id: fileId };
+
+    // Parse succeeded for all cespes sections — safe to clear old rows now.
+    if (replace) {
+      await deleteParsedDataForFile(category, fileId);
+    }
 
     // 1. Operations
     if (result.operations?.records?.length) {
@@ -286,6 +309,8 @@ export async function parseAndSyncStructuredData(category, file, schoolYear, upl
   const prefix = prefixMap[category];
   if (!prefix) return;
 
+  // runImport must succeed before processMultiSheet is even called, so a
+  // parse failure here throws before anything gets deleted.
   const data = await runImport(file, category);
-  await processMultiSheet(prefix, data, schoolYear, uploaderName, fileId);
+  await processMultiSheet(prefix, data, schoolYear, uploaderName, fileId, { replace, category });
 }
