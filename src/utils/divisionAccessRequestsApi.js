@@ -4,6 +4,7 @@
 // from accessRequestsApi.js, which handles per-file / per-section requests.
 
 import { supabase } from "../lib/supabaseClient";
+import { pushNotification } from "./notifications.js";
 
 export function canApproveDivisionAccessRequests(userProfile) {
   return (

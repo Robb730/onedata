@@ -15,17 +15,13 @@ import FileUploadModal from "../../components/UploadFilesComponents/FileUploadMo
 import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
 import { runImport } from "../../utils/ExcelParsers";
-import { parseAndSyncStructuredData } from "../../utils/structuredDataSync";
+import {
+  parseAndSyncStructuredData,
+  deleteParsedDataForFile,
+} from "../../utils/structuredDataSync";
 import { notifyScope } from "../../utils/notifications";
 
 // ── Subfolder registry ────────────────────────────────────────────────────────
-const SUBFOLDER_CODE_REGISTRY = {
-  "DRRM/Contingency Plans": "CP",
-  "DRRM/Incident Reports": "IR",
-  "DRRM/Hazard Assessments": "HA",
-  "HRD/Training": "TR",
-  "HRD/Leave": "LV",
-};
 
 // ── Avatar helpers ─────────────────────────────────────────────
 const AVATAR_COLORS = [
@@ -67,16 +63,18 @@ function formatRelative(dateStr) {
   });
 }
 
-function getSubfoldersForSection(sectionName) {
-  if (!sectionName) return [];
-  return Object.keys(SUBFOLDER_CODE_REGISTRY)
-    .filter((k) => k.startsWith(sectionName + "/"))
-    .map((k) => ({
-      name: k.replace(sectionName + "/", ""),
-      code: SUBFOLDER_CODE_REGISTRY[k],
-    }));
-}
 
+const STRUCTURED_UPLOAD_TYPES = [
+  "enrollment",
+  "classrooms",
+  "seats",
+  "teachers_inventory",
+  "textbook_inventory",
+  "cespes",
+  "performance_indicators",
+];
+const getBucketForType = (uploadType) =>
+  STRUCTURED_UPLOAD_TYPES.includes(uploadType) ? "excel-files" : "repository-files";
 // ── Mock file requests ────────────────────────────────────────────────────────
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -253,10 +251,10 @@ export default function UploadFilesPage() {
           requestedOn: r.created_at, // ← add this line
           dueDate: r.deadline
             ? new Date(r.deadline).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })
             : "—",
           requestedBy: r.users?.full_name ?? "Unknown",
           requesterRole: getRoleDisplay(r.users?.role) ?? "",
@@ -283,10 +281,6 @@ export default function UploadFilesPage() {
 
   const showFolderPanel = isAdmin || isDivisionFocal;
   const showFileRequestPanel = isSectionFocal || isSectionPersonnel;
-
-  const activeSubfolders = getSubfoldersForSection(
-    typeof selectedFolder === "object" ? selectedFolder?.name : selectedFolder,
-  );
 
   const selectedFolderName =
     typeof selectedFolder === "object" ? selectedFolder?.name : selectedFolder;
@@ -367,52 +361,50 @@ export default function UploadFilesPage() {
 
   // ── Core upload + Supabase insert ─────────────────────────────────────────
   // ── Core upload + Supabase insert ─────────────────────────────────────────
-  const addToUploads = async (fileName, schoolYear, uploadType, file) => {
-    const folder = selectedFolder;
+  const addToUploads = async (
+  fileName,
+  schoolYear,
+  uploadType,
+  file,
+  { upsert = false } = {},
+) => {
+  const folder = selectedFolder;
+  const sectionId = typeof folder === "object" ? folder?.id : null;
+  const sectionName = typeof folder === "object" ? folder?.name : folder;
+  const divisionId = typeof folder === "object" ? folder?.divisionId : null;
 
-    const sectionId = typeof folder === "object" ? folder?.id : null;
-    const sectionName = typeof folder === "object" ? folder?.name : folder;
-    const divisionId = typeof folder === "object" ? folder?.divisionId : null;
+  const pathSegment = sectionId ?? sectionName ?? "general";
+  const yearSegment = schoolYear || "unspecified";
+  const storagePath = `sections/${pathSegment}/${yearSegment}/${fileName}`;
+  const bucket = getBucketForType(uploadType);
 
-    const pathSegment = sectionId ?? sectionName ?? "general";
-    const yearSegment = schoolYear || "unspecified";
-    const storagePath = `sections/${pathSegment}/${yearSegment}/${fileName}`;
+  const newEntry = {
+    id: String(Date.now()),
+    name: fileName,
+    folder: sectionName || "General",
+    schoolYear,
+    status: "Uploading",
+    uploadedBy: userProfile?.full_name ?? "Unknown",
+    uploadedOn: new Date().toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }),
+  };
+  setUploadedFiles((prev) => [newEntry, ...prev]);
 
-    const newEntry = {
-      id: String(Date.now()),
-      name: fileName,
-      folder: sectionName || "General",
-      schoolYear,
-      status: "Uploading",
-      uploadedBy: userProfile?.full_name ?? "Unknown",
-      uploadedOn: new Date().toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }),
-    };
-    setUploadedFiles((prev) => [newEntry, ...prev]);
+  try {
+    const isStructured = STRUCTURED_UPLOAD_TYPES.includes(uploadType);
+
+    const { error: storageError } = await supabase.storage
+      .from(bucket)
+      .upload(storagePath, file, { cacheControl: "3600", upsert });
+
+    if (storageError) throw storageError;
+
+    let storageCommitted = true;
 
     try {
-      // 1. Upload file to Supabase Storage
-      const structuredTypes = [
-        "enrollment",
-        "classrooms",
-        "seats",
-        "teachers_inventory",
-        "textbook_inventory",
-        "cespes",
-        "performance_indicators",
-      ];
-      const isStructured = structuredTypes.includes(uploadType);
-      const bucket = isStructured ? "excel-files" : "repository-files";
-      const { error: storageError } = await supabase.storage
-        .from(bucket)
-        .upload(storagePath, file, { cacheControl: "3600", upsert: false });
-
-      if (storageError) throw storageError;
-
-      // 2. Insert metadata into files table
       const { data: fileRow, error: dbError } = await supabase
         .from("files")
         .insert({
@@ -434,7 +426,6 @@ export default function UploadFilesPage() {
 
       if (dbError) throw dbError;
 
-      // 3. If structured upload type, also parse + insert data
       if (isStructured) {
         await parseAndSyncStructuredData(
           uploadType,
@@ -447,12 +438,9 @@ export default function UploadFilesPage() {
       }
 
       setUploadedFiles((files) =>
-        files.map((f) =>
-          f.id === newEntry.id ? { ...f, status: "Completed" } : f,
-        ),
+        files.map((f) => (f.id === newEntry.id ? { ...f, status: "Completed" } : f)),
       );
 
-      // ✅ Log success
       await logAuditEvent({
         action: "Upload",
         fileName,
@@ -474,27 +462,31 @@ export default function UploadFilesPage() {
           uploaded_by: userProfile?.uuid ?? null,
         },
       });
-    } catch (err) {
-      console.error("Upload failed:", err);
-      setUploadedFiles((files) =>
-        files.map((f) =>
-          f.id === newEntry.id ? { ...f, status: "Failed" } : f,
-        ),
-      );
 
-      // ✅ Log failure
-      await logAuditEvent({
-        action: "Upload",
-        fileName,
-        details: err.message,
-        status: "Failed",
-      });
-
-      throw err;
+      return { ...newEntry, fileId: fileRow.id, storagePath };
+    } catch (innerErr) {
+      if (storageCommitted && !upsert) {
+        const { error: cleanupError } = await supabase.storage.from(bucket).remove([storagePath]);
+        if (cleanupError) {
+          console.error("Failed to clean up orphaned storage object:", cleanupError);
+        }
+      }
+      throw innerErr;
     }
-
-    return newEntry;
-  };
+  } catch (err) {
+    console.error("Upload failed:", err);
+    setUploadedFiles((files) =>
+      files.map((f) => (f.id === newEntry.id ? { ...f, status: "Failed" } : f)),
+    );
+    await logAuditEvent({
+      action: "Upload",
+      fileName,
+      details: err.message,
+      status: "Failed",
+    });
+    throw err;
+  }
+};
 
   // ── Structured data parsers (extracted) ───────────────────────────────────
   const handleStructuredUpload = async (
@@ -842,113 +834,166 @@ export default function UploadFilesPage() {
   };
 
   const handleFileUpload = async (
-    fileName,
-    schoolYear,
-    uploadType,
-    fileOrFiles,
-    linkedRequestId,
-  ) => {
-    if (uploadInFlightRef.current) return;
-    uploadInFlightRef.current = true;
+  fileName,
+  schoolYear,
+  uploadType,
+  fileOrFiles,
+  linkedRequestId,
+  replaceTargets = null, // [{ id, filePath }] for parse-type replace; null otherwise
+) => {
+  if (uploadInFlightRef.current) return;
+  uploadInFlightRef.current = true;
 
-    setShowUploadModal(false);
-    setPendingFile(null);
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    setUploadToastStatus("uploading");
+  setShowUploadModal(false);
+  setPendingFile(null);
+  if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+  setUploadToastStatus("uploading");
 
-    try {
-      if (Array.isArray(fileOrFiles)) {
-        for (const file of fileOrFiles) {
-          await addToUploads(file.name, schoolYear, uploadType, file);
-        }
-      } else {
-        await addToUploads(fileName, schoolYear, uploadType, fileOrFiles);
+  try {
+    const isReplace = Array.isArray(replaceTargets) && replaceTargets.length > 0;
+
+    // 1. Upload the replacement FIRST. If this throws, we bail out below
+    //    and the old file/data is left completely untouched.
+    const newWrittenPaths = [];
+    if (Array.isArray(fileOrFiles)) {
+      for (const file of fileOrFiles) {
+        const result = await addToUploads(file.name, schoolYear, uploadType, file, {
+          upsert: isReplace,
+        });
+        if (result?.storagePath) newWrittenPaths.push(result.storagePath);
       }
-
-      if (linkedRequestId) {
-        const { error } = await supabase
-          .from("file_requests")
-          .update({
-            status: "completed",
-            completed_at: new Date().toISOString(),
-          })
-          .eq("id", linkedRequestId);
-
-        if (error) {
-          console.error("Failed to complete linked request:", error);
-        } else {
-          await fetchFileRequests();
-        }
-      }
-
-      setUploadToastStatus("success");
-    } catch (e) {
-      setUploadErrorMessage(e.message || "An error occurred during upload.");
-      setUploadToastStatus("error");
+    } else {
+      const result = await addToUploads(fileName, schoolYear, uploadType, fileOrFiles, {
+        upsert: isReplace,
+      });
+      if (result?.storagePath) newWrittenPaths.push(result.storagePath);
     }
 
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    toastTimeoutRef.current = setTimeout(() => {
-      setUploadToastStatus(null);
-      toastTimeoutRef.current = null;
-    }, 4000);
+    // 2. Only now, with the replacement confirmed on disk and in the DB,
+    //    remove the old record.
+    if (isReplace) {
+      const bucket = getBucketForType(uploadType);
+      for (const target of replaceTargets) {
+        await deleteParsedDataForFile(uploadType, target.id);
+        await supabase.from("files").delete().eq("id", target.id);
 
-    uploadInFlightRef.current = false;
-  };
+        // If the new upload didn't already overwrite this exact path
+        // (e.g. the replacement file has a different name), clean up
+        // the orphaned old object explicitly.
+        if (target.filePath && !newWrittenPaths.includes(target.filePath)) {
+          const { error: cleanupError } = await supabase.storage
+            .from(bucket)
+            .remove([target.filePath]);
+          if (cleanupError) {
+            console.error("Failed to remove old storage object on replace:", cleanupError);
+          }
+        }
+      }
+    }
 
-  const handleRequestFileUpload = async ( 
-    fileName,
-    schoolYear,
-    uploadType,
-    fileOrFiles,
-  ) => {
-    if (uploadInFlightRef.current) return;
-    uploadInFlightRef.current = true;
-    const req = pendingRequestUpload;
-
-    setShowUploadModal(false);
-    setPendingFile(null);
-    setPendingRequestUpload(null);
-
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    setUploadToastStatus("uploading");
-
-    try {
+    if (linkedRequestId) {
       const { error } = await supabase
         .from("file_requests")
-        .update({
-          status: "completed",
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", req.id);
+        .update({ status: "completed", completed_at: new Date().toISOString() })
+        .eq("id", linkedRequestId);
 
       if (error) {
-        throw error;
-      }
-
-      if (Array.isArray(fileOrFiles)) {
-        for (const file of fileOrFiles) {
-          await addToUploads(file.name, schoolYear, uploadType, file);
-        }
+        console.error("Failed to complete linked request:", error);
       } else {
-        await addToUploads(fileName, schoolYear, uploadType, fileOrFiles);
+        await fetchFileRequests();
       }
-      await fetchFileRequests();
-
-      setUploadToastStatus("success");
-    } catch (err) {
-      console.error("Failed to update file request status or upload:", err);
-      setUploadErrorMessage(err.message || "An error occurred during upload.");
-      setUploadToastStatus("error");
     }
 
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    toastTimeoutRef.current = setTimeout(() => {
-      setUploadToastStatus(null);
-      toastTimeoutRef.current = null;
-    }, 4000);
-    uploadInFlightRef.current = false;
-  };
+    setUploadToastStatus("success");
+  } catch (e) {
+    setUploadErrorMessage(e.message || "An error occurred during upload.");
+    setUploadToastStatus("error");
+  }
+
+  if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+  toastTimeoutRef.current = setTimeout(() => {
+    setUploadToastStatus(null);
+    toastTimeoutRef.current = null;
+  }, 4000);
+
+  uploadInFlightRef.current = false;
+};
+
+  const handleRequestFileUpload = async (
+  fileName,
+  schoolYear,
+  uploadType,
+  fileOrFiles,
+  linkedRequestId,
+  replaceTargets = null,
+) => {
+  if (uploadInFlightRef.current) return;
+  uploadInFlightRef.current = true;
+  const req = pendingRequestUpload;
+
+  setShowUploadModal(false);
+  setPendingFile(null);
+  setPendingRequestUpload(null);
+
+  if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+  setUploadToastStatus("uploading");
+
+  try {
+    const isReplace = Array.isArray(replaceTargets) && replaceTargets.length > 0;
+
+    const newWrittenPaths = [];
+    if (Array.isArray(fileOrFiles)) {
+      for (const file of fileOrFiles) {
+        const result = await addToUploads(file.name, schoolYear, uploadType, file, {
+          upsert: isReplace,
+        });
+        if (result?.storagePath) newWrittenPaths.push(result.storagePath);
+      }
+    } else {
+      const result = await addToUploads(fileName, schoolYear, uploadType, fileOrFiles, {
+        upsert: isReplace,
+      });
+      if (result?.storagePath) newWrittenPaths.push(result.storagePath);
+    }
+
+    if (isReplace) {
+      const bucket = getBucketForType(uploadType);
+      for (const target of replaceTargets) {
+        await deleteParsedDataForFile(uploadType, target.id);
+        await supabase.from("files").delete().eq("id", target.id);
+        if (target.filePath && !newWrittenPaths.includes(target.filePath)) {
+          const { error: cleanupError } = await supabase.storage
+            .from(bucket)
+            .remove([target.filePath]);
+          if (cleanupError) {
+            console.error("Failed to remove old storage object on replace:", cleanupError);
+          }
+        }
+      }
+    }
+
+    const { error } = await supabase
+      .from("file_requests")
+      .update({ status: "completed", completed_at: new Date().toISOString() })
+      .eq("id", req.id);
+
+    if (error) throw error;
+
+    await fetchFileRequests();
+    setUploadToastStatus("success");
+  } catch (err) {
+    console.error("Failed to update file request status or upload:", err);
+    setUploadErrorMessage(err.message || "An error occurred during upload.");
+    setUploadToastStatus("error");
+  }
+
+  if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+  toastTimeoutRef.current = setTimeout(() => {
+    setUploadToastStatus(null);
+    toastTimeoutRef.current = null;
+  }, 4000);
+  uploadInFlightRef.current = false;
+};
 
   const filteredRequests = fileRequests.filter((r) => {
     if (fileRequestFilter === "All") return true;
@@ -1001,20 +1046,6 @@ export default function UploadFilesPage() {
           )}
         </div>
       </div>
-
-      {activeSubfolders.length > 0 && (
-        <div className="mb-4 flex items-start gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
-          <Tag size={13} className="text-slate-500 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-slate-600 leading-relaxed">
-            This section has{" "}
-            <span className="font-semibold text-slate-800">
-              {activeSubfolders.length} categor
-              {activeSubfolders.length === 1 ? "y" : "ies"}
-            </span>
-            . You&apos;ll pick one in the next step.
-          </p>
-        </div>
-      )}
 
       <div
         onDragOver={handleDragOver}
@@ -1434,26 +1465,33 @@ export default function UploadFilesPage() {
 
         {showUploadModal && (
           <FileUploadModal
-            isOpen={showUploadModal}
-            onClose={() => {
-              setShowUploadModal(false);
-              setPendingFile(null);
-              setPendingRequestUpload(null);
-            }}
-            selectedFolder={selectedFolderName || ""}
-            fileName={
-              pendingFile?.name === "browse" ? "" : pendingFile?.name || ""
-            }
-            initialFile={pendingFile?.file || null}
-            onUpload={
-              pendingRequestUpload ? handleRequestFileUpload : handleFileUpload
-            }
-            subfolders={activeSubfolders}
-            pendingRequests={fileRequests.filter(
-              (r) => r.status === "Pending" || r.status === "Overdue",
-            )}
-            isRequestFulfillment={!!pendingRequestUpload}
-          />
+  isOpen={showUploadModal}
+  onClose={() => {
+    setShowUploadModal(false);
+    setPendingFile(null);
+    setPendingRequestUpload(null);
+  }}
+  selectedFolder={selectedFolderName || ""}
+  sectionId={
+    typeof selectedFolder === "object" ? selectedFolder?.id : null
+  }
+  canChangeFolder={showFolderPanel}
+  onChangeFolder={() => {
+    setShowUploadModal(false);
+    setShowFolderModal(true);
+  }}
+  fileName={
+    pendingFile?.name === "browse" ? "" : pendingFile?.name || ""
+  }
+  initialFile={pendingFile?.file || null}
+  onUpload={
+    pendingRequestUpload ? handleRequestFileUpload : handleFileUpload
+  }
+  pendingRequests={fileRequests.filter(
+    (r) => r.status === "Pending" || r.status === "Overdue",
+  )}
+  isRequestFulfillment={!!pendingRequestUpload}
+/>
         )}
 
         {/* Toast Notification */}
@@ -1565,7 +1603,9 @@ export default function UploadFilesPage() {
 
           <div
             className={`w-full h-1 bg-slate-100 transition-all duration-300 ${
-              uploadToastStatus === "uploading" ? "opacity-100" : "opacity-0 h-0"
+              uploadToastStatus === "uploading"
+                ? "opacity-100"
+                : "opacity-0 h-0"
             }`}
           >
             <div
