@@ -510,7 +510,12 @@ function formatRelativeDate(dateStr) {
   if (!dateStr) return { relative: "—", time: "—", full: "—" };
   const d = new Date(dateStr);
   const now = new Date();
-  const diffDays = Math.floor((now - d) / 86400000);
+  const diffMs = now - d;
+  // Clock skew between browser and server (or a timestamp that hasn't
+  // "settled" yet right after a save) can make a just-written timestamp
+  // look slightly in the future. Never show a negative/garbage day count —
+  // treat anything from "now" up through the rest of today as "Today".
+  const diffDays = Math.max(0, Math.floor(diffMs / 86400000));
   const timeStr = d.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
