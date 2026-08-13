@@ -13,11 +13,26 @@ import { canAccessDivision } from "../../utils/accessControl";
 import { resolveUserDivisionId } from "../../utils/accessControl";
 import FloatingDivisionAccessRequestsButton from "../../components/RepositoryComponents/FloatingDivisionAccessRequestsButton";
 import DivisionAccessRequestsSidebar from "../../components/RepositoryComponents/DivisionAccessRequestsSidebar";
+import CreateSectionModal from "../../components/RepositoryComponents/CreateSectionModal";
+import {
+  fetchPendingDeletionRequests,
+  requestSectionDeletion,
+  reauthenticate,
+  approveSectionDeletion,
+  declineSectionDeletion,
+} from "../../utils/sectionDeletion";
+import DeleteSectionWarningModal from "../../components/RepositoryComponents/DeleteSectionWarningModal";
+import PasswordConfirmModal from "../../components/RepositoryComponents/PasswordConfirmModal";
 
 export default function RepositoryDivisionPage() {
   const navigate = useNavigate();
   const { divisionSlug } = useParams(); // this is the division id
   const { userProfile } = useUser();
+
+  const [pendingRequests, setPendingRequests] = useState({}); // sectionId -> request
+  const [deleteTarget, setDeleteTarget] = useState(null); // section being deleted (step 1)
+  const [passwordFlow, setPasswordFlow] = useState(null); // { mode: 'request'|'approve', section, request }
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   // ── Supabase state ─────────────────────────────────────────────
   const [division, setDivision] = useState(null);
@@ -33,6 +48,123 @@ export default function RepositoryDivisionPage() {
 
   const [activeTab, setActiveTab] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [showCreateSectionModal, setShowCreateSectionModal] = useState(false);
+  const [sectionToast, setSectionToast] = useState(null); // { type: 'success'|'error', message }
+
+  const handleSectionCreated = (newSection) => {
+    setSections((prev) =>
+      [...prev, newSection].sort((a, b) => a.name.localeCompare(b.name)),
+    );
+    setShowCreateSectionModal(false);
+    setSectionToast({
+      type: "success",
+      message: `"${newSection.name}" was added.`,
+    });
+    setTimeout(() => setSectionToast(null), 4000);
+  };
+
+  const canCreateSection =
+    userProfile?.role === "administrator" ||
+    (userProfile?.role === "division_focal" &&
+      String(userProfile?.division_id) === String(divisionSlug));
+
+  const canDeleteSection = (section) =>
+    userProfile?.role === "administrator" ||
+    (userProfile?.role === "division_focal" &&
+      String(userProfile?.division_id) === String(divisionSlug));
+
+  const isAdmin = userProfile?.role === "administrator";
+
+  // Step 1: warning modal → user clicks Continue
+  const openDeleteWarning = (section) => setDeleteTarget(section);
+
+  // Step 2: warning confirmed → open password modal in "request" mode
+  const handleWarningContinue = () => {
+    const section = deleteTarget;
+    setDeleteTarget(null);
+    setPasswordFlow({ mode: "request", section });
+  };
+
+  // Step 3a: password confirmed for a *new* deletion request
+  const handleRequestPassword = async (password) => {
+    await reauthenticate(userProfile.email, password);
+    const section = passwordFlow.section;
+    const req = await requestSectionDeletion({
+      sectionId: section.id,
+      sectionName: section.name,
+      divisionId: divisionSlug,
+      requestedBy: userProfile.id,
+      requestedByName: userProfile.full_name,
+    });
+    setPendingRequests((prev) => ({ ...prev, [section.id]: req }));
+    setPasswordFlow(null);
+    setSectionToast({
+      type: "success",
+      message: `Deletion of "${section.name}" is now pending admin approval.`,
+    });
+    setTimeout(() => setSectionToast(null), 4000);
+  };
+
+  // Admin clicks "Confirm" on a pending card → open password modal in "approve" mode
+  const openApprovePassword = (section) => {
+    const request = pendingRequests[section.id];
+    if (!request) return;
+    setPasswordFlow({ mode: "approve", section, request });
+  };
+
+  // Step 3b: password confirmed for an admin *approval*
+  const handleApprovePassword = async (password) => {
+    await reauthenticate(userProfile.email, password);
+    const { section, request } = passwordFlow;
+    setDeleteBusy(true);
+    try {
+      await approveSectionDeletion({
+        requestId: request.id,
+        sectionId: section.id,
+      });
+      setSections((prev) => prev.filter((s) => s.id !== section.id));
+      setPendingRequests((prev) => {
+        const next = { ...prev };
+        delete next[section.id];
+        return next;
+      });
+      setPasswordFlow(null);
+      setSectionToast({
+        type: "success",
+        message: `"${section.name}" and its files were deleted.`,
+      });
+      setTimeout(() => setSectionToast(null), 4000);
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
+  // Admin clicks "Decline" — no password needed
+  const handleDecline = async (section) => {
+    const request = pendingRequests[section.id];
+    if (!request) return;
+    try {
+      await declineSectionDeletion(request.id);
+      setPendingRequests((prev) => {
+        const next = { ...prev };
+        delete next[section.id];
+        return next;
+      });
+      setSectionToast({
+        type: "success",
+        message: `Deletion request for "${section.name}" was declined.`,
+      });
+      setTimeout(() => setSectionToast(null), 4000);
+    } catch (e) {
+      setSectionToast({
+        type: "error",
+        message: e.message || "Failed to decline request.",
+      });
+      setTimeout(() => setSectionToast(null), 4000);
+    }
+  };
+
   const [viewMode, setViewMode] = useState(() => {
     return localStorage.getItem("sectionViewMode") || "grid";
   });
@@ -124,6 +256,15 @@ export default function RepositoryDivisionPage() {
           setError((prev) => prev || sectionsRes.error.message);
         } else {
           setSections(sectionsRes.data || []);
+          const ids = (sectionsRes.data || []).map((s) => s.id);
+          if (ids.length) {
+            try {
+              const pending = await fetchPendingDeletionRequests(ids);
+              setPendingRequests(pending);
+            } catch (e) {
+              console.error("Failed to load deletion requests", e);
+            }
+          }
 
           const sectionIds = (sectionsRes.data || []).map((s) => s.id);
 
@@ -171,9 +312,15 @@ export default function RepositoryDivisionPage() {
     return {
       id: section.id,
       name: section.name,
-      managers, // full list, if SectionFolderCard wants it
+      managers,
       owner: managers.length ? managers.join(", ") : "Unassigned",
       route: `/repository/folder/${encodeURIComponent(section.name)}`,
+      canDelete: canDeleteSection(section),
+      isAdmin,
+      pendingDeletion: pendingRequests[section.id] || null,
+      onRequestDelete: () => openDeleteWarning(section),
+      onConfirmDeletion: () => openApprovePassword(section),
+      onDeclineDeletion: () => handleDecline(section),
     };
   });
 
@@ -224,7 +371,10 @@ export default function RepositoryDivisionPage() {
             <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.18em] text-slate-400">
               Managed by
             </p>
-            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-semibold text-slate-900 truncate" title={divisionManagers.join(", ")}>
+            <p
+              className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-semibold text-slate-900 truncate"
+              title={divisionManagers.join(", ")}
+            >
               {loading
                 ? "—"
                 : divisionManagers.length
@@ -237,11 +387,7 @@ export default function RepositoryDivisionPage() {
               Status
             </p>
             <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-semibold text-slate-900 truncate">
-              {loading
-                ? "Loading…"
-                : error
-                  ? "Needs attention"
-                  : "Accessible"}
+              {loading ? "Loading…" : error ? "Needs attention" : "Accessible"}
             </p>
           </div>
         </div>
@@ -285,11 +431,11 @@ export default function RepositoryDivisionPage() {
           <SectionFolderGrid
             folders={filteredFolders}
             viewMode={viewMode}
-            showCreateCard
+            showCreateCard={canCreateSection}
             onFolderClick={(folder) =>
               navigate(`/repository/folder/${encodeURIComponent(folder.name)}`)
             }
-            onCreateSection={() => navigate("/upload-files")}
+            onCreateSection={() => setShowCreateSectionModal(true)}
           />
         )}
       </div>
@@ -311,6 +457,34 @@ export default function RepositoryDivisionPage() {
           />
         </>
       )}
+
+      <CreateSectionModal
+        isOpen={showCreateSectionModal}
+        onClose={() => setShowCreateSectionModal(false)}
+        divisionId={divisionSlug}
+        divisionName={division?.name}
+        existingSectionNames={sections.map((s) => s.name)}
+        onCreated={handleSectionCreated}
+      />
+      <DeleteSectionWarningModal
+        isOpen={!!deleteTarget}
+        sectionName={deleteTarget?.name}
+        onClose={() => setDeleteTarget(null)}
+        onContinue={handleWarningContinue}
+      />
+
+      <PasswordConfirmModal
+        isOpen={!!passwordFlow}
+        mode={passwordFlow?.mode}
+        section={passwordFlow?.section}
+        busy={deleteBusy}
+        onClose={() => setPasswordFlow(null)}
+        onConfirm={
+          passwordFlow?.mode === "approve"
+            ? handleApprovePassword
+            : handleRequestPassword
+        }
+      />
     </div>
   );
 }

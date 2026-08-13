@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ArrowLeftRight,
   Download,
+  ArrowRight,
   X,
   Clock,
   CheckCircle,
@@ -72,6 +73,31 @@ function computeEnrollmentTotals(data) {
     private: privateTotal,
     total: publicTotal + privateTotal,
   };
+}
+
+function formatTransitionDate(dateStr) {
+  const d = new Date(dateStr);
+  const datePart = d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const timePart = d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+  return `${datePart} at ${timePart}`;
+}
+
+function getDaysUntilLabel(dateStr) {
+  const target = new Date(dateStr);
+  const now = new Date();
+  const diffMs = target.setHours(0, 0, 0, 0) - now.setHours(0, 0, 0, 0);
+  const days = Math.round(diffMs / 86400000);
+  if (days <= 0) return "today";
+  if (days === 1) return "tomorrow";
+  return `in ${days} days`;
 }
 
 async function fetchResourcesForYear(year) {
@@ -262,6 +288,46 @@ export default function Dashboard() {
   });
   const [compareEnrollmentRows, setCompareEnrollmentRows] = useState([]);
   const [compareLoading, setCompareLoading] = useState(false);
+
+  const [scheduledTransition, setScheduledTransition] = useState(null);
+  const [showTransitionBanner, setShowTransitionBanner] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchScheduledTransition() {
+      const { data, error } = await supabase
+        .from("school_years")
+        .select("id, label, activation_date")
+        .eq("status", "scheduled")
+        .order("activation_date", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (cancelled || error || !data) return;
+
+      setScheduledTransition(data);
+
+      const dismissedKey = `transitionBannerDismissed:${data.id}`;
+      const alreadyDismissed = sessionStorage.getItem(dismissedKey) === "1";
+      if (!alreadyDismissed) setShowTransitionBanner(true);
+    }
+
+    fetchScheduledTransition();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const dismissTransitionBanner = () => {
+    if (scheduledTransition) {
+      sessionStorage.setItem(
+        `transitionBannerDismissed:${scheduledTransition.id}`,
+        "1",
+      );
+    }
+    setShowTransitionBanner(false);
+  };
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -1022,8 +1088,8 @@ export default function Dashboard() {
       {/* ── Welcome toast (top-right) ─────────────────────── */}
       <div
         className={`fixed top-4 left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] sm:left-auto sm:right-8 sm:w-[380px] ${showWelcomeToast
-            ? "translate-x-0 opacity-100 pointer-events-auto"
-            : "translate-x-[120%] opacity-0 pointer-events-none"
+          ? "translate-x-0 opacity-100 pointer-events-auto"
+          : "translate-x-[120%] opacity-0 pointer-events-none"
           }`}
         style={{
           minHeight: "76px",
@@ -1035,6 +1101,8 @@ export default function Dashboard() {
           border: "1px solid rgba(241, 245, 249, 1)",
         }}
       >
+
+
         <div className="absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r from-emerald-100/60 to-transparent" />
 
         <div
@@ -1066,6 +1134,37 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
+
+      {showTransitionBanner && scheduledTransition && (
+        <div className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100">
+              <Clock size={14} className="text-blue-600" />
+            </div>
+            <p className="min-w-0 truncate text-[0.8rem] text-slate-600">
+              <span className="font-bold text-blue-700">
+                S.Y. {scheduledTransition.label} transition{" "}
+                {getDaysUntilLabel(scheduledTransition.activation_date)}
+              </span>{" "}
+              <span className="text-slate-300">—</span>{" "}
+              <span className="font-semibold text-slate-700">
+                {formatTransitionDate(scheduledTransition.activation_date)}
+              </span>
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1.5">
+
+            <button
+              onClick={dismissTransitionBanner}
+              title="Dismiss"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition-colors"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
       <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 py-5 sm:py-8">
         {/* ── Page header ─────────────────────────────────── */}
         <div className="flex flex-col gap-4 mb-6 sm:mb-7 sm:flex-row sm:items-start sm:justify-between">
@@ -1116,10 +1215,10 @@ export default function Dashboard() {
                           setIsYearDropdownOpen(false);
                         }}
                         className={`w-full flex items-center px-3.5 py-2 text-[0.82rem] font-semibold transition-colors ${isSelected
-                            ? "bg-blue-50 text-blue-700"
-                            : isDisabled
-                              ? "text-slate-300 cursor-not-allowed"
-                              : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                          ? "bg-blue-50 text-blue-700"
+                          : isDisabled
+                            ? "text-slate-300 cursor-not-allowed"
+                            : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                           }`}
                       >
                         {year}
@@ -1176,10 +1275,10 @@ export default function Dashboard() {
                               setIsCompareYearDropdownOpen(false);
                             }}
                             className={`w-full flex items-center gap-1.5 px-3.5 py-2 text-[0.82rem] font-semibold transition-colors ${isSelected
-                                ? "bg-orange-50 text-orange-700"
-                                : isDisabled
-                                  ? "text-slate-300 cursor-not-allowed"
-                                  : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                              ? "bg-orange-50 text-orange-700"
+                              : isDisabled
+                                ? "text-slate-300 cursor-not-allowed"
+                                : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                               }`}
                           >
                             {year}
@@ -1618,8 +1717,8 @@ export default function Dashboard() {
                     key={tab}
                     onClick={() => setActiveCespesTab(tab)}
                     className={`whitespace-nowrap px-4 py-2 text-[0.75rem] font-semibold rounded-t-lg transition-colors ${activeCespesTab === tab
-                        ? "text-blue-600 bg-blue-50/50 border-b-2 border-blue-500"
-                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                      ? "text-blue-600 bg-blue-50/50 border-b-2 border-blue-500"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
                       }`}
                   >
                     {tab}
@@ -2400,8 +2499,8 @@ function CespesProgramRow({ program }) {
         </div>
         <span
           className={`text-[0.7rem] font-semibold px-2.5 py-1 rounded-full ${isComplete
-              ? "bg-emerald-50 text-emerald-600"
-              : "bg-blue-50 text-blue-600"
+            ? "bg-emerald-50 text-emerald-600"
+            : "bg-blue-50 text-blue-600"
             }`}
         >
           {program.reported} reported
@@ -2470,8 +2569,8 @@ function CespesProgramRow({ program }) {
                     <div className="flex items-start gap-2">
                       <span
                         className={`mt-0.5 shrink-0 text-[0.6rem] font-bold px-1.5 py-0.5 rounded ${row.type === "OUTCOME"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-blue-100 text-blue-700"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-blue-100 text-blue-700"
                           }`}
                       >
                         {row.type}

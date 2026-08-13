@@ -1,15 +1,5 @@
 import { useState, useId } from "react";
-import { User, FolderOpen, Plus, ChevronDown } from "lucide-react";
-
-/**
- * SectionFolderCard — Section-level folder card, styled to match FolderCard.
- *
- * @param {string}   name
- * @param {string}   [owner]     — fallback single manager name
- * @param {string[]} [managers]  — list of people managing this section
- * @param {function} [onClick]
- * @param {"folder"|"create"} [variant="folder"]
- */
+import { User, FolderOpen, Plus, ChevronDown, Trash2, Eye, Check, X as XIcon, Hourglass } from "lucide-react";
 
 const AVATAR_PALETTE = [
   { bg: "bg-emerald-100", text: "text-emerald-700" },
@@ -91,6 +81,35 @@ function ManagerNameList({ managerList }) {
   );
 }
 
+// ── Pending-deletion admin action row ──────────────────────────
+function AdminDeletionActions({ onView, onConfirm, onDecline, compact = false }) {
+  return (
+    <div className={`flex gap-1.5 ${compact ? "" : "mt-2"}`} onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={onView}
+        className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-50"
+      >
+        <Eye size={11} /> View
+      </button>
+      <button
+        type="button"
+        onClick={onConfirm}
+        className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-rose-600 px-2 py-1.5 text-[10px] font-semibold text-white hover:bg-rose-700"
+      >
+        <Check size={11} /> Confirm
+      </button>
+      <button
+        type="button"
+        onClick={onDecline}
+        className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-50"
+      >
+        <XIcon size={11} /> Decline
+      </button>
+    </div>
+  );
+}
+
 const VISIBLE_ROW_LIMIT = 4;
 
 export function SectionFolderCard({
@@ -100,6 +119,13 @@ export function SectionFolderCard({
   onClick,
   variant = "folder",
   viewMode = "grid",
+  // ── deletion feature props ──────────────────────────────
+  canDelete = false,          // show trash icon (division focal of this division, or admin)
+  isAdmin = false,            // logged-in user is an administrator
+  pendingDeletion = null,     // { id, requested_by_name, requested_at } | null
+  onRequestDelete,            // () => void  — opens the warning modal
+  onConfirmDeletion,          // () => void  — admin confirms (asks for password)
+  onDeclineDeletion,          // () => void  — admin declines (no password)
 }) {
   const [expanded, setExpanded] = useState(false);
   const rawId = useId();
@@ -109,6 +135,13 @@ export function SectionFolderCard({
   const isOverflowing = managerList.length > VISIBLE_ROW_LIMIT;
   const rowsToShow = expanded ? managerList : managerList.slice(0, VISIBLE_ROW_LIMIT);
   const hiddenCount = managerList.length - VISIBLE_ROW_LIMIT;
+
+  // When a deletion request is pending and the viewer is an admin, clicking
+  // the card body shouldn't navigate — they use the explicit "View" button
+  // instead, so the Confirm/Decline buttons aren't sitting next to a giant
+  // accidental-click target.
+  const bodyClickable = !(pendingDeletion && isAdmin);
+  const handleBodyClick = bodyClickable ? onClick : undefined;
 
   if (variant === "create") {
     if (viewMode === "list") {
@@ -128,7 +161,7 @@ export function SectionFolderCard({
         </button>
       );
     }
-    
+
     return (
       <button
         type="button"
@@ -152,29 +185,116 @@ export function SectionFolderCard({
     e.currentTarget.style.setProperty('--y', `${y}px`);
   };
 
+  const statusBadge = pendingDeletion ? (
+  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+    <Hourglass size={11} /> Pending Deletion
+  </span>
+) : (
+  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+    ● Active
+  </span>
+);
+
+  const trashButton = canDelete && !pendingDeletion && (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onRequestDelete?.();
+      }}
+      title="Delete section"
+      className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-600"
+    >
+      <Trash2 size={14} />
+    </button>
+  );
+
   if (viewMode === "list") {
     return (
       <div
         id={cardId}
-        onClick={onClick}
+        onClick={handleBodyClick}
         onMouseMove={handleMouseMove}
-        className="group relative flex cursor-pointer rounded-2xl p-[1.5px] transition-all duration-300 hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)]"
+        className={`group relative flex rounded-2xl p-[1.5px] transition-all duration-300 hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)] ${bodyClickable ? "cursor-pointer" : ""}`}
         role="button"
         tabIndex={0}
       >
-        {/* Default static border background */}
         <div className="absolute inset-0 rounded-2xl bg-slate-100/80 transition-opacity duration-300 group-hover:opacity-0" />
-
-        {/* Hover pointer glow background */}
-        <div 
-          className="absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" 
+        <div
+          className="absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
           style={{ background: 'radial-gradient(circle 350px at var(--x, 50%) var(--y, 50%), #3EBA8F, #4B86EC, transparent 60%)' }}
         />
 
-        {/* Inner White Card */}
-        <div className="relative flex items-center gap-4 w-full overflow-hidden rounded-[15px] bg-white px-4 py-3">
-          {/* Icon */}
-          <div className="w-11 h-11 bg-emerald-50 rounded-xl flex items-center justify-center shrink-0 ml-1 transition-all duration-300 group-hover:scale-[1.04]">
+        <div className="relative flex w-full flex-col gap-2 overflow-hidden rounded-[15px] bg-white px-4 py-3">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 bg-emerald-50 rounded-xl flex items-center justify-center shrink-0 ml-1 transition-all duration-300 group-hover:scale-[1.04]">
+              <lord-icon
+                src="/folder-outline.json"
+                trigger="hover"
+                target={`#${cardId}`}
+                colors="primary:#047857"
+                style={{ width: "24px", height: "24px" }}
+              ></lord-icon>
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate text-sm font-semibold text-slate-900">{name}</h3>
+            </div>
+
+            <div className="hidden min-w-0 shrink items-center gap-2 md:flex">
+              <User size={12} className="text-slate-400 shrink-0" />
+              {managerList.length === 0 ? (
+                <span className="text-xs italic text-slate-400">Unassigned</span>
+              ) : (
+                <ManagerNameList managerList={managerList} />
+              )}
+            </div>
+
+            {statusBadge}
+            {trashButton}
+          </div>
+
+          {pendingDeletion && isAdmin && (
+            <AdminDeletionActions
+              onView={onClick}
+              onConfirm={onConfirmDeletion}
+              onDecline={onDeclineDeletion}
+              compact
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      id={cardId}
+      onClick={handleBodyClick}
+      onKeyDown={(e) => bodyClickable && e.key === "Enter" && onClick?.()}
+      onMouseMove={handleMouseMove}
+      className={`group relative flex min-w-0 flex-col rounded-[18px] sm:rounded-[22px] p-[1.5px] transition-all duration-300 hover:-translate-y-[3px] hover:shadow-[0_18px_42px_rgba(15,23,42,0.10)] ${bodyClickable ? "cursor-pointer" : ""}`}
+      role="button"
+      tabIndex={0}
+    >
+      <div className="absolute inset-0 rounded-[22px] bg-slate-100/80 transition-opacity duration-300 group-hover:opacity-0" />
+      <div
+        className="absolute inset-0 rounded-[22px] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        style={{ background: 'radial-gradient(circle 350px at var(--x, 50%) var(--y, 50%), #3EBA8F, #4B86EC, transparent 60%)' }}
+      />
+
+      <div className="relative flex w-full h-full flex-col overflow-hidden rounded-[16px] sm:rounded-[21px] bg-white p-3 sm:p-5">
+
+        <div className="mb-2 sm:mb-4 flex items-center justify-between gap-1">
+          <div />
+          <div className="flex items-center gap-1">
+            {statusBadge}
+            {trashButton}
+          </div>
+        </div>
+
+        <div className="mb-2 sm:mb-4 flex flex-col items-center gap-2 sm:gap-3 text-center">
+          <div className="flex h-10 w-10 sm:h-14 sm:w-14 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-50 transition-all duration-300 group-hover:scale-[1.04] group-hover:shadow-md">
             <lord-icon
               src="/folder-outline.json"
               trigger="hover"
@@ -184,125 +304,67 @@ export function SectionFolderCard({
             ></lord-icon>
           </div>
 
-          {/* Name */}
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-sm font-semibold text-slate-900">{name}</h3>
-          </div>
+          <h3 className="w-full line-clamp-2 break-words text-center text-[11px] sm:text-sm font-semibold leading-snug text-slate-900">
+            {name}
+          </h3>
+        </div>
 
-          {/* Managers */}
-          <div className="hidden min-w-0 shrink items-center gap-2 md:flex">
-            <User size={12} className="text-slate-400 shrink-0" />
+        <div className="mt-auto min-w-0">
+          <div className="flex items-center justify-center gap-1 min-w-0 sm:hidden">
+            <User size={10} className="text-slate-400 shrink-0" />
+            <span className="truncate text-[10px] font-medium text-slate-500">
+              {managerList.length === 0
+                ? "Unassigned"
+                : managerList.length === 1
+                  ? managerList[0]
+                  : `${managerList[0]} +${managerList.length - 1}`}
+            </span>
+          </div>
+          <div className="hidden sm:block rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 transition-colors">
+            <div className="mb-1 flex items-center gap-1.5 text-[11px] text-slate-500">
+              <User size={11} className="text-slate-400 shrink-0" />
+              <span>Managed by</span>
+            </div>
+
             {managerList.length === 0 ? (
-              <span className="text-xs italic text-slate-400">Unassigned</span>
+              <p className="pl-0.5 text-xs italic text-slate-400">Unassigned</p>
             ) : (
-              <ManagerNameList managerList={managerList} />
+              <>
+                <div className="flex flex-col divide-y divide-slate-200/60 rounded-xl bg-white/70">
+                  {rowsToShow.map((m) => (
+                    <ManagerRow key={m} identifier={m} />
+                  ))}
+                </div>
+
+                {isOverflowing && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpanded((v) => !v);
+                    }}
+                    className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800"
+                  >
+                    <ChevronDown
+                      size={12}
+                      className={`transition-transform ${expanded ? "rotate-180" : ""}`}
+                    />
+                    {expanded ? "Show less" : `+${hiddenCount} more`}
+                  </button>
+                )}
+              </>
             )}
           </div>
 
-          {/* Status badge */}
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-            ● Active
-          </span>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      id={cardId}
-      onClick={onClick}
-      onKeyDown={(e) => e.key === "Enter" && onClick?.()}
-      onMouseMove={handleMouseMove}
-      className="group relative flex min-w-0 cursor-pointer flex-col rounded-[18px] sm:rounded-[22px] p-[1.5px] transition-all duration-300 hover:-translate-y-[3px] hover:shadow-[0_18px_42px_rgba(15,23,42,0.10)]"
-      role="button"
-      tabIndex={0}
-    >
-      {/* Default static border background */}
-      <div className="absolute inset-0 rounded-[22px] bg-slate-100/80 transition-opacity duration-300 group-hover:opacity-0" />
-
-      {/* Hover pointer glow background */}
-      <div 
-        className="absolute inset-0 rounded-[22px] opacity-0 transition-opacity duration-300 group-hover:opacity-100" 
-        style={{ background: 'radial-gradient(circle 350px at var(--x, 50%) var(--y, 50%), #3EBA8F, #4B86EC, transparent 60%)' }}
-      />
-
-      {/* Inner White Card */}
-      <div className="relative flex w-full h-full flex-col overflow-hidden rounded-[16px] sm:rounded-[21px] bg-white p-3 sm:p-5">
-
-      {/* Top bar — Active badge */}
-      <div className="mb-2 sm:mb-4 flex items-center justify-end">
-        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[11px] font-semibold text-emerald-700">
-          ● Active
-        </span>
-      </div>
-
-      {/* Icon + name */}
-      <div className="mb-2 sm:mb-4 flex flex-col items-center gap-2 sm:gap-3 text-center">
-        <div className="flex h-10 w-10 sm:h-14 sm:w-14 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-50 transition-all duration-300 group-hover:scale-[1.04] group-hover:shadow-md">
-          <lord-icon
-            src="/folder-outline.json"
-            trigger="hover"
-            target={`#${cardId}`}
-            colors="primary:#047857"
-            style={{ width: "24px", height: "24px" }}
-          ></lord-icon>
-        </div>
-
-        <h3 className="w-full line-clamp-2 break-words text-center text-[11px] sm:text-sm font-semibold leading-snug text-slate-900">
-          {name}
-        </h3>
-      </div>
-
-      {/* Managed by — compact on mobile, full list from sm up */}
-      <div className="mt-auto min-w-0">
-        <div className="flex items-center justify-center gap-1 min-w-0 sm:hidden">
-          <User size={10} className="text-slate-400 shrink-0" />
-          <span className="truncate text-[10px] font-medium text-slate-500">
-            {managerList.length === 0
-              ? "Unassigned"
-              : managerList.length === 1
-                ? managerList[0]
-                : `${managerList[0]} +${managerList.length - 1}`}
-          </span>
-        </div>
-        <div className="hidden sm:block rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 transition-colors">
-          <div className="mb-1 flex items-center gap-1.5 text-[11px] text-slate-500">
-            <User size={11} className="text-slate-400 shrink-0" />
-            <span>Managed by</span>
-          </div>
-
-          {managerList.length === 0 ? (
-            <p className="pl-0.5 text-xs italic text-slate-400">Unassigned</p>
-          ) : (
-            <>
-              <div className="flex flex-col divide-y divide-slate-200/60 rounded-xl bg-white/70">
-                {rowsToShow.map((m) => (
-                  <ManagerRow key={m} identifier={m} />
-                ))}
-              </div>
-
-              {isOverflowing && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setExpanded((v) => !v);
-                  }}
-                  className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800"
-                >
-                  <ChevronDown
-                    size={12}
-                    className={`transition-transform ${expanded ? "rotate-180" : ""}`}
-                  />
-                  {expanded ? "Show less" : `+${hiddenCount} more`}
-                </button>
-              )}
-            </>
+          {pendingDeletion && isAdmin && (
+            <AdminDeletionActions
+              onView={onClick}
+              onConfirm={onConfirmDeletion}
+              onDecline={onDeclineDeletion}
+            />
           )}
         </div>
       </div>
     </div>
-  </div>
   );
 }

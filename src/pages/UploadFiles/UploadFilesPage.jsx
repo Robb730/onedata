@@ -1465,28 +1465,33 @@ export default function UploadFilesPage() {
 
         {showUploadModal && (
           <FileUploadModal
-            isOpen={showUploadModal}
-            onClose={() => {
-              setShowUploadModal(false);
-              setPendingFile(null);
-              setPendingRequestUpload(null);
-            }}
-            selectedFolder={selectedFolderName || ""}
-            sectionId={
-              typeof selectedFolder === "object" ? selectedFolder?.id : null
-            }
-            fileName={
-              pendingFile?.name === "browse" ? "" : pendingFile?.name || ""
-            }
-            initialFile={pendingFile?.file || null}
-            onUpload={
-              pendingRequestUpload ? handleRequestFileUpload : handleFileUpload
-            }
-            pendingRequests={fileRequests.filter(
-              (r) => r.status === "Pending" || r.status === "Overdue",
-            )}
-            isRequestFulfillment={!!pendingRequestUpload}
-          />
+  isOpen={showUploadModal}
+  onClose={() => {
+    setShowUploadModal(false);
+    setPendingFile(null);
+    setPendingRequestUpload(null);
+  }}
+  selectedFolder={selectedFolderName || ""}
+  sectionId={
+    typeof selectedFolder === "object" ? selectedFolder?.id : null
+  }
+  canChangeFolder={showFolderPanel}
+  onChangeFolder={() => {
+    setShowUploadModal(false);
+    setShowFolderModal(true);
+  }}
+  fileName={
+    pendingFile?.name === "browse" ? "" : pendingFile?.name || ""
+  }
+  initialFile={pendingFile?.file || null}
+  onUpload={
+    pendingRequestUpload ? handleRequestFileUpload : handleFileUpload
+  }
+  pendingRequests={fileRequests.filter(
+    (r) => r.status === "Pending" || r.status === "Overdue",
+  )}
+  isRequestFulfillment={!!pendingRequestUpload}
+/>
         )}
 
         {/* Toast Notification */}
