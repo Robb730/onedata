@@ -507,7 +507,7 @@ export default function ManageUsers() {
               id="manage-users-add-btn"
               type="button"
               onClick={() => setAddingNewUser(true)}
-              className="hidden lg:inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 min-h-[44px] px-4 py-2.5 text-[0.8rem] font-semibold text-white shadow-sm shadow-blue-600/20 hover:bg-blue-700 active:scale-[0.98] transition-all cursor-pointer shrink-0"
+              className="hidden lg:inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-[10px] bg-blue-500 px-4 py-2.5 text-[0.8rem] font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer shrink-0"
             >
               <UserPlus size={15} />
               Add New User

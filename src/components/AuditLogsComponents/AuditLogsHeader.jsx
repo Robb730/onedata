@@ -26,7 +26,7 @@ export default function AuditLogsHeader({
       <button
         type="button"
         onClick={onExport}
-        className="hidden lg:inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 min-h-[44px] px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition-all duration-200 hover:bg-blue-700 hover:shadow-md hover:-translate-y-px active:scale-[0.98] cursor-pointer"
+        className="hidden lg:inline-flex shrink-0 items-center justify-center gap-2 rounded-[10px] bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer"
       >
         <Download size={16} strokeWidth={2.25} />
         Export Logs

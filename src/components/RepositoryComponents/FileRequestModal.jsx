@@ -114,7 +114,7 @@ export default function FileRequestModal({
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold disabled:opacity-50"
+            className="flex-1 inline-flex items-center justify-center rounded-[10px] bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? "Submitting..." : "Submit Request"}
           </button>
