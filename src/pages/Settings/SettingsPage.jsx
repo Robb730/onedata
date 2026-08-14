@@ -64,8 +64,14 @@ export default function SettingsPage() {
   const [savingEmail, setSavingEmail] = useState(false);
   const [emailError, setEmailError] = useState(null);
 
+  // NEW: tracks whether the entered "new email" already belongs to another
+  // account, and whether that check is currently in flight.
+  const [emailTaken, setEmailTaken] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+
   const [sendingReset, setSendingReset] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [resetError, setResetError] = useState(null);
 
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -73,6 +79,35 @@ export default function SettingsPage() {
   useEffect(() => {
     setFullName(userProfile?.full_name ?? "");
   }, [userProfile?.full_name]);
+
+  // NEW: debounced lookup against the users table whenever newEmail changes.
+  useEffect(() => {
+    const trimmed = newEmail.trim().toLowerCase();
+    const currentEmail = (userProfile?.email ?? "").toLowerCase();
+
+    if (!trimmed || !trimmed.includes("@") || trimmed === currentEmail) {
+      setEmailTaken(false);
+      setCheckingEmail(false);
+      return;
+    }
+
+    setCheckingEmail(true);
+    const timeoutId = setTimeout(async () => {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id")
+        .ilike("email", trimmed)
+        .neq("id", userProfile?.id ?? "")
+        .maybeSingle();
+
+      setCheckingEmail(false);
+      if (!error) {
+        setEmailTaken(!!data);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [newEmail, userProfile?.email, userProfile?.id]);
 
   const roleLabel = ROLE_LABELS[userProfile?.role] ?? userProfile?.role ?? "—";
   const orgLabel =
@@ -146,38 +181,65 @@ export default function SettingsPage() {
       setEmailError("Enter your current password to confirm.");
       return;
     }
+
     setSavingEmail(true);
     try {
-      await reauthenticate(userProfile.email, emailPassword);
-      const { error: authError } = await supabase.auth.updateUser({ email: trimmed });
-      if (authError) throw authError;
-      const { error: rowError } = await supabase
+      // Final authoritative check right before submitting, in case the
+      // debounced background check hasn't resolved yet or is stale.
+      const { data: existing, error: lookupError } = await supabase
         .from("users")
-        .update({ email: trimmed })
-        .eq("id", userProfile.id);
-      if (rowError) throw rowError;
+        .select("id")
+        .ilike("email", trimmed)
+        .neq("id", userProfile.id)
+        .maybeSingle();
+
+      if (lookupError) throw lookupError;
+      if (existing) {
+        setEmailTaken(true);
+        setEmailError("That email is already in use by another account.");
+        setSavingEmail(false);
+        return;
+      }
+
+      await reauthenticate(userProfile.email, emailPassword);
+      const { error } = await supabase.functions.invoke("send-change-email", {
+        body: { newEmail: trimmed },
+      });
+      if (error) throw error;
       await logAudit({
         action: "Edit",
         details: `Requested email change to ${trimmed}`,
       });
       setNewEmail("");
       setEmailPassword("");
-      await refreshProfile();
-      showSuccess("Email updated. Check your inbox if confirmation is required.");
+      setEmailTaken(false);
+      showSuccess("Confirmation link sent to your current email. Click it to finish the change.");
     } catch (err) {
-      setEmailError(err.message || "Could not update email.");
+      setEmailError(err.message || "Could not send confirmation email.");
     } finally {
       setSavingEmail(false);
     }
   }
 
-  function handleSendResetLink() {
+  async function handleSendResetLink() {
+    setResetError(null);
     setSendingReset(true);
-    window.setTimeout(() => {
-      setSendingReset(false);
+    try {
+      const { error } = await supabase.functions.invoke("send-password-reset", {
+        body: { email: userProfile.email },
+      });
+      if (error) throw error;
+      await logAudit({
+        action: "Edit",
+        details: "Requested password reset link",
+      });
       setResetSent(true);
       showSuccess("Reset link sent to your email.");
-    }, 700);
+    } catch (err) {
+      setResetError(err.message || "Could not send reset link.");
+    } finally {
+      setSendingReset(false);
+    }
   }
 
   return (
@@ -277,9 +339,18 @@ export default function SettingsPage() {
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className={inputClass}
+                  className={`${inputClass} ${emailTaken ? "border-rose-300 focus:border-rose-400" : ""}`}
+                  aria-invalid={emailTaken}
                 />
               </Field>
+              {checkingEmail && (
+                <p className="text-[0.72rem] font-medium text-slate-400">Checking availability...</p>
+              )}
+              {!checkingEmail && emailTaken && (
+                <p className="rounded-xl bg-rose-50 px-3 py-2 text-[0.75rem] font-medium text-rose-600">
+                  That email is already in use by another account.
+                </p>
+              )}
               <Field id="settings-email-password" label="Current password">
                 <input
                   id="settings-email-password"
@@ -298,10 +369,10 @@ export default function SettingsPage() {
               )}
               <button
                 type="submit"
-                disabled={savingEmail}
+                disabled={savingEmail || emailTaken || checkingEmail}
                 className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-blue-600 px-4 text-[0.8rem] font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
               >
-                {savingEmail ? "Updating..." : "Update email"}
+                {savingEmail ? "Sending link..." : "Update email"}
               </button>
             </form>
           </SettingsCard>

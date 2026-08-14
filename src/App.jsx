@@ -1,24 +1,26 @@
-import { Routes, Route } from 'react-router-dom'
-import { AppLayout } from './components/AppLayout'
+import { Routes, Route } from "react-router-dom";
+import { AppLayout } from "./components/AppLayout";
 import { useEffect, useState } from "react";
-import { supabase } from './lib/supabaseClient.js';
+import { supabase } from "./lib/supabaseClient.js";
 import { useUser } from "./contexts/UserContext.jsx";
 
-import LandingPage from './pages/LandingPage/LandingPage.jsx'
-import LoginPage from './pages/Login/LoginPage.jsx'
-import Dashboard from './pages/Dashboard/Dashboard.jsx'
-import BaliwagExtractor from './utils/ExcelParsers/BaliwagExtractor.jsx'
-import ManageUsers from './pages/ManageUsers/ManageUsers.jsx'
-import UploadFilesPage from './pages/UploadFiles/UploadFilesPage.jsx'
-import AuditLogs from './pages/AuditLogs/AuditLogs.jsx'
-import Repository from './pages/Repository/Repository.jsx'
-import RepositoryFolderDetailPage from './pages/Repository/RepositoryFolderDetailPage.jsx'
-import RepositoryDivisionPage from './pages/Repository/RepositoryDivisionPage.jsx'
-import AccessRestrictedPage from './pages/Repository/AccessRestrictedPage.jsx'
-import SchoolYearPage from './pages/SchoolYear/SchoolYearPage.jsx'
-import SettingsPage from './pages/Settings/SettingsPage.jsx'
-import ChangePasswordPage from './pages/Settings/ChangePasswordPage.jsx'
-import ProtectedRoute from './components/ProtectedRoute.jsx';
+import LandingPage from "./pages/LandingPage/LandingPage.jsx";
+import LoginPage from "./pages/Login/LoginPage.jsx";
+import Dashboard from "./pages/Dashboard/Dashboard.jsx";
+import BaliwagExtractor from "./utils/ExcelParsers/BaliwagExtractor.jsx";
+import ManageUsers from "./pages/ManageUsers/ManageUsers.jsx";
+import UploadFilesPage from "./pages/UploadFiles/UploadFilesPage.jsx";
+import AuditLogs from "./pages/AuditLogs/AuditLogs.jsx";
+import Repository from "./pages/Repository/Repository.jsx";
+import RepositoryFolderDetailPage from "./pages/Repository/RepositoryFolderDetailPage.jsx";
+import RepositoryDivisionPage from "./pages/Repository/RepositoryDivisionPage.jsx";
+import AccessRestrictedPage from "./pages/Repository/AccessRestrictedPage.jsx";
+import SchoolYearPage from "./pages/SchoolYear/SchoolYearPage.jsx";
+import SettingsPage from "./pages/Settings/SettingsPage.jsx";
+import ChangePasswordPage from "./pages/Settings/ChangePasswordPage.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import RoleProtectedRoute from "./components/RoleProtectedRoute.jsx";
+import NotFoundPage from './pages/NotFound/NotFoundPage.jsx' // adjust path to wherever you saved it
 
 function App() {
   const [session, setSession] = useState(null);
@@ -31,7 +33,9 @@ function App() {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (!session) {
         setUserProfile(null);
@@ -49,64 +53,125 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/change-password" element={<ChangePasswordPage />} />
+      <Route path="/not-found" element={<NotFoundPage />} />
+      
       <Route path="/test" element={<BaliwagExtractor />} />
-      <Route path="/dashboard" element={
-        <ProtectedRoute session={session}>
-          <AppLayout><Dashboard /></AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/manage-user" element={
-        <ProtectedRoute session={session}>
-          <AppLayout><ManageUsers /></AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/upload-files" element={
-        <ProtectedRoute session={session}>
-          <AppLayout><UploadFilesPage role={userProfile?.role} userSection={userProfile?.section_name} /></AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/audit-logs" element={
-        <ProtectedRoute session={session}>
-          <AppLayout><AuditLogs /></AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/repository" element={
-        <ProtectedRoute session={session}>
-          <AppLayout><Repository /></AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/repository/folder/:folderName" element={
-        <ProtectedRoute session={session}>
-          <AppLayout><RepositoryFolderDetailPage /></AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/repository/divisions/:divisionSlug" element={
-        <ProtectedRoute session={session}>
-          <AppLayout><RepositoryDivisionPage /></AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/repository/sections/sgod" element={
-        <ProtectedRoute session={session}>
-          <AppLayout><RepositoryDivisionPage /></AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/repository/restricted/:folderName" element={
-        <ProtectedRoute session={session}>
-          <AppLayout><AccessRestrictedPage /></AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/school-year" element={
-        <ProtectedRoute session={session}>
-          <AppLayout><SchoolYearPage /></AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/settings" element={
-        <ProtectedRoute session={session}>
-          <AppLayout><SettingsPage /></AppLayout>
-        </ProtectedRoute>
-      } />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute session={session}>
+            <AppLayout>
+              <Dashboard />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manage-user"
+        element={
+          <RoleProtectedRoute session={session} roles={["administrator"]}>
+            <AppLayout>
+              <ManageUsers />
+            </AppLayout>
+          </RoleProtectedRoute>
+        }
+      />
+      <Route
+        path="/upload-files"
+        element={
+          <ProtectedRoute session={session}>
+            <AppLayout>
+              <UploadFilesPage
+                role={userProfile?.role}
+                userSection={userProfile?.section_name}
+              />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/audit-logs"
+        element={
+          <RoleProtectedRoute session={session} roles={["administrator"]}>
+            <AppLayout>
+              <AuditLogs />
+            </AppLayout>
+          </RoleProtectedRoute>
+        }
+      />
+      <Route
+        path="/repository"
+        element={
+          <ProtectedRoute session={session}>
+            <AppLayout>
+              <Repository />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/repository/folder/:folderName"
+        element={
+          <ProtectedRoute session={session}>
+            <AppLayout>
+              <RepositoryFolderDetailPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/repository/divisions/:divisionSlug"
+        element={
+          <ProtectedRoute session={session}>
+            <AppLayout>
+              <RepositoryDivisionPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/repository/sections/sgod"
+        element={
+          <ProtectedRoute session={session}>
+            <AppLayout>
+              <RepositoryDivisionPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/repository/restricted/:folderName"
+        element={
+          <ProtectedRoute session={session}>
+            <AppLayout>
+              <AccessRestrictedPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+  path="/school-year"
+  element={
+    <RoleProtectedRoute session={session} roles={["administrator"]}>
+      <AppLayout>
+        <SchoolYearPage />
+      </AppLayout>
+    </RoleProtectedRoute>
+  }
+/>
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute session={session}>
+            <AppLayout>
+              <SettingsPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
-  )
+  );
 }
 
-export default App
+export default App;
