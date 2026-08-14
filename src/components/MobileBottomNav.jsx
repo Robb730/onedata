@@ -109,7 +109,7 @@ export function MobileBottomNav() {
       </div>
 
       <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 px-4"
+        className="mobile-bottom-nav lg:hidden fixed bottom-0 left-0 right-0 z-50 px-4 transition-[transform,opacity] duration-200"
         style={{ paddingBottom: "calc(10px + env(safe-area-inset-bottom))" }}
       >
         <div className="relative mx-auto max-w-md">
