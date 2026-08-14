@@ -11,22 +11,72 @@ import {
   CalendarRange,
 } from "lucide-react";
 import iconSvg from "../assets/one_data-icon-v3.svg";
+import { useUser } from "../contexts/UserContext"; // adjust path as needed
+import { ROLES } from "../utils/accessControl"; // adjust path to wherever ROLES lives
+
+const roleLabelMap = {
+  [ROLES.ADMIN]: "Admin Panel",
+  [ROLES.DIVISION_FOCAL]: "Division Panel",
+  [ROLES.SECTION_FOCAL]: "Section Panel",
+  [ROLES.PERSONNEL]: "Personnel Panel",
+};
 
 const navItems = [
-  { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-  { label: "Repository", path: "/repository", icon: Database },
-  { label: "Manage Users", path: "/manage-user", icon: Users },
-  { label: "Upload Files", path: "/upload-files", icon: Upload },
-  { label: "Audit Logs", path: "/audit-logs", icon: ClipboardList },
-  { label: "School Year", path: "/school-year", icon: CalendarRange },
+  {
+    label: "Dashboard",
+    path: "/dashboard",
+    icon: LayoutDashboard,
+    roles: [ROLES.ADMIN, ROLES.DIVISION_FOCAL, ROLES.SECTION_FOCAL, ROLES.PERSONNEL],
+  },
+  {
+    label: "Repository",
+    path: "/repository",
+    icon: Database,
+    roles: [ROLES.ADMIN, ROLES.DIVISION_FOCAL, ROLES.SECTION_FOCAL, ROLES.PERSONNEL],
+  },
+  {
+    label: "Manage Users",
+    path: "/manage-user",
+    icon: Users,
+    roles: [ROLES.ADMIN],
+  },
+  {
+    label: "Upload Files",
+    path: "/upload-files",
+    icon: Upload,
+    roles: [ROLES.ADMIN, ROLES.DIVISION_FOCAL, ROLES.SECTION_FOCAL, ROLES.PERSONNEL],
+  },
+  {
+    label: "Audit Logs",
+    path: "/audit-logs",
+    icon: ClipboardList,
+    roles: [ROLES.ADMIN],
+  },
+  {
+    label: "School Year",
+    path: "/school-year",
+    icon: CalendarRange,
+    roles: [ROLES.ADMIN],
+  },
 ];
 
 /**
  * Sidebar — Desktop collapsible navigation. Hidden on mobile
- * in favor of MobileBottomNav.
+ * in favor of MobileBottomNav. Items are filtered by the
+ * logged-in user's role: admins see everything, everyone else
+ * (division focal, section focal, section personnel) only sees
+ * Dashboard, Repository, and Upload Files.
  */
 export function Sidebar({ collapsed = false, onToggle }) {
   const location = useLocation();
+  const { userProfile } = useUser();
+
+  const visibleNavItems = navItems.filter((item) =>
+    item.roles.includes(userProfile?.role),
+  );
+
+   const panelLabel = roleLabelMap[userProfile?.role] ?? "Panel";
+
 
   return (
     <aside
@@ -57,7 +107,7 @@ export function Sidebar({ collapsed = false, onToggle }) {
               OneData
             </p>
             <p className="mt-0.5 text-[0.62rem] font-semibold text-slate-400 tracking-[0.06em]">
-              Admin Panel
+              {panelLabel}
             </p>
           </div>
         )}
@@ -74,7 +124,7 @@ export function Sidebar({ collapsed = false, onToggle }) {
       )}
 
       <nav className={`flex-1 py-2 space-y-0.5 ${collapsed ? "px-2" : "px-3"}`}>
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const isActive =
             location.pathname === item.path ||
             location.pathname.startsWith(`${item.path}/`);

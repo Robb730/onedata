@@ -94,8 +94,6 @@ export function DashboardOverview({ data, selectedYear, compareYear, compareData
       iconColor: "text-blue-600",
       iconBg: "bg-blue-50",
       gradient: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)",
-      trend: data.enrollmentTrend,
-      trendUp: true,
       ...(isComparing ? enrollmentCompare : {}),
     },
     {
@@ -105,8 +103,6 @@ export function DashboardOverview({ data, selectedYear, compareYear, compareData
       iconColor: "text-rose-500",
       iconBg: "bg-rose-50",
       gradient: "linear-gradient(135deg, #fb7185 0%, #e11d48 100%)",
-      trend: data.dropoutTrend,
-      trendUp: false,
       ...(isComparing ? dropoutCompare : {}),
     },
     {
@@ -116,8 +112,6 @@ export function DashboardOverview({ data, selectedYear, compareYear, compareData
       iconColor: "text-emerald-600",
       iconBg: "bg-emerald-50",
       gradient: "linear-gradient(135deg, #34d399 0%, #10b981 100%)",
-      trend: data.promotionTrend,
-      trendUp: true,
       ...(isComparing ? promoCompare : {}),
     },
     {
@@ -127,8 +121,6 @@ export function DashboardOverview({ data, selectedYear, compareYear, compareData
       iconColor: "text-amber-500",
       iconBg: "bg-amber-50",
       gradient: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
-      trend: data.jhsDropoutTrend,
-      trendUp: false,
       ...(isComparing ? jhsDropoutCompare : {}),
     },
   ];

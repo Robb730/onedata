@@ -1136,35 +1136,34 @@ export default function Dashboard() {
       </div>
 
       {showTransitionBanner && scheduledTransition && (
-        <div className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100">
-              <Clock size={14} className="text-blue-600" />
-            </div>
-            <p className="min-w-0 truncate text-[0.8rem] text-slate-600">
-              <span className="font-bold text-blue-700">
-                S.Y. {scheduledTransition.label} transition{" "}
-                {getDaysUntilLabel(scheduledTransition.activation_date)}
-              </span>{" "}
-              <span className="text-slate-300">—</span>{" "}
-              <span className="font-semibold text-slate-700">
-                {formatTransitionDate(scheduledTransition.activation_date)}
-              </span>
-            </p>
-          </div>
+  <div className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-orange-100 bg-orange-50/70 px-4 py-3">
+    <div className="flex min-w-0 items-center gap-2.5">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100">
+        <Clock size={14} className="text-orange-600" />
+      </div>
+      <p className="min-w-0 truncate text-[0.8rem] text-slate-600">
+        <span className="font-bold text-orange-700">
+          S.Y. {scheduledTransition.label} transition{" "}
+          {getDaysUntilLabel(scheduledTransition.activation_date)}
+        </span>{" "}
+        <span className="text-slate-300">—</span>{" "}
+        <span className="font-semibold text-slate-700">
+          {formatTransitionDate(scheduledTransition.activation_date)}
+        </span>
+      </p>
+    </div>
 
-          <div className="flex shrink-0 items-center gap-1.5">
-
-            <button
-              onClick={dismissTransitionBanner}
-              title="Dismiss"
-              className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition-colors"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        </div>
-      )}
+    <div className="flex shrink-0 items-center gap-1.5">
+      <button
+        onClick={dismissTransitionBanner}
+        title="Dismiss"
+        className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-orange-100/60 hover:text-orange-600 transition-colors"
+      >
+        <X size={14} />
+      </button>
+    </div>
+  </div>
+)}
       <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 py-5 sm:py-8">
         {/* ── Page header ─────────────────────────────────── */}
         <div className="flex flex-col gap-4 mb-6 sm:mb-7 sm:flex-row sm:items-start sm:justify-between">

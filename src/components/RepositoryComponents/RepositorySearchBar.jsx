@@ -16,12 +16,16 @@ export function RepositorySearchBar({
   sortBy = "Name",
   onSortChange,
   placeholder = "Search folders by name, owner, or date...",
-  schoolYears,        // optional: [{ label, status }], omit to hide the filter
-  selectedYear,        // optional: currently selected label
-  onYearChange,         // optional: (label) => void
+  schoolYears,
+  selectedYear,
+  onYearChange,
 }) {
-  const showYearFilter = Array.isArray(schoolYears) && schoolYears.length > 0;
-  const currentYear = schoolYears?.find((y) => y.label === selectedYear);
+  const selectableYears = Array.isArray(schoolYears)
+    ? schoolYears.filter((y) => y.status === "active" || y.status === "archived")
+    : [];
+
+  const showYearFilter = selectableYears.length > 0;
+  const currentYear = selectableYears.find((y) => y.label === selectedYear);
   const currentStyle = STATUS_STYLES[currentYear?.status] ?? STATUS_STYLES.archived;
 
   const [isYearOpen, setIsYearOpen] = useState(false);
@@ -99,7 +103,7 @@ export function RepositorySearchBar({
 
           {isYearOpen && (
             <div className="absolute top-[calc(100%+6px)] left-0 w-full min-w-[220px] bg-white border border-slate-200 rounded-xl shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50 max-h-64 overflow-y-auto">
-              {schoolYears.map(({ label, status }) => {
+              {selectableYears.map(({ label, status }) => {
                 const isSelected = selectedYear === label;
                 const style = STATUS_STYLES[status] ?? STATUS_STYLES.archived;
                 return (
