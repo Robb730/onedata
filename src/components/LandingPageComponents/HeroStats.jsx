@@ -68,6 +68,16 @@ function YearPicker({ selectedYear, onYearChange, availableYears }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Only active/archived years are selectable here — scheduled years
+  // aren't live yet. Supports both plain string years (legacy) and
+  // { year, status } objects.
+  const normalizedYears = availableYears
+    .map((y) => (typeof y === "string" ? { year: y, status: "archived" } : y))
+    .filter((y) => y.status === "active" || y.status === "archived");
+
+  const currentYear = normalizedYears.find((y) => y.year === selectedYear);
+  const isCurrentOngoing = currentYear?.status === "active";
+
   return (
     <div ref={ref} className="relative shrink-0">
       <button
@@ -78,6 +88,12 @@ function YearPicker({ selectedYear, onYearChange, availableYears }) {
         <span className="text-[0.82rem] font-bold text-slate-700 select-none whitespace-nowrap">
           SY {selectedYear}
         </span>
+        {isCurrentOngoing && (
+          <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 shrink-0">
+            <span className="h-1 w-1 rounded-full bg-emerald-500" />
+            Ongoing
+          </span>
+        )}
         <ChevronDown
           size={14}
           strokeWidth={2.5}
@@ -86,17 +102,24 @@ function YearPicker({ selectedYear, onYearChange, availableYears }) {
       </button>
 
       {open && (
-        <div className="absolute top-[calc(100%+6px)] right-0 w-full min-w-[130px] bg-white border border-slate-200 rounded-[10px] shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50">
-          {availableYears.map((year) => {
+        <div className="absolute top-[calc(100%+6px)] right-0 w-full min-w-[170px] bg-white border border-slate-200 rounded-[10px] shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50">
+          {normalizedYears.map(({ year, status }) => {
             const isSelected = selectedYear === year;
+            const ongoing = status === "active";
             return (
               <button
                 key={year}
                 onClick={() => { onYearChange(year); setOpen(false); }}
-                className={`w-full flex items-center px-3.5 py-2 text-[0.82rem] font-semibold transition-colors ${isSelected ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                className={`w-full flex items-center gap-2 px-3.5 py-2 text-[0.82rem] font-semibold transition-colors ${isSelected ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                   }`}
               >
                 {year}
+                {ongoing && (
+                  <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
+                    <span className="h-1 w-1 rounded-full bg-emerald-500" />
+                    Ongoing
+                  </span>
+                )}
                 {isSelected && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500" />}
               </button>
             );

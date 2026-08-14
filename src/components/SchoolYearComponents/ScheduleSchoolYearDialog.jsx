@@ -5,22 +5,39 @@ import { X, CalendarClock, Info } from "lucide-react";
  * ScheduleSchoolYearDialog — Modal for scheduling a new school year transition,
  * or editing an existing scheduled transition.
  *
- * @param {boolean}  open              — whether modal is visible
- * @param {function} onClose           — close handler
- * @param {function} onSubmit          — called with { label, startYear, endYear, activationDate } on confirm
- * @param {number}   defaultStartYear  — pre-filled starting year, e.g. 2026
- * @param {string}   defaultDate       — "YYYY-MM-DD"
- * @param {string}   defaultTime       — "HH:MM"
+ * @param {boolean}  open                  — whether modal is visible
+ * @param {function} onClose               — close handler
+ * @param {function} onSubmit              — called with { label, startYear, endYear, activationDate } on confirm
+ * @param {string}   activeSchoolYearLabel — e.g. "2026-2027"; used to auto-derive
+ *                                            the next start year (its end year).
+ *                                            Ignored when editing an existing
+ *                                            scheduled year (defaultStartYear wins).
+ * @param {number}   [defaultStartYear]    — pre-filled starting year, e.g. 2027.
+ *                                            Takes priority over activeSchoolYearLabel
+ *                                            — pass this when editing an existing
+ *                                            scheduled transition.
+ * @param {string}   defaultDate           — "YYYY-MM-DD"
+ * @param {string}   defaultTime           — "HH:MM"
  */
 export default function ScheduleSchoolYearDialog({
   open,
   onClose,
   onSubmit,
-  defaultStartYear = new Date().getFullYear(),
+  activeSchoolYearLabel,
+  defaultStartYear,
   defaultDate = "",
   defaultTime = "",
 }) {
-  const [startYear, setStartYear] = useState(String(defaultStartYear));
+  // Next start year = the active year's end year (e.g. active "2026-2027"
+  // → next starts at 2027). Falls back to current calendar year if no
+  // active label is available (shouldn't normally happen).
+  const deriveNextStartYear = () => {
+    if (defaultStartYear != null) return String(defaultStartYear);
+    const match = /^\d{4}-(\d{4})$/.exec(activeSchoolYearLabel || "");
+    return match ? match[1] : String(new Date().getFullYear());
+  };
+
+  const [startYear, setStartYear] = useState(deriveNextStartYear());
   const [date, setDate] = useState(defaultDate);
   const [time, setTime] = useState(defaultTime);
 
@@ -32,12 +49,12 @@ export default function ScheduleSchoolYearDialog({
   // of that year's actual values. Re-sync every time it transitions to open.
   useEffect(() => {
     if (open) {
-      setStartYear(String(defaultStartYear));
+      setStartYear(deriveNextStartYear());
       setDate(defaultDate);
       setTime(defaultTime);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, defaultStartYear, defaultDate, defaultTime]);
+  }, [open, defaultStartYear, activeSchoolYearLabel, defaultDate, defaultTime]);
 
   if (!open) return null;
 

@@ -160,17 +160,32 @@ export async function getUploadableSchoolYears() {
 // -> options for the school-year selector dropdown: every year on record
 // (active, scheduled, and archived), newest label first, each flagged so
 // the UI can show an "Archived" tag.
+// -> options for the school-year selector dropdown: active + archived years
+// only (scheduled years are excluded — they aren't selectable yet). Active
+// year is always first so it's the default selection; archived years follow,
+// newest label first.
 export async function getAllSchoolYearsForSelector() {
   const { data, error } = await supabase
     .from("school_years")
     .select("label, status")
+    .in("status", ["active", "archived"])
     .order("label", { ascending: false });
   if (error) throw error;
 
-  return (data ?? []).map((row) => ({
+  const rows = (data ?? []).map((row) => ({
     year: row.label,
     archived: row.status === "archived",
+    status: row.status,
   }));
+
+  // Force active to the front regardless of label sort order.
+  rows.sort((a, b) => {
+    if (a.status === "active") return -1;
+    if (b.status === "active") return 1;
+    return 0; // preserve the label-desc order from the query for archived rows
+  });
+
+  return rows;
 }
 
 // Fetch everything the page needs in one go
