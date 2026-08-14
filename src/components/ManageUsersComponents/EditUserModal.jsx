@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, User, CreditCard, Building2, UserCircle, ShieldCheck } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
+import { CustomDropdown } from "./CustomDropdown";
 
 const roles = [
   "Administrator",
@@ -72,8 +73,8 @@ export default function EditUserModal({ isOpen, onClose, user, onSave }) {
 
   // Reset section when division changes (but only if it's a user interaction, 
   // we don't want to clear their initial section if the division matches)
-  const handleDivisionChange = (e) => {
-    setDivisionId(e.target.value);
+  const handleDivisionChange = (val) => {
+    setDivisionId(val);
     setSectionId("");
   };
 
@@ -205,91 +206,53 @@ export default function EditUserModal({ isOpen, onClose, user, onSave }) {
           <div className="h-px w-full bg-slate-100 my-2 rounded-full"></div>
 
           {/* Role (Editable) */}
-          <div>
+          <div className="z-[60] relative">
             <label className="block text-[0.8rem] font-bold text-slate-700 mb-1.5 ml-1">
               Role
             </label>
-            <div className="relative group">
-              <ShieldCheck className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors pointer-events-none z-10" size={16} strokeWidth={2} />
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full bg-slate-50/50 pl-10 pr-10 py-3 rounded-[12px] border border-slate-200/80 text-[0.85rem] font-semibold text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] transition-all appearance-none cursor-pointer"
-              >
-                {roles.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-3.5 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-              </div>
-            </div>
+            <CustomDropdown
+              value={role}
+              onChange={setRole}
+              options={roles}
+              icon={ShieldCheck}
+              className="bg-slate-50/50"
+            />
           </div>
 
           {/* Cascading Dropdowns */}
           {needsDivision && (
             <div className="grid grid-cols-1 gap-5 bg-slate-50/50 p-4 sm:p-5 rounded-[16px] border border-slate-100">
               {/* Division */}
-              <div>
+              <div className="z-[50] relative">
                 <label className="block text-[0.8rem] font-bold text-slate-700 mb-1.5 ml-1">
                   Division
                 </label>
-                <div className="relative group">
-                  <Building2 className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors pointer-events-none z-10" size={16} strokeWidth={2} />
-                  <select
-                    value={divisionId}
-                    onChange={handleDivisionChange}
-                    className="w-full bg-white pl-10 pr-10 py-2.5 rounded-[10px] border border-slate-200/80 text-[0.85rem] font-semibold text-slate-700 outline-none focus:border-blue-500 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] transition-all appearance-none cursor-pointer"
-                    disabled={loadingOptions}
-                  >
-                    <option value="">
-                      {loadingOptions ? "Loading divisions..." : "Select a division"}
-                    </option>
-                    {divisions.map((div) => (
-                      <option key={div.id} value={div.id}>
-                        {div.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-3.5 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                  </div>
-                </div>
+                <CustomDropdown
+                  value={divisionId}
+                  onChange={handleDivisionChange}
+                  options={divisions.map(div => ({ value: div.id, label: div.name }))}
+                  placeholder={loadingOptions ? "Loading divisions..." : "Select a division"}
+                  disabled={loadingOptions}
+                  icon={Building2}
+                  className="bg-white"
+                />
               </div>
 
               {/* Section — only for Section Officer / Section Personnel */}
               {isSectionRole && (
-                <div>
+                <div className="z-[40] relative">
                   <label className="block text-[0.8rem] font-bold text-slate-700 mb-1.5 ml-1">
                     Section
                   </label>
-                  <div className="relative group">
-                    <Building2 className={`absolute left-3.5 top-1/2 transform -translate-y-1/2 pointer-events-none z-10 transition-colors ${!divisionId ? 'text-slate-300' : 'text-slate-400 group-focus-within:text-blue-500'}`} size={16} strokeWidth={2} />
-                    <select
-                      value={sectionId}
-                      onChange={(e) => setSectionId(e.target.value)}
-                      className="w-full bg-white pl-10 pr-10 py-2.5 rounded-[10px] border border-slate-200/80 text-[0.85rem] font-semibold text-slate-700 outline-none focus:border-blue-500 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] transition-all appearance-none cursor-pointer disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200/50 disabled:cursor-not-allowed"
-                      disabled={loadingOptions || !divisionId}
-                    >
-                      <option value="">
-                        {loadingOptions 
-                          ? "Loading sections..." 
-                          : !divisionId 
-                            ? "Select a division first" 
-                            : "Select a section"}
-                      </option>
-                      {filteredSections.map((sec) => (
-                        <option key={sec.id} value={sec.id}>
-                          {sec.name}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute right-3.5 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                    </div>
-                  </div>
+                  <CustomDropdown
+                    value={sectionId}
+                    onChange={setSectionId}
+                    options={filteredSections.map(sec => ({ value: sec.id, label: sec.name }))}
+                    placeholder={loadingOptions ? "Loading sections..." : !divisionId ? "Select a division first" : "Select a section"}
+                    disabled={loadingOptions || !divisionId}
+                    icon={Building2}
+                    className="bg-white"
+                  />
                 </div>
               )}
             </div>

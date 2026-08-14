@@ -43,7 +43,7 @@ export default function UserCard({
       onClick={() => onViewLogs(user)}
       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white cursor-pointer shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
     >
-      <div className={`h-0.5 w-full bg-gradient-to-r ${accent}`} />
+
 
       <div className="flex flex-1 flex-col px-3 py-2.5 sm:px-3.5 sm:py-3">
         <div className="flex items-start gap-3">
@@ -94,16 +94,9 @@ export default function UserCard({
         </div>
 
         <div
-          className="mt-3 flex items-center gap-0.5 border-t border-slate-100 pt-2"
+          className="mt-3 flex items-center justify-end gap-0.5 border-t border-slate-100 pt-2"
           onClick={(e) => e.stopPropagation()}
         >
-          <span
-            className={`mr-auto rounded-full px-2 py-0.5 text-[0.6rem] font-bold ${
-              isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
-            }`}
-          >
-            {isActive ? "Active" : "Inactive"}
-          </span>
           <button
             type="button"
             onClick={() => onEdit(user)}

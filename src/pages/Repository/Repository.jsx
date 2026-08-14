@@ -104,21 +104,11 @@ export default function Repository({ onFolderClick }) {
 
   // ...rest unchanged
 
-  const tabs = ["All", "Active", "Review", "Archived"];
-
-  const tabCounts = {
-    All: folders.length,
-    Active: folders.length,
-    Review: 0,
-    Archived: 0,
-  };
-
   const filteredFolders = folders.filter((folder) => {
     const matchesSearch = folder.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
-    const matchesTab = activeTab === "All" || activeTab === "Active";
-    return matchesSearch && matchesTab;
+    return matchesSearch;
   });
 
   const handleFolderClick = (folder) => {
@@ -144,14 +134,13 @@ export default function Repository({ onFolderClick }) {
             onViewModeChange={setViewMode}
           />
 
-          {/* ── Tab Filters ──────────────────────────────── */}
+          {/* ── Removed Tab Filters ──────────────────────────────── */}
           <div className="mt-4 border-t border-slate-100 pt-4">
-            <RepositoryTabs
-              tabs={tabs}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              counts={tabCounts}
-            />
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-[12px] font-semibold text-slate-500">
+                {filteredFolders.length} Divisions
+              </span>
+            </div>
           </div>
         </div>
 

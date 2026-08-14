@@ -324,21 +324,11 @@ export default function RepositoryDivisionPage() {
     };
   });
 
-  const tabs = ["All", "Active", "Review", "Archived"];
-
-  const tabCounts = {
-    All: folders.length,
-    Active: folders.length,
-    Review: 0,
-    Archived: 0,
-  };
-
   const filteredFolders = folders.filter((folder) => {
     const matchesSearch = folder.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
-    const matchesTab = activeTab === "All" || activeTab === "Active";
-    return matchesSearch && matchesTab;
+    return matchesSearch;
   });
 
   return (
@@ -401,15 +391,6 @@ export default function RepositoryDivisionPage() {
             onViewModeChange={handleViewModeChange}
           />
 
-          {/* ── Tab Filters ──────────────────────────────── */}
-          <div className="mt-4 border-t border-slate-100 pt-4">
-            <RepositoryTabs
-              tabs={tabs}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              counts={tabCounts}
-            />
-          </div>
         </div>
 
         {/* ── States: loading / error / grid ────────────────────── */}

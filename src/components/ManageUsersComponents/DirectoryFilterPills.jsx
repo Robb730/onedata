@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
+import { CustomDropdown } from "./CustomDropdown";
 
 const ROLE_OPTIONS = [
   { id: "All", label: "All roles" },
@@ -15,30 +16,19 @@ const STATUS_OPTIONS = [
   { id: "Inactive", label: "Inactive" },
 ];
 
-function SelectField({ id, label, value, onChange, options }) {
+function SelectField({ id, label, value, onChange, options, zIndex = 10 }) {
   return (
-    <label className="block">
+    <label className="block relative" style={{ zIndex }}>
       <span className="mb-1.5 block text-[0.7rem] font-bold uppercase tracking-wider text-slate-400">
         {label}
       </span>
-      <div className="relative">
-        <select
-          id={id}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full min-h-[44px] appearance-none rounded-xl border border-slate-200/80 bg-slate-50/70 pl-3 pr-8 py-2.5 text-[0.8rem] font-semibold text-slate-700 outline-none cursor-pointer focus:border-blue-500 focus:bg-white"
-        >
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <ChevronDown
-          size={13}
-          className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-        />
-      </div>
+      <CustomDropdown
+        value={value}
+        onChange={onChange}
+        options={options}
+        ariaLabel={label}
+        className="bg-slate-50/70"
+      />
     </label>
   );
 }
@@ -155,6 +145,7 @@ export default function DirectoryFilterPills({
                 value={selectedDivision}
                 onChange={onDivisionChange}
                 options={divisions.map((div) => ({ value: div, label: div === "All" ? "All divisions" : div }))}
+                zIndex={50}
               />
               <SelectField
                 id="user-role-filter"
@@ -162,6 +153,7 @@ export default function DirectoryFilterPills({
                 value={selectedRole}
                 onChange={onRoleChange}
                 options={ROLE_OPTIONS.map((r) => ({ value: r.id, label: r.label }))}
+                zIndex={40}
               />
               <SelectField
                 id="user-status-filter"
@@ -169,6 +161,7 @@ export default function DirectoryFilterPills({
                 value={selectedStatus}
                 onChange={onStatusChange}
                 options={STATUS_OPTIONS.map((s) => ({ value: s.id, label: s.label }))}
+                zIndex={30}
               />
             </div>
           </div>

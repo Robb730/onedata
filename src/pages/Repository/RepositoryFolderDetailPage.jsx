@@ -2257,7 +2257,7 @@ export default function RepositoryFolderDetailPage() {
             </div>
 
             {/* Desktop table */}
-            <div className="hidden lg:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-x-auto">
+            <div className="hidden lg:block bg-white rounded-2xl border border-slate-100 shadow-sm relative">
             {/* TABLE using real <table> for perfect alignment */}
             <table className="w-full min-w-[640px] border-collapse table-fixed">
               <thead>
@@ -2521,7 +2521,7 @@ export default function RepositoryFolderDetailPage() {
                           </div>
                           {/* Last Modified hover popover */}
                           <div
-                            className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${hoveredModifiedId === file.id
+                            className={`absolute z-50 right-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-right ${hoveredModifiedId === file.id
                                 ? "opacity-100 visible scale-100 pointer-events-auto"
                                 : "opacity-0 invisible scale-95 pointer-events-none"
                               }`}
@@ -2560,12 +2560,6 @@ export default function RepositoryFolderDetailPage() {
                               title="Delete"
                             >
                               <Trash2 size={14} />
-                            </button>
-                            <button
-                              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-300 hover:text-slate-500 transition-colors"
-                              title="More"
-                            >
-                              <MoreHorizontal size={14} />
                             </button>
                           </div>
                         ) : hasFileAccess(file) ? (

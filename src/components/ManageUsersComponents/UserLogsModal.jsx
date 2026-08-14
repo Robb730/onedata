@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X, Upload, Download, CheckCircle, Trash2, Edit, Shield, FileText, Calendar, Activity } from "lucide-react";
+import { CustomDropdown } from "./CustomDropdown";
 
 // Sample logs data - in a real app, this would be fetched based on the user
 const getUserLogs = (userName) => {
@@ -283,23 +284,21 @@ export default function UserLogsModal({ isOpen, onClose, user }) {
         <div className="px-4 sm:px-7 py-3 sm:py-4 border-b border-slate-100 bg-white shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <label className="text-[0.8rem] font-bold text-slate-700 shrink-0">Filter by Action:</label>
-            <div className="relative w-full sm:w-auto">
-              <select
+            <div className="relative w-full sm:w-[180px] z-[50]">
+              <CustomDropdown
                 value={filterAction}
-                onChange={(e) => setFilterAction(e.target.value)}
-                className="w-full sm:w-auto appearance-none border border-slate-200 rounded-[10px] pl-3.5 pr-8 py-2.5 min-h-[44px] text-[0.8rem] font-semibold text-slate-700 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-shadow bg-white shadow-sm cursor-pointer"
-              >
-                <option value="All">All Actions</option>
-                <option value="Upload">Upload</option>
-                <option value="Download">Download</option>
-                <option value="Verify">Verify</option>
-                <option value="Edit">Edit</option>
-                <option value="Delete">Delete</option>
-                <option value="Access Request">Access Request</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-              </div>
+                onChange={setFilterAction}
+                options={[
+                  { value: "All", label: "All Actions" },
+                  { value: "Upload", label: "Upload" },
+                  { value: "Download", label: "Download" },
+                  { value: "Verify", label: "Verify" },
+                  { value: "Edit", label: "Edit" },
+                  { value: "Delete", label: "Delete" },
+                  { value: "Access Request", label: "Access Request" }
+                ]}
+                className="bg-white"
+              />
             </div>
             <span className="sm:ml-auto text-[0.75rem] sm:text-[0.8rem] font-medium text-slate-400 bg-slate-100 px-3 py-1.5 rounded-full text-center sm:text-left">
               Showing <span className="font-bold text-slate-700">{filteredLogs.length}</span> of {totalActions} activities
