@@ -1,6 +1,7 @@
 import React from "react";
 import { Bell, LogOut, FolderOpen, Settings } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 // Adjust this relative path to match TopHeader's location in your tree
 // (this mirrors the import used in ManageUsers.jsx).
 import { useUser } from "../contexts/UserContext.jsx";
@@ -75,6 +76,7 @@ export function TopHeader({
   onLogout,
 }) {
   const { userProfile } = useUser();
+  const navigate = useNavigate();
 
   // Props win if explicitly passed; otherwise fall back to the logged-in
   // user's own profile from context — so TopHeader "just works" wherever
@@ -309,7 +311,7 @@ export function TopHeader({
               <button
                 onClick={() => {
                   setDropdownOpen(false);
-                  // Settings workflow to be implemented
+                  navigate("/settings");
                 }}
                 className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[0.78rem] font-medium text-slate-600 hover:bg-slate-50 transition-colors"
               >
