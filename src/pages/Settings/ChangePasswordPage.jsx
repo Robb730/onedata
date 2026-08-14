@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Eye, EyeOff, Lock, Check, X, CheckCircle } from "lucide-react";
+import { Eye, EyeOff, Lock, Check, X, CheckCircle, AlertTriangle } from "lucide-react";
 import logo from "../../assets/one-data-logo.png";
+import { supabase } from "../../lib/supabaseClient";
 import {
   getPasswordChecks,
   getPasswordStrength,
@@ -18,6 +19,9 @@ function RequirementItem({ met, label }) {
 }
 
 export default function ChangePasswordPage() {
+  // "loading" | "ready" | "invalid"
+  const [status, setStatus] = useState("loading");
+
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
@@ -30,7 +34,36 @@ export default function ChangePasswordPage() {
   const strength = useMemo(() => getPasswordStrength(newPassword, checks), [newPassword, checks]);
   const allChecksPassed = Object.values(checks).every(Boolean);
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.replace("#", "?"));
+    const queryParams = new URLSearchParams(window.location.search);
+    const looksLikeRecovery =
+      hashParams.get("type") === "recovery" || queryParams.get("type") === "recovery";
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") setStatus("ready");
+    });
+
+    // In case the client already processed the redirect before this effect ran
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setStatus((prev) => {
+        if (prev !== "loading") return prev;
+        if (session) return "ready";
+        return looksLikeRecovery ? "loading" : "invalid";
+      });
+    });
+
+    const timeout = setTimeout(() => {
+      setStatus((prev) => (prev === "loading" ? "invalid" : prev));
+    }, 4000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validation = getPasswordValidationError(newPassword, confirmPassword);
     if (validation) {
@@ -39,10 +72,14 @@ export default function ChangePasswordPage() {
     }
     setError(null);
     setSubmitting(true);
-    window.setTimeout(() => {
-      setSubmitting(false);
-      setDone(true);
-    }, 600);
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+    setSubmitting(false);
+    if (updateError) {
+      setError(updateError.message || "Could not update password.");
+      return;
+    }
+    setDone(true);
+    await supabase.auth.signOut();
   };
 
   return (
@@ -86,14 +123,18 @@ export default function ChangePasswordPage() {
           </p>
         </div>
 
-        {done ? (
+        {status === "loading" && (
+          <p className="text-center text-[0.8rem] font-medium text-slate-400">Verifying your link…</p>
+        )}
+
+        {status === "invalid" && (
           <div className="text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
-              <CheckCircle size={24} className="text-emerald-500" />
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-rose-50">
+              <AlertTriangle size={22} className="text-rose-500" />
             </div>
-            <p className="text-[0.9rem] font-bold text-slate-800">Password updated</p>
+            <p className="text-[0.9rem] font-bold text-slate-800">Link expired or invalid</p>
             <p className="mt-1 text-[0.75rem] font-medium text-slate-400">
-              You can sign in with your new password. Email delivery will be connected by the backend.
+              Request a new reset link from the Settings page and try again.
             </p>
             <Link
               to="/login"
@@ -102,7 +143,27 @@ export default function ChangePasswordPage() {
               Back to login
             </Link>
           </div>
-        ) : (
+        )}
+
+        {status === "ready" && done && (
+          <div className="text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
+              <CheckCircle size={24} className="text-emerald-500" />
+            </div>
+            <p className="text-[0.9rem] font-bold text-slate-800">Password updated</p>
+            <p className="mt-1 text-[0.75rem] font-medium text-slate-400">
+              You can now sign in with your new password.
+            </p>
+            <Link
+              to="/login"
+              className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-blue-600 text-[0.8rem] font-semibold text-white hover:bg-blue-700"
+            >
+              Back to login
+            </Link>
+          </div>
+        )}
+
+        {status === "ready" && !done && (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
               <label className="mb-1.5 block text-[0.7rem] font-bold uppercase tracking-wider text-slate-400">
