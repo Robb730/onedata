@@ -41,7 +41,7 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
 
   return (
     <div
-      className={`absolute right-0 top-[calc(100%+8px)] w-[min(420px,calc(100vw-1.5rem))] max-sm:fixed max-sm:left-3 max-sm:right-3 max-sm:top-[58px] max-sm:w-auto rounded-2xl bg-white z-50 overflow-hidden transition-all duration-300 origin-top-right ${isOpen
+      className={`absolute right-0 top-[calc(100%+8px)] w-[420px] rounded-2xl bg-white z-50 overflow-hidden transition-all duration-300 origin-top-right ${isOpen
           ? "opacity-100 scale-100 visible pointer-events-auto"
           : "opacity-0 scale-95 invisible pointer-events-none"
         }`}

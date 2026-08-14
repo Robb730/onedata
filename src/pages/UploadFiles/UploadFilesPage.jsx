@@ -1076,7 +1076,7 @@ export default function UploadFilesPage() {
           <button
             type="button"
             onClick={handleBrowseFiles}
-            className="mt-3 sm:mt-2 w-full sm:w-auto min-h-[44px] px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 active:scale-[0.98] font-semibold transition-all inline-flex items-center justify-center gap-2 text-sm shadow-sm shadow-blue-600/20"
+            className="mt-3 sm:mt-2 w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-[10px] bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer"
           >
             <Upload size={16} /> Browse Files
           </button>
@@ -1238,7 +1238,7 @@ export default function UploadFilesPage() {
                       <button
                         type="button"
                         onClick={() => handleRequestUpload(req)}
-                        className="w-full flex items-center justify-center gap-1.5 text-[11.5px] font-semibold min-h-[40px] px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] transition-all"
+                        className="w-full inline-flex items-center justify-center gap-1.5 rounded-[10px] bg-blue-500 px-3 py-2 text-[11.5px] font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer"
                       >
                         <Upload size={12} /> Upload File
                       </button>
