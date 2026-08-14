@@ -257,7 +257,7 @@ export default function EditUserModal({ isOpen, onClose, user, onSave }) {
             <button
               type="button"
               onClick={handleSave}
-              className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors order-1 sm:order-2"
+              className="flex-1 inline-flex items-center justify-center rounded-[10px] bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer order-1 sm:order-2"
             >
               Save Changes
             </button>

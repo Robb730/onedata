@@ -121,7 +121,7 @@ const fieldClass =
 const labelClass =
   "block text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1.5";
 const primaryBtnClass =
-  "flex-1 flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100";
+  "flex-1 inline-flex items-center justify-center gap-2 rounded-[10px] bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
 const secondaryBtnClass =
   "flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 text-sm font-semibold transition-colors";
 
@@ -577,7 +577,7 @@ export default function FileUploadModal({
         type={submitType}
         onClick={onPrimary}
         disabled={primaryDisabled || isCheckingDuplicates}
-        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex-1 inline-flex items-center justify-center gap-2 rounded-[10px] bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isCheckingDuplicates ? (
           <Loader className="animate-spin" size={15} />
