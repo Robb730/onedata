@@ -64,6 +64,8 @@ function getBucket(category) {
     : "excel-files";
 }
 
+const ALL_FILE_BUCKETS = ["repository-files", "excel-files"];
+
 // ── File icon helper ─────────────────────────────────────────────
 function getFileIcon(type) {
   switch (type) {
@@ -1549,38 +1551,69 @@ export default function RepositoryFolderDetailPage() {
     if (!file) return;
     setDeletingId(file.id);
     try {
+      let storageRemoved = true;
+
       if (file.path) {
         const bucket = getBucket(file.data_category);
-        const { error: storageErr } = await supabase.storage
+        const { data: removedData, error: storageErr } = await supabase.storage
           .from(bucket)
           .remove([file.path]);
+
         if (storageErr) throw new Error(storageErr.message);
+
+        // Supabase does NOT error when the path/bucket doesn't match an
+        // existing object — it just returns an empty array. Treat that as
+        // a real failure instead of silently deleting the DB row anyway.
+        if (!removedData || removedData.length === 0) {
+          storageRemoved = false;
+          console.error(
+            `Storage delete no-op: bucket="${bucket}" path="${file.path}" — no matching object found.`,
+          );
+        }
       }
 
       if (file.verifiedPdfPath) {
-        await supabase.storage
+        const { data: removedVerified, error: verifiedErr } = await supabase.storage
           .from("verified-pdfs")
           .remove([file.verifiedPdfPath]);
+        if (verifiedErr) {
+          console.error("Failed to remove verified PDF:", verifiedErr);
+        } else if (!removedVerified || removedVerified.length === 0) {
+          console.error(
+            `Verified PDF delete no-op: path="${file.verifiedPdfPath}" — no matching object found.`,
+          );
+        }
       }
+
       const { error: dbErr } = await supabase
         .from("files")
         .delete()
         .eq("id", file.id);
       if (dbErr) throw new Error(dbErr.message);
+
       setAllFiles((prev) => prev.filter((f) => f.id !== file.id));
       setSelectedIds((prev) => {
         const n = new Set(prev);
         n.delete(file.id);
         return n;
       });
+
       await logAudit(
         "Delete",
         file.name,
-        `Deleted from ${section?.name}`,
+        storageRemoved
+          ? `Deleted from ${section?.name}`
+          : `Deleted from ${section?.name} (storage object was not found — possible orphaned file)`,
         "Success",
       );
       setFileToDelete(null);
       setShowDeleteToast(true);
+
+      if (!storageRemoved) {
+        alert(
+          "The database record was deleted, but the stored file could not be located in storage (it may already be orphaned). Check the console/audit log for the bucket and path used.",
+        );
+      }
 
       await notifyScope({
         sectionId: section?.id,
@@ -1595,7 +1628,6 @@ export default function RepositoryFolderDetailPage() {
           uploaded_by: file.uploaderId,
         },
       });
-      // optional: also notify original uploader even if outside section/division scope
       if (file.uploaderId && file.uploaderId !== userProfile?.id) {
         await pushNotification({
           recipientIds: [file.uploaderId],
