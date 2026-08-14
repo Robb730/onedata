@@ -187,14 +187,11 @@ export function FolderCard({
         </div>
 
         {/* Status badge */}
-        <span
-          className={`inline-flex shrink-0 items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${locked
-            ? "bg-rose-50 text-rose-700 border-rose-200"
-            : "bg-emerald-50 text-emerald-700 border-emerald-200"
-            }`}
-        >
-          ● {locked ? "Restricted" : "Active"}
-        </span>
+        {locked && (
+          <span className="inline-flex shrink-0 items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-rose-50 text-rose-700 border-rose-200">
+            ● Restricted
+          </span>
+        )}
         </div>
       </div>
     );
@@ -222,15 +219,12 @@ export function FolderCard({
       {/* Inner White Card */}
       <div className="relative flex w-full h-full flex-col overflow-hidden rounded-[16px] sm:rounded-[21px] bg-white p-3 sm:p-5">
 
-      <div className="mb-2 sm:mb-4 flex items-center justify-end gap-1">
-        <span
-          className={`inline-flex items-center gap-1 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-semibold border ${locked
-            ? "bg-rose-50 text-rose-700 border-rose-200"
-            : "bg-emerald-50 text-emerald-700 border-emerald-200"
-            }`}
-        >
-          ● {locked ? "Restricted" : "Active"}
-        </span>
+      <div className="mb-2 sm:mb-4 flex items-center justify-end gap-1 h-5 sm:h-6">
+        {locked && (
+          <span className="inline-flex items-center gap-1 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-semibold border bg-rose-50 text-rose-700 border-rose-200">
+            ● Restricted
+          </span>
+        )}
       </div>
 
       <div className="mb-2 sm:mb-4 flex flex-col items-center gap-2 sm:gap-3 text-center">

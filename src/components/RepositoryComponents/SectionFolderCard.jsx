@@ -189,11 +189,7 @@ export function SectionFolderCard({
   <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
     <Hourglass size={11} /> Pending Deletion
   </span>
-) : (
-  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-    ● Active
-  </span>
-);
+) : null;
 
   const trashButton = canDelete && !pendingDeletion && (
     <button
@@ -285,7 +281,7 @@ export function SectionFolderCard({
 
       <div className="relative flex w-full h-full flex-col overflow-hidden rounded-[16px] sm:rounded-[21px] bg-white p-3 sm:p-5">
 
-        <div className="mb-2 sm:mb-4 flex items-center justify-between gap-1">
+        <div className="mb-2 sm:mb-4 flex items-center justify-between gap-1 h-7 sm:h-8">
           <div />
           <div className="flex items-center gap-1">
             {statusBadge}

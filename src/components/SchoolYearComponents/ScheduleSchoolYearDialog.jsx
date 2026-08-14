@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, CalendarClock, Info } from "lucide-react";
+import { CustomDatePicker } from "./CustomDatePicker";
+import { CustomTimePicker } from "./CustomTimePicker";
 
 /**
  * ScheduleSchoolYearDialog — Modal for scheduling a new school year transition,
@@ -89,7 +91,7 @@ export default function ScheduleSchoolYearDialog({
     >
       {/* Dialog */}
       <div
-        className="relative w-full max-w-[480px] max-h-[92dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]"
+        className="relative w-full max-w-[480px] max-h-[92dvh] overflow-visible rounded-t-2xl sm:rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Header ───────────────────────────────────── */}
@@ -163,22 +165,18 @@ export default function ScheduleSchoolYearDialog({
               <label className="block text-[0.68rem] font-bold uppercase tracking-[0.12em] text-slate-400 mb-1.5">
                 Transition Date
               </label>
-              <input
-                type="date"
+              <CustomDatePicker
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-[10px] border border-slate-200/80 bg-slate-50/50 px-3.5 py-2.5 text-[0.85rem] font-medium text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/15 transition-all cursor-pointer"
+                onChange={setDate}
               />
             </div>
             <div>
               <label className="block text-[0.68rem] font-bold uppercase tracking-[0.12em] text-slate-400 mb-1.5">
                 Transition Time
               </label>
-              <input
-                type="time"
+              <CustomTimePicker
                 value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="w-full rounded-[10px] border border-slate-200/80 bg-slate-50/50 px-3.5 py-2.5 text-[0.85rem] font-medium text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/15 transition-all cursor-pointer"
+                onChange={setTime}
               />
             </div>
           </div>
