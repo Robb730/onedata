@@ -195,13 +195,6 @@ export function FolderCard({
         >
           ● {locked ? "Restricted" : "Active"}
         </span>
-
-        {/* Color picker */}
-        {onColorChange && (
-          <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-            <FolderColorPicker currentColorId={colorId} onColorChange={onColorChange} />
-          </div>
-        )}
         </div>
       </div>
     );
@@ -229,12 +222,7 @@ export function FolderCard({
       {/* Inner White Card */}
       <div className="relative flex w-full h-full flex-col overflow-hidden rounded-[16px] sm:rounded-[21px] bg-white p-3 sm:p-5">
 
-      <div className="mb-2 sm:mb-4 flex items-center justify-between gap-1">
-        <div>
-          {onColorChange && (
-            <FolderColorPicker currentColorId={colorId} onColorChange={onColorChange} />
-          )}
-        </div>
+      <div className="mb-2 sm:mb-4 flex items-center justify-end gap-1">
         <span
           className={`inline-flex items-center gap-1 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-semibold border ${locked
             ? "bg-rose-50 text-rose-700 border-rose-200"

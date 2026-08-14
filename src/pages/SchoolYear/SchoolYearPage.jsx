@@ -287,11 +287,11 @@ export default function SchoolYearPage() {
         />
 
         <ScheduleSchoolYearDialog
-          open={createDialogOpen}
-          onClose={closeCreateDialog}
-          onSubmit={handleCreate}
-          upcomingYearOptions={upcomingYearOptions}
-        />
+  open={createDialogOpen}
+  onClose={closeCreateDialog}
+  onSubmit={handleCreate}
+  activeSchoolYearLabel={activeYear?.label}
+/>
 
         <EditScheduledYearDialog
           open={editDialogOpen}
