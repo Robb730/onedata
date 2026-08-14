@@ -3,7 +3,6 @@ import { AppLayout } from './components/AppLayout'
 import { useEffect, useState } from "react";
 import { supabase } from './lib/supabaseClient.js';
 import { useUser } from "./contexts/UserContext.jsx";
-import { ROLES } from "./utils/accessControl"; // adjust path as needed
 
 import LandingPage from './pages/LandingPage/LandingPage.jsx'
 import LoginPage from './pages/Login/LoginPage.jsx'
@@ -17,12 +16,9 @@ import RepositoryFolderDetailPage from './pages/Repository/RepositoryFolderDetai
 import RepositoryDivisionPage from './pages/Repository/RepositoryDivisionPage.jsx'
 import AccessRestrictedPage from './pages/Repository/AccessRestrictedPage.jsx'
 import SchoolYearPage from './pages/SchoolYear/SchoolYearPage.jsx'
-import NotFoundPage from './pages/NotFound/NotFoundPage.jsx'
+import SettingsPage from './pages/Settings/SettingsPage.jsx'
+import ChangePasswordPage from './pages/Settings/ChangePasswordPage.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx';
-import RoleProtectedRoute from './components/RoleProtectedRoute.jsx';
-
-const ALL_ROLES = [ROLES.ADMIN, ROLES.DIVISION_FOCAL, ROLES.SECTION_FOCAL, ROLES.PERSONNEL];
-const ADMIN_ONLY = [ROLES.ADMIN];
 
 function App() {
   const [session, setSession] = useState(null);
@@ -52,61 +48,63 @@ function App() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/change-password" element={<ChangePasswordPage />} />
       <Route path="/test" element={<BaliwagExtractor />} />
-
       <Route path="/dashboard" element={
-        <RoleProtectedRoute session={session} roles={ALL_ROLES}>
+        <ProtectedRoute session={session}>
           <AppLayout><Dashboard /></AppLayout>
-        </RoleProtectedRoute>
+        </ProtectedRoute>
       } />
       <Route path="/manage-user" element={
-        <RoleProtectedRoute session={session} roles={ADMIN_ONLY}>
+        <ProtectedRoute session={session}>
           <AppLayout><ManageUsers /></AppLayout>
-        </RoleProtectedRoute>
+        </ProtectedRoute>
       } />
       <Route path="/upload-files" element={
-        <RoleProtectedRoute session={session} roles={ALL_ROLES}>
+        <ProtectedRoute session={session}>
           <AppLayout><UploadFilesPage role={userProfile?.role} userSection={userProfile?.section_name} /></AppLayout>
-        </RoleProtectedRoute>
+        </ProtectedRoute>
       } />
       <Route path="/audit-logs" element={
-        <RoleProtectedRoute session={session} roles={ADMIN_ONLY}>
+        <ProtectedRoute session={session}>
           <AppLayout><AuditLogs /></AppLayout>
-        </RoleProtectedRoute>
+        </ProtectedRoute>
       } />
       <Route path="/repository" element={
-        <RoleProtectedRoute session={session} roles={ALL_ROLES}>
+        <ProtectedRoute session={session}>
           <AppLayout><Repository /></AppLayout>
-        </RoleProtectedRoute>
+        </ProtectedRoute>
       } />
       <Route path="/repository/folder/:folderName" element={
-        <RoleProtectedRoute session={session} roles={ALL_ROLES}>
+        <ProtectedRoute session={session}>
           <AppLayout><RepositoryFolderDetailPage /></AppLayout>
-        </RoleProtectedRoute>
+        </ProtectedRoute>
       } />
       <Route path="/repository/divisions/:divisionSlug" element={
-        <RoleProtectedRoute session={session} roles={ALL_ROLES}>
+        <ProtectedRoute session={session}>
           <AppLayout><RepositoryDivisionPage /></AppLayout>
-        </RoleProtectedRoute>
+        </ProtectedRoute>
       } />
       <Route path="/repository/sections/sgod" element={
-        <RoleProtectedRoute session={session} roles={ALL_ROLES}>
+        <ProtectedRoute session={session}>
           <AppLayout><RepositoryDivisionPage /></AppLayout>
-        </RoleProtectedRoute>
+        </ProtectedRoute>
       } />
       <Route path="/repository/restricted/:folderName" element={
-        <RoleProtectedRoute session={session} roles={ALL_ROLES}>
+        <ProtectedRoute session={session}>
           <AppLayout><AccessRestrictedPage /></AppLayout>
-        </RoleProtectedRoute>
+        </ProtectedRoute>
       } />
       <Route path="/school-year" element={
-        <RoleProtectedRoute session={session} roles={ADMIN_ONLY}>
+        <ProtectedRoute session={session}>
           <AppLayout><SchoolYearPage /></AppLayout>
-        </RoleProtectedRoute>
+        </ProtectedRoute>
       } />
-
-      <Route path="/not-found" element={<AppLayout><NotFoundPage /></AppLayout>} />
-      <Route path="*" element={<AppLayout><NotFoundPage /></AppLayout>} />
+      <Route path="/settings" element={
+        <ProtectedRoute session={session}>
+          <AppLayout><SettingsPage /></AppLayout>
+        </ProtectedRoute>
+      } />
     </Routes>
   )
 }

@@ -2,26 +2,7 @@
 import { useState, useMemo } from "react";
 import { Eye, EyeOff, Lock, Check, X } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
-
-function getPasswordChecks(password) {
-  return {
-    length: password.length >= 8,
-    uppercase: /[A-Z]/.test(password),
-    lowercase: /[a-z]/.test(password),
-    number: /[0-9]/.test(password),
-    special: /[^A-Za-z0-9]/.test(password),
-  };
-}
-
-function getStrength(password, checks) {
-  if (password.length === 0) {
-    return { label: "", color: "bg-slate-200", textColor: "text-slate-400", width: "0%" };
-  }
-  const passed = Object.values(checks).filter(Boolean).length;
-  if (passed <= 2) return { label: "Weak", color: "bg-rose-500", textColor: "text-rose-500", width: "33%" };
-  if (passed <= 4) return { label: "Medium", color: "bg-amber-500", textColor: "text-amber-500", width: "66%" };
-  return { label: "Strong", color: "bg-emerald-500", textColor: "text-emerald-500", width: "100%" };
-}
+import { getPasswordChecks, getPasswordStrength } from "../../utils/passwordRules";
 
 export function ChangePasswordModal({ isOpen, onSuccess }) {
   const [newPassword, setNewPassword] = useState("");
@@ -32,7 +13,7 @@ export function ChangePasswordModal({ isOpen, onSuccess }) {
   const [error, setError] = useState(null);
 
   const checks = useMemo(() => getPasswordChecks(newPassword), [newPassword]);
-  const strength = useMemo(() => getStrength(newPassword, checks), [newPassword, checks]);
+  const strength = useMemo(() => getPasswordStrength(newPassword, checks), [newPassword, checks]);
   const allChecksPassed = Object.values(checks).every(Boolean);
 
   if (!isOpen) return null;
