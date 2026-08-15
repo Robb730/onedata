@@ -47,9 +47,9 @@ export function Footer() {
         style={{ background: "#10b981" }}
       />
 
-      <div className="relative max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 pt-14 md:pt-20 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-        <div className="rounded-[24px] border border-white/[0.07] bg-white/[0.03] p-6 sm:p-8 md:p-10 mb-8 md:mb-10">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8">
+      <div className="relative max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 pt-10 md:pt-20 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        <div className="rounded-[20px] md:rounded-[24px] border border-white/[0.07] bg-white/[0.03] p-5 sm:p-8 md:p-10 mb-6 md:mb-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-8">
             <div className="lg:col-span-5">
               <button
                 type="button"
