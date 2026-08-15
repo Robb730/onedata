@@ -55,9 +55,7 @@ const inputClass =
 export default function SettingsPage() {
   const { userProfile, refreshProfile } = useUser();
 
-  const [fullName, setFullName] = useState(userProfile?.full_name ?? "");
-  const [savingName, setSavingName] = useState(false);
-  const [nameError, setNameError] = useState(null);
+  const fullName = userProfile?.full_name ?? "";
 
   const [newEmail, setNewEmail] = useState("");
   const [emailPassword, setEmailPassword] = useState("");
@@ -75,10 +73,6 @@ export default function SettingsPage() {
 
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-
-  useEffect(() => {
-    setFullName(userProfile?.full_name ?? "");
-  }, [userProfile?.full_name]);
 
   // NEW: debounced lookup against the users table whenever newEmail changes.
   useEffect(() => {
@@ -136,33 +130,6 @@ export default function SettingsPage() {
       role: roleLabel,
       status,
     });
-  }
-
-  async function handleSaveName(e) {
-    e.preventDefault();
-    const trimmed = fullName.trim();
-    if (!trimmed) {
-      setNameError("Display name is required.");
-      return;
-    }
-    if (trimmed === userProfile?.full_name) return;
-    setNameError(null);
-    setSavingName(true);
-    const { error } = await supabase
-      .from("users")
-      .update({ full_name: trimmed })
-      .eq("id", userProfile.id);
-    setSavingName(false);
-    if (error) {
-      setNameError(error.message);
-      return;
-    }
-    await logAudit({
-      action: "Edit",
-      details: `Updated display name to ${trimmed}`,
-    });
-    await refreshProfile();
-    showSuccess("Display name updated.");
   }
 
   async function handleSaveEmail(e) {
@@ -290,31 +257,18 @@ export default function SettingsPage() {
           <SettingsCard
             icon={User}
             title="Display name"
-            description="This name appears in the header, directory, and audit logs."
+            description="This name appears in the header, directory, and audit logs. Contact an administrator to change it."
           >
-            <form onSubmit={handleSaveName} className="space-y-3">
-              <Field id="settings-name" label="Full name">
-                <input
-                  id="settings-name"
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className={inputClass}
-                />
-              </Field>
-              {nameError && (
-                <p className="rounded-xl bg-rose-50 px-3 py-2 text-[0.75rem] font-medium text-rose-600">
-                  {nameError}
-                </p>
-              )}
-              <button
-                type="submit"
-                disabled={savingName || fullName.trim() === (userProfile?.full_name ?? "")}
-                className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-blue-600 px-4 text-[0.8rem] font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {savingName ? "Saving..." : "Save name"}
-              </button>
-            </form>
+            <Field id="settings-name" label="Full name">
+              <input
+                id="settings-name"
+                type="text"
+                value={fullName}
+                readOnly
+                disabled
+                className={`${inputClass} cursor-not-allowed bg-slate-100 text-slate-500`}
+              />
+            </Field>
           </SettingsCard>
 
           <SettingsCard

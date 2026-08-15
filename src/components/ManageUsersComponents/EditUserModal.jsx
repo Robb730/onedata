@@ -27,6 +27,8 @@ const DIVISION_ROLES = ["Division Focal Person"];
 const SECTION_ROLES = ["Section Officer", "Section Personnel"];
 
 export default function EditUserModal({ isOpen, onClose, user, onSave }) {
+  const [name, setName] = useState(user.name ?? "");
+  const [idNumber, setIdNumber] = useState(user.idNumber ?? "");
   const [role, setRole] = useState(
     ROLE_SLUG_TO_LABEL[user.role] ?? user.role,
   );
@@ -80,11 +82,15 @@ export default function EditUserModal({ isOpen, onClose, user, onSave }) {
 
   if (!isOpen) return null;
 
+  const initialName = user.name ?? "";
+  const initialIdNumber = user.idNumber ?? "";
   const initialRole = ROLE_SLUG_TO_LABEL[user.role] ?? user.role;
   const initialDivisionId = user.divisionId ? String(user.divisionId) : "";
   const initialSectionId = user.sectionId ? String(user.sectionId) : "";
 
   const hasChanges = 
+    name.trim() !== initialName ||
+    idNumber.trim() !== initialIdNumber ||
     role !== initialRole || 
     String(divisionId) !== initialDivisionId || 
     String(sectionId) !== initialSectionId;
@@ -92,6 +98,14 @@ export default function EditUserModal({ isOpen, onClose, user, onSave }) {
   const handleSave = () => {
     if (loadingOptions) {
       alert("Please wait, loading options...");
+      return;
+    }
+    if (!name.trim()) {
+      alert("Please enter a name.");
+      return;
+    }
+    if (!idNumber.trim()) {
+      alert("Please enter an ID number.");
       return;
     }
     if (needsDivision && !divisionId) {
@@ -111,6 +125,8 @@ export default function EditUserModal({ isOpen, onClose, user, onSave }) {
       : null;
 
     onSave(user.id, {
+      name: name.trim(),
+      idNumber: idNumber.trim(),
       role: ROLE_LABEL_TO_SLUG[role] ?? role,
       divisionId: needsDivision ? divisionId : null,
       sectionId: isSectionRole ? sectionId : null,
@@ -168,36 +184,38 @@ export default function EditUserModal({ isOpen, onClose, user, onSave }) {
             </div>
           </div>
 
-          {/* Name & ID (Read-only) */}
+          {/* Name & ID (Editable) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {/* Name */}
             <div>
-              <label className="block text-[0.8rem] font-bold text-slate-700 mb-1.5 ml-1">
+              <label htmlFor="edit-user-name" className="block text-[0.8rem] font-bold text-slate-700 mb-1.5 ml-1">
                 Name
               </label>
               <div className="relative group">
                 <User className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} strokeWidth={2} />
                 <input
+                  id="edit-user-name"
                   type="text"
-                  value={user.name}
-                  readOnly
-                  className="w-full bg-slate-50/80 pl-10 pr-4 py-3 rounded-[12px] border border-slate-200/60 text-[0.85rem] font-semibold text-slate-500 cursor-not-allowed outline-none"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-slate-50/50 pl-10 pr-4 py-3 rounded-[12px] border border-slate-200/80 text-[0.85rem] font-semibold text-slate-700 outline-none transition-all focus:border-blue-500 focus:bg-white"
                 />
               </div>
             </div>
 
             {/* ID Number */}
             <div>
-              <label className="block text-[0.8rem] font-bold text-slate-700 mb-1.5 ml-1">
+              <label htmlFor="edit-user-id-number" className="block text-[0.8rem] font-bold text-slate-700 mb-1.5 ml-1">
                 ID Number
               </label>
               <div className="relative group">
                 <CreditCard className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} strokeWidth={2} />
                 <input
+                  id="edit-user-id-number"
                   type="text"
-                  value={user.idNumber}
-                  readOnly
-                  className="w-full bg-slate-50/80 pl-10 pr-4 py-3 rounded-[12px] border border-slate-200/60 text-[0.85rem] font-semibold text-slate-500 cursor-not-allowed outline-none"
+                  value={idNumber}
+                  onChange={(e) => setIdNumber(e.target.value)}
+                  className="w-full bg-slate-50/50 pl-10 pr-4 py-3 rounded-[12px] border border-slate-200/80 text-[0.85rem] font-semibold text-slate-700 outline-none transition-all focus:border-blue-500 focus:bg-white"
                 />
               </div>
             </div>

@@ -149,6 +149,8 @@ export default function ManageUsers() {
 
   // ─── Handlers ────────────────────────────────────────────────
   const handleEditUser = async (userId, updates) => {
+    const previousName = editingUser?.name;
+    const previousIdNumber = editingUser?.idNumber;
     const previousRoleLabel = getRoleDisplay(editingUser?.role);
     const newRoleLabel = getRoleDisplay(updates.role);
     const previousAssignment =
@@ -160,6 +162,8 @@ export default function ManageUsers() {
     const { error } = await supabase
       .from("users")
       .update({
+        full_name: updates.name,
+        id_number: updates.idNumber,
         role: updates.role,
         division_id: updates.divisionId,
         section_id: updates.sectionId,
@@ -183,6 +187,12 @@ export default function ManageUsers() {
     }
 
     const changeParts = [];
+    if (previousName !== updates.name) {
+      changeParts.push(`Name changed from ${previousName} to ${updates.name}`);
+    }
+    if (previousIdNumber !== updates.idNumber) {
+      changeParts.push(`ID number changed from ${previousIdNumber} to ${updates.idNumber}`);
+    }
     if (previousRoleLabel !== newRoleLabel) {
       changeParts.push(`Role changed from ${previousRoleLabel} to ${newRoleLabel}`);
     }
@@ -193,7 +203,7 @@ export default function ManageUsers() {
 
     await logAuditEvent({
       action: "Role Change",
-      fileName: editingUser?.name,
+      fileName: updates.name ?? editingUser?.name,
       details,
       role: updates.role,
       status: "Success",

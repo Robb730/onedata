@@ -29,6 +29,8 @@ export default function AuditLogs() {
     "Role Change",
     "Access Request",
     "Access Grant",
+    "Login Failed",
+    "Security Alert",
   ];
   const statuses = ["All", "Success", "Failed", "Pending"];
 
@@ -329,7 +331,8 @@ export default function AuditLogs() {
 
     fetchLogs();
 
-    // Optional: live updates so new uploads appear without a refresh
+    // Optional: live updates so new uploads (and security alerts) appear
+    // without a refresh
     const channel = supabase
       .channel("audit_logs_changes")
       .on(
@@ -359,6 +362,66 @@ export default function AuditLogs() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // ─── Handle "Deactivate" action on a Security Alert row ───────
+  // Security Alert logs store the offending account's email in
+  // `performed_by`. This looks the user up by email and deactivates them,
+  // then marks the alert as resolved (Success) so it stops standing out
+  // as Pending.
+  async function handleDeactivateFromAlert(log) {
+    const confirmed = window.confirm(
+      `Deactivate the account for ${log.performedBy}? They will not be able to log in until reactivated.`
+    );
+    if (!confirmed) return;
+
+    const { data: userRow, error: lookupError } = await supabase
+      .from("users")
+      .select("id, full_name, role")
+      .eq("email", log.performedBy)
+      .maybeSingle();
+
+    if (lookupError || !userRow) {
+      alert(
+        "Could not find a matching user account for " +
+          log.performedBy +
+          (lookupError ? `: ${lookupError.message}` : "."),
+      );
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({ is_active: false })
+      .eq("id", userRow.id);
+
+    if (updateError) {
+      alert("Error deactivating user: " + updateError.message);
+      return;
+    }
+
+    await supabase.from("audit_logs").insert({
+      action: "Edit",
+      file_name: userRow.full_name,
+      details: `Deactivated user account (${log.performedBy}) in response to a security alert.`,
+      performed_by: "Administrator",
+      role: userRow.role,
+      status: "Success",
+    });
+
+    // Mark the alert itself as handled
+    await supabase
+      .from("audit_logs")
+      .update({ status: "Success", details: `${log.details} — Account deactivated.` })
+      .eq("id", log.id);
+
+    setAuditLogs((prev) =>
+      prev.map((l) =>
+        l.id === log.id
+          ? { ...l, status: "Success", details: `${l.details} — Account deactivated.` }
+          : l,
+      ),
+    );
+  }
 
   const filteredLogs = auditLogs.filter((log) => {
     const matchesSearch =
@@ -410,6 +473,7 @@ export default function AuditLogs() {
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}
+          onDeactivateFromAlert={handleDeactivateFromAlert}
         />
 
         <AuditLogsFooter
