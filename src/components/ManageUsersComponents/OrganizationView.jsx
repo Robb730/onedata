@@ -151,10 +151,11 @@ export default function OrganizationView({
                 unassigned.length > 0 ||
                 sections.some((s) => s.users.length > 0);
               if (isSearching && !hasMatches) return null;
-              const missingFocal = health.focalCount === 0;
+              // Collapsed by default on load; only expanded once the user
+              // explicitly toggles it (or while actively searching).
               const expanded = isSearching
                 ? hasMatches
-                : expandedDivisions[division.id] ?? missingFocal;
+                : expandedDivisions[division.id] ?? false;
               const sectionState = expandedSections;
 
               return (
