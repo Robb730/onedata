@@ -221,7 +221,7 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        <div className="mx-auto max-w-3xl space-y-4 sm:space-y-5">
+        <div className="space-y-4 sm:space-y-5">
           <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
             <div className="flex items-center gap-3.5">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-[0.78rem] font-black text-white">
@@ -254,122 +254,131 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <SettingsCard
-            icon={User}
-            title="Display name"
-            description="This name appears in the header, directory, and audit logs. Contact an administrator to change it."
-          >
-            <Field id="settings-name" label="Full name">
-              <input
-                id="settings-name"
-                type="text"
-                value={fullName}
-                readOnly
-                disabled
-                className={`${inputClass} cursor-not-allowed bg-slate-100 text-slate-500`}
-              />
-            </Field>
-          </SettingsCard>
-
-          <SettingsCard
-            icon={Mail}
-            title="Email address"
-            description="Used for login. Confirm with your current password."
-          >
-            <form onSubmit={handleSaveEmail} className="space-y-3">
-              <Field id="settings-current-email" label="Current email">
-                <input
-                  id="settings-current-email"
-                  type="email"
-                  value={userProfile?.email ?? ""}
-                  readOnly
-                  className={`${inputClass} cursor-not-allowed bg-slate-100 text-slate-500`}
-                />
-              </Field>
-              <Field id="settings-new-email" label="New email">
-                <input
-                  id="settings-new-email"
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  className={`${inputClass} ${emailTaken ? "border-rose-300 focus:border-rose-400" : ""}`}
-                  aria-invalid={emailTaken}
-                />
-              </Field>
-              {checkingEmail && (
-                <p className="text-[0.72rem] font-medium text-slate-400">Checking availability...</p>
-              )}
-              {!checkingEmail && emailTaken && (
-                <p className="rounded-xl bg-rose-50 px-3 py-2 text-[0.75rem] font-medium text-rose-600">
-                  That email is already in use by another account.
-                </p>
-              )}
-              <Field id="settings-email-password" label="Current password">
-                <input
-                  id="settings-email-password"
-                  type="password"
-                  value={emailPassword}
-                  onChange={(e) => setEmailPassword(e.target.value)}
-                  placeholder="Confirm with your password"
-                  className={inputClass}
-                  autoComplete="current-password"
-                />
-              </Field>
-              {emailError && (
-                <p className="rounded-xl bg-rose-50 px-3 py-2 text-[0.75rem] font-medium text-rose-600">
-                  {emailError}
-                </p>
-              )}
-              <button
-                type="submit"
-                disabled={savingEmail || emailTaken || checkingEmail}
-                className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-blue-600 px-4 text-[0.8rem] font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          <div className="grid grid-cols-1 lg:grid-cols-2 lg:items-start gap-4 sm:gap-5">
+            <div className="space-y-4 sm:space-y-5">
+              <SettingsCard
+                icon={User}
+                title="Display name"
+                description="This name appears in the header, directory, and audit logs. Contact an administrator to change it."
               >
-                {savingEmail ? "Sending link..." : "Update email"}
-              </button>
-            </form>
-          </SettingsCard>
+                <Field id="settings-name" label="Full name">
+                  <input
+                    id="settings-name"
+                    type="text"
+                    value={fullName}
+                    readOnly
+                    disabled
+                    className={`${inputClass} cursor-not-allowed bg-slate-100 text-slate-500`}
+                  />
+                </Field>
+              </SettingsCard>
 
-          <SettingsCard
-            icon={Lock}
-            title="Password"
-            description="For security, password changes are completed from a link sent to your email."
-          >
-            {resetSent ? (
-              <div className="space-y-3">
-                <p className="text-[0.8rem] font-medium text-slate-600">
-                  A reset link was sent to{" "}
-                  <span className="font-semibold text-slate-800">{userProfile?.email}</span>.
-                  Open that email and continue on the change-password page.
-                </p>
-                <p className="text-[0.72rem] font-medium text-slate-400">
-                  Email sending will be connected by the backend. Use the preview below to review the panel.
-                </p>
-                <Link
-                  to="/change-password"
-                  className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-blue-600 px-4 text-[0.8rem] font-semibold text-white hover:bg-blue-700"
-                >
-                  Open change-password panel
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-[0.8rem] font-medium text-slate-600">
-                  We never change your password from this screen. A one-time link goes to your account email so only you can set a new password.
-                </p>
+              <SettingsCard
+                icon={Lock}
+                title="Password"
+                description="For security, password changes are completed from a link sent to your email."
+              >
+                {resetSent ? (
+                  <div className="space-y-3">
+                    <p className="text-[0.8rem] font-medium text-slate-600">
+                      A reset link was sent to{" "}
+                      <span className="font-semibold text-slate-800">{userProfile?.email}</span>.
+                      Open that email and continue on the change-password page.
+                    </p>
+                    <p className="text-[0.72rem] font-medium text-slate-400">
+                      Email sending will be connected by the backend. Use the preview below to review the panel.
+                    </p>
+                    <Link
+                      to="/change-password"
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-blue-600 px-4 text-[0.8rem] font-semibold text-white hover:bg-blue-700"
+                    >
+                      Open change-password panel
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-[0.8rem] font-medium text-slate-600">
+                      We never change your password from this screen. A one-time link goes to your account email so only you can set a new password.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleSendResetLink}
+                      disabled={sendingReset}
+                      className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-[0.8rem] font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      <Send size={14} />
+                      {sendingReset ? "Sending..." : "Send reset link"}
+                    </button>
+                    {resetError && (
+                      <p className="rounded-xl bg-rose-50 px-3 py-2 text-[0.75rem] font-medium text-rose-600">
+                        {resetError}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </SettingsCard>
+            </div>
+
+            <SettingsCard
+              icon={Mail}
+              title="Email address"
+              description="Used for login. Confirm with your current password."
+            >
+              <form onSubmit={handleSaveEmail} className="space-y-3">
+                <Field id="settings-current-email" label="Current email">
+                  <input
+                    id="settings-current-email"
+                    type="email"
+                    value={userProfile?.email ?? ""}
+                    readOnly
+                    className={`${inputClass} cursor-not-allowed bg-slate-100 text-slate-500`}
+                  />
+                </Field>
+                <Field id="settings-new-email" label="New email">
+                  <input
+                    id="settings-new-email"
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="name@example.com"
+                    className={`${inputClass} ${emailTaken ? "border-rose-300 focus:border-rose-400" : ""}`}
+                    aria-invalid={emailTaken}
+                  />
+                </Field>
+                {checkingEmail && (
+                  <p className="text-[0.72rem] font-medium text-slate-400">Checking availability...</p>
+                )}
+                {!checkingEmail && emailTaken && (
+                  <p className="rounded-xl bg-rose-50 px-3 py-2 text-[0.75rem] font-medium text-rose-600">
+                    That email is already in use by another account.
+                  </p>
+                )}
+                <Field id="settings-email-password" label="Current password">
+                  <input
+                    id="settings-email-password"
+                    type="password"
+                    value={emailPassword}
+                    onChange={(e) => setEmailPassword(e.target.value)}
+                    placeholder="Confirm with your password"
+                    className={inputClass}
+                    autoComplete="current-password"
+                  />
+                </Field>
+                {emailError && (
+                  <p className="rounded-xl bg-rose-50 px-3 py-2 text-[0.75rem] font-medium text-rose-600">
+                    {emailError}
+                  </p>
+                )}
                 <button
-                  type="button"
-                  onClick={handleSendResetLink}
-                  disabled={sendingReset}
-                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-[0.8rem] font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                  type="submit"
+                  disabled={savingEmail || emailTaken || checkingEmail}
+                  className="inline-flex min-h-[44px] w-full sm:w-auto items-center justify-center rounded-xl bg-blue-600 px-4 text-[0.8rem] font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                 >
-                  <Send size={14} />
-                  {sendingReset ? "Sending..." : "Send reset link"}
+                  {savingEmail ? "Sending link..." : "Update email"}
                 </button>
-              </div>
-            )}
-          </SettingsCard>
+              </form>
+            </SettingsCard>
+          </div>
         </div>
       </div>
 
