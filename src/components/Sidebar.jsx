@@ -81,7 +81,7 @@ export function Sidebar({ collapsed = false, onToggle }) {
   return (
     <aside
       className={`
-        hidden lg:flex h-screen flex-col bg-white shrink-0
+        hidden lg:flex h-screen flex-col bg-white shrink-0 app-sidebar
         transition-[width] duration-300 ease-in-out
         ${collapsed ? "w-[68px]" : "w-[240px]"}
       `}

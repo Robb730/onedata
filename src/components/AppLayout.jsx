@@ -49,9 +49,10 @@ export function AppLayout({
     // Mobile: document scroll (lets browser chrome collapse like the landing page).
     // Desktop: fixed viewport + inner scroll so the sidebar stays put.
     <div
-      className="flex min-h-dvh lg:h-dvh lg:overflow-hidden"
+      className="app-shell flex min-h-dvh lg:h-dvh lg:overflow-hidden"
       style={{ background: "#f0f4f9" }}
     >
+      <div className="app-shell-inner flex w-full min-h-dvh lg:h-full lg:min-h-0">
       <ChangePasswordModal
         isOpen={mustChange}
         onSuccess={handlePasswordChange}
@@ -74,7 +75,7 @@ export function AppLayout({
 
         <main
           key={location.pathname}
-          className={`flex-1 pb-[calc(6.25rem+env(safe-area-inset-bottom))] lg:min-h-0 lg:overflow-y-auto lg:pb-0 ${isAnimating ? "animate-page-in" : ""}`}
+          className={`app-main flex-1 pb-[calc(6.25rem+env(safe-area-inset-bottom))] lg:min-h-0 lg:overflow-y-auto lg:pb-0 ${isAnimating ? "animate-page-in" : ""}`}
         >
           {children}
         </main>
@@ -137,6 +138,7 @@ export function AppLayout({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

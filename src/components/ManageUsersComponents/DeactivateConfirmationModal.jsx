@@ -1,13 +1,15 @@
 
 import { useState } from "react";
 import { X, AlertTriangle } from "lucide-react";
+import ModalPortal from "../Modals/ModalPortal";
 
 export default function DeactivateConfirmationModal({ isOpen, onClose, onConfirm, userName }) {
   if (!isOpen) return null;
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-x-0 bottom-0 top-14 lg:inset-0 z-[60] flex items-end lg:items-center justify-center bg-slate-950/40 backdrop-blur-[2px] p-0 lg:p-4"
+      className="modal-overlay fixed inset-x-0 bottom-0 top-14 lg:inset-0 z-[60] flex items-end lg:items-center justify-center p-0 lg:p-4"
       onClick={onClose}
     >
       <div
@@ -63,5 +65,6 @@ export default function DeactivateConfirmationModal({ isOpen, onClose, onConfirm
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

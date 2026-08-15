@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X, FileText, Calendar, MessageSquare } from "lucide-react";
+import ModalPortal from "../Modals/ModalPortal";
 
 export default function FileRequestModal({
   isOpen,
@@ -41,7 +42,8 @@ export default function FileRequestModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/45 p-0 sm:p-4">
+    <ModalPortal>
+    <div className="modal-overlay fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="w-full max-w-md max-h-[92dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100">
           <div>
@@ -121,5 +123,6 @@ export default function FileRequestModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

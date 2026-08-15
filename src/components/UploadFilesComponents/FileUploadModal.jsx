@@ -24,6 +24,7 @@ import { useState, useEffect, useRef, Fragment } from "react";
 import { getUploadableSchoolYears } from "../../utils/schoolYearsApi";
 import { supabase } from "../../lib/supabaseClient";
 import { PLANNING_RESEARCH_SECTION_ID } from "../../constants/uploadScopes";
+import ModalPortal from "../Modals/ModalPortal";
 
 const getFileIconAndColor = (filename) => {
   if (!filename)
@@ -681,8 +682,9 @@ export default function FileUploadModal({
   );
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-0 z-[60] flex items-end lg:items-center justify-center bg-slate-950/40 backdrop-blur-[2px] p-0 lg:p-4"
+      className="modal-overlay fixed inset-0 z-[60] flex items-end lg:items-center justify-center p-0 lg:p-4"
       onClick={onClose}
     >
       <div
@@ -1480,5 +1482,6 @@ export default function FileUploadModal({
         )}
       </div>
     </div>
+    </ModalPortal>
   );
 }

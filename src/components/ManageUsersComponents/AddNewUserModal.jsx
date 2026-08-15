@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { X, User, Hash, Mail, Building2, UserCircle, ShieldCheck } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { CustomDropdown } from "./CustomDropdown";
+import ModalPortal from "../Modals/ModalPortal";
 
 // Roles that are scoped to a DIVISION (pick from divisions table)
 const DIVISION_ROLES = ["Division Focal Person"];
@@ -104,12 +105,14 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
   );
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 sm:p-6"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6"
       onClick={onClose}
     >
+      <div className="modal-overlay absolute inset-0" aria-hidden="true" />
       <div
-        className="bg-white rounded-[24px] shadow-[0_12px_40px_rgba(15,23,42,0.12)] w-full max-w-[460px] max-h-[90vh] flex flex-col overflow-hidden border border-slate-100 scale-100 animate-in fade-in zoom-in-95 duration-200"
+        className="relative z-10 bg-white rounded-[24px] shadow-[0_12px_40px_rgba(15,23,42,0.12)] w-full max-w-[460px] max-h-[90vh] flex flex-col overflow-hidden border border-slate-100 scale-100 animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -271,5 +274,6 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
         </form>
       </div>
     </div>
+    </ModalPortal>
   );
 }

@@ -132,11 +132,14 @@ export function MobileBottomNav() {
   useEffect(() => {
     if (!moreOpen) {
       document.body.style.overflow = "";
+      document.documentElement.classList.remove("app-nav-overlay");
       return undefined;
     }
     document.body.style.overflow = "hidden";
+    document.documentElement.classList.add("app-nav-overlay");
     return () => {
       document.body.style.overflow = "";
+      document.documentElement.classList.remove("app-nav-overlay");
     };
   }, [moreOpen]);
 
@@ -151,7 +154,7 @@ export function MobileBottomNav() {
         onClick={() => setMoreOpen(false)}
         aria-hidden={!moreOpen}
       >
-        <div className="absolute inset-0 bg-slate-900/25" />
+        <div className="modal-overlay absolute inset-0" />
       </div>
 
       <nav

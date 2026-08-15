@@ -3,6 +3,7 @@ import { useState, useMemo } from "react";
 import { Eye, EyeOff, Lock, Check, X } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { getPasswordChecks, getPasswordStrength } from "../../utils/passwordRules";
+import ModalPortal from "./ModalPortal";
 
 export function ChangePasswordModal({ isOpen, onSuccess }) {
   const [newPassword, setNewPassword] = useState("");
@@ -70,8 +71,9 @@ export function ChangePasswordModal({ isOpen, onSuccess }) {
   };
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="modal-overlay fixed inset-0 z-50 flex items-center justify-center"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
@@ -176,6 +178,7 @@ export function ChangePasswordModal({ isOpen, onSuccess }) {
         </form>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 

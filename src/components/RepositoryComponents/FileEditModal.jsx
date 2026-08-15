@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { parseAndSyncStructuredData } from "../../utils/structuredDataSync";
+import ModalPortal from "../Modals/ModalPortal";
 
 function getBucket(category) {
   return category === "general" || !category
@@ -1210,8 +1211,9 @@ export default function FileEditModal({
   // ── SPREADSHEET / DEFAULT VIEWER ───────────────────────────────
   // ─────────────────────────────────────────────────────────────
   return (
+    <ModalPortal>
     <div
-      className={`fixed inset-0 bg-black/50 flex items-center justify-center z-50 ${isFullScreen ? "p-0" : "p-4"}`}
+      className={`modal-overlay fixed inset-0 flex items-center justify-center z-50 ${isFullScreen ? "p-0" : "p-4"}`}
     >
       <div
         className={`relative bg-white shadow-2xl flex flex-col overflow-hidden transition-all ${
@@ -1502,7 +1504,7 @@ export default function FileEditModal({
 
         {/* Discard-changes confirmation overlay */}
         {discardIntent && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
+          <div className="modal-overlay absolute inset-0 flex items-center justify-center z-10">
             <div className="bg-white rounded-xl shadow-2xl p-5 w-80">
               <div className="flex items-start gap-3 mb-4">
                 <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
@@ -1540,5 +1542,6 @@ export default function FileEditModal({
         )}
       </div>
     </div>
+    </ModalPortal>
   );
 }

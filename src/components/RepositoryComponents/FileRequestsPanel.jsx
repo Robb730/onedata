@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { X, FileText, Inbox, Calendar, User2, MessageSquareText } from "lucide-react";
+import ModalPortal from "../Modals/ModalPortal";
 
 const AVATAR_COLORS = ["bg-violet-500","bg-blue-500","bg-emerald-500","bg-amber-500","bg-rose-500","bg-cyan-500","bg-indigo-500","bg-pink-500"];
 function hashStr(str = "") {
@@ -62,9 +63,10 @@ export default function FileRequestsPanel({ isOpen, onClose, requests = [], isLo
   const mineCount = requests.filter((r) => r.isOwnRequest).length;
 
   return (
+    <ModalPortal>
     <div
       className={`fixed inset-0 z-[60] transition-colors duration-300 ease-out ${
-        animateIn ? "bg-slate-950/40 backdrop-blur-[2px]" : "bg-slate-950/0"
+        animateIn ? "modal-overlay" : "bg-transparent"
       }`}
       onClick={onClose}
     >
@@ -224,5 +226,6 @@ export default function FileRequestsPanel({ isOpen, onClose, requests = [], isLo
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

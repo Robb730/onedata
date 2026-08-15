@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
 import { CustomDropdown } from "./CustomDropdown";
+import ModalPortal from "../Modals/ModalPortal";
 
 const ROLE_OPTIONS = [
   { id: "All", label: "All roles" },
@@ -118,10 +119,12 @@ export default function DirectoryFilterPills({
 
       {open && (
         <>
+          <ModalPortal>
           <div
-            className="fixed inset-0 z-[60] bg-slate-950/40 lg:hidden"
+            className="modal-overlay fixed inset-0 z-[60] lg:hidden"
             onClick={() => setOpen(false)}
           />
+          </ModalPortal>
           <div className="fixed inset-x-0 bottom-0 z-[70] rounded-t-2xl border border-slate-200 border-b-0 bg-white p-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-[0_-16px_40px_rgba(15,23,42,0.12)] lg:absolute lg:inset-auto lg:right-0 lg:bottom-auto lg:mt-2 lg:w-[min(20rem,calc(100vw-2rem))] lg:rounded-2xl lg:border-b lg:p-3.5 lg:shadow-[0_16px_40px_rgba(15,23,42,0.12)]">
             <div className="mb-3 flex justify-center lg:hidden">
               <div className="h-1 w-10 rounded-full bg-slate-200" />

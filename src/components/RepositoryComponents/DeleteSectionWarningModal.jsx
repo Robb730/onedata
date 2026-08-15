@@ -1,9 +1,11 @@
 import { AlertTriangle, X } from "lucide-react";
+import ModalPortal from "../Modals/ModalPortal";
 
 export default function DeleteSectionWarningModal({ isOpen, onClose, onContinue, sectionName }) {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4">
+    <ModalPortal>
+    <div className="modal-overlay fixed inset-0 z-[100] flex items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
         <div className="mb-4 flex items-start justify-between">
           <div className="flex items-center gap-2">
@@ -35,5 +37,6 @@ export default function DeleteSectionWarningModal({ isOpen, onClose, onContinue,
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

@@ -14,6 +14,7 @@ import {
   revokeDivisionAccess,
 } from "../../utils/divisionAccessRequestsApi";
 import { supabase } from "../../lib/supabaseClient";
+import ModalPortal from "../Modals/ModalPortal";
 
 const roleDisplayMap = {
   division_focal: "Division Focal Person",
@@ -101,7 +102,8 @@ function ActionConfirmModal({ open, kind, request, onClose, onConfirm, isWorking
   }[kind];
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-slate-950/50 backdrop-blur-[2px] p-0 sm:p-4">
+    <ModalPortal>
+    <div className="modal-overlay fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="w-full max-w-sm max-h-[90dvh] overflow-y-auto bg-white rounded-t-2xl sm:rounded-2xl shadow-[0_32px_80px_rgba(15,23,42,0.25)] border border-slate-200">
         <div className="flex items-start gap-3 sm:gap-4 px-4 sm:px-6 pt-5 sm:pt-6 pb-4 sm:pb-5 border-b border-slate-100">
           <div className={`w-11 h-11 rounded-xl ${copy.iconBg} flex items-center justify-center shrink-0 shadow-sm`}>
@@ -154,6 +156,7 @@ function ActionConfirmModal({ open, kind, request, onClose, onConfirm, isWorking
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 
@@ -364,9 +367,10 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
   if (!shouldRender) return null;
 
   return (
+    <ModalPortal>
     <>
       <div
-        className={`fixed inset-0 z-[55] bg-slate-950/40 lg:bg-slate-950/10 backdrop-blur-[1px] transition-opacity duration-300 ${
+        className={`modal-overlay fixed inset-0 z-[55] transition-opacity duration-300 ${
           entered ? "opacity-100" : "opacity-0"
         }`}
         onClick={onClose}
@@ -503,5 +507,6 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
         isWorking={isWorking}
       />
     </>
+    </ModalPortal>
   );
 }

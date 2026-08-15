@@ -17,6 +17,7 @@ import {
   Inbox,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
+import ModalPortal from "../Modals/ModalPortal";
 
 // ─── Static config: one source of truth per action type ─────────
 const ACTION_META = {
@@ -196,8 +197,9 @@ export default function UserLogsModal({ isOpen, onClose, user }) {
   if (!isOpen) return null;
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-x-0 bottom-0 top-14 lg:inset-0 z-[100] flex items-end lg:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-0 lg:p-6"
+      className="modal-overlay fixed inset-x-0 bottom-0 top-14 lg:inset-0 z-[100] flex items-end lg:items-center justify-center p-0 lg:p-6"
       onClick={onClose}
     >
       <div
@@ -343,6 +345,7 @@ export default function UserLogsModal({ isOpen, onClose, user }) {
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 

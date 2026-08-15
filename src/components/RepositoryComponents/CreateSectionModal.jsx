@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, FolderPlus, Loader, User } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
+import ModalPortal from "../Modals/ModalPortal";
 
 export default function CreateSectionModal({
   isOpen,
@@ -99,8 +100,9 @@ export default function CreateSectionModal({
   };
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-0 z-[60] flex items-end lg:items-center justify-center bg-slate-950/40 backdrop-blur-[2px] p-0 lg:p-4"
+      className="modal-overlay fixed inset-0 z-[60] flex items-end lg:items-center justify-center p-0 lg:p-4"
       onClick={onClose}
     >
       <div
@@ -225,5 +227,6 @@ export default function CreateSectionModal({
         </form>
       </div>
     </div>
+    </ModalPortal>
   );
 }
