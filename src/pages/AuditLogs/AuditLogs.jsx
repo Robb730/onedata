@@ -368,27 +368,35 @@ export default function AuditLogs() {
   // `performed_by`. This looks the user up by email and deactivates them,
   // then marks the alert as resolved (Success) so it stops standing out
   // as Pending.
-  async function handleDeactivateFromAlert(log) {
-    const confirmed = window.confirm(
-      `Deactivate the account for ${log.performedBy}? They will not be able to log in until reactivated.`
+  // ─── Handle "Review" action on a Security Alert row ───────
+// Security Alert logs store the offending account's email in
+// `performed_by`. With auto-deactivation now handling the lockout
+// itself at login time, this button is a fallback/review action:
+// it deactivates the account only if it isn't already inactive,
+// then marks the alert as reviewed so it stops standing out as Pending.
+async function handleDeactivateFromAlert(log) {
+  const confirmed = window.confirm(
+    `Review security alert for ${log.performedBy}? If the account is still active, it will be deactivated until an administrator reactivates it.`
+  );
+  if (!confirmed) return;
+
+  const { data: userRow, error: lookupError } = await supabase
+    .from("users")
+    .select("id, full_name, role, is_active")
+    .eq("email", log.performedBy)
+    .maybeSingle();
+
+  if (lookupError || !userRow) {
+    alert(
+      "Could not find a matching user account for " +
+        log.performedBy +
+        (lookupError ? `: ${lookupError.message}` : "."),
     );
-    if (!confirmed) return;
+    return;
+  }
 
-    const { data: userRow, error: lookupError } = await supabase
-      .from("users")
-      .select("id, full_name, role")
-      .eq("email", log.performedBy)
-      .maybeSingle();
-
-    if (lookupError || !userRow) {
-      alert(
-        "Could not find a matching user account for " +
-          log.performedBy +
-          (lookupError ? `: ${lookupError.message}` : "."),
-      );
-      return;
-    }
-
+  // Only deactivate if it isn't already locked (e.g. auto-lockout already handled it)
+  if (userRow.is_active) {
     const { error: updateError } = await supabase
       .from("users")
       .update({ is_active: false })
@@ -407,21 +415,26 @@ export default function AuditLogs() {
       role: userRow.role,
       status: "Success",
     });
-
-    // Mark the alert itself as handled
-    await supabase
-      .from("audit_logs")
-      .update({ status: "Success", details: `${log.details} — Account deactivated.` })
-      .eq("id", log.id);
-
-    setAuditLogs((prev) =>
-      prev.map((l) =>
-        l.id === log.id
-          ? { ...l, status: "Success", details: `${l.details} — Account deactivated.` }
-          : l,
-      ),
-    );
   }
+
+  // Mark the alert itself as reviewed
+  const resolutionNote = userRow.is_active
+    ? " — Account deactivated."
+    : " — Reviewed (account already deactivated).";
+
+  await supabase
+    .from("audit_logs")
+    .update({ status: "Success", details: `${log.details}${resolutionNote}` })
+    .eq("id", log.id);
+
+  setAuditLogs((prev) =>
+    prev.map((l) =>
+      l.id === log.id
+        ? { ...l, status: "Success", details: `${l.details}${resolutionNote}` }
+        : l,
+    ),
+  );
+}
 
   const filteredLogs = auditLogs.filter((log) => {
     const matchesSearch =
