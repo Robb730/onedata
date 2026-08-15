@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { X, User, CreditCard, Building2, UserCircle, ShieldCheck } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { CustomDropdown } from "./CustomDropdown";
+import ModalPortal from "../Modals/ModalPortal";
 
 const roles = [
   "Administrator",
@@ -141,8 +142,9 @@ export default function EditUserModal({ isOpen, onClose, user, onSave }) {
   );
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 sm:p-6"
+      className="modal-overlay fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6"
       onClick={onClose}
     >
       <div
@@ -296,5 +298,6 @@ export default function EditUserModal({ isOpen, onClose, user, onSave }) {
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

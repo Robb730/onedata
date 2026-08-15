@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { ChevronLeft, ChevronRight, School, Filter, X } from "lucide-react";
+import ModalPortal from "../Modals/ModalPortal";
 
 // ── Level definitions ─────────────────────────────────────────
 const LEVELS = [
@@ -190,11 +191,12 @@ function SchoolModal({ school, level, grandTotal, onClose }) {
 
   return (
     // Backdrop
+    <ModalPortal>
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" />
+      <div className="modal-overlay absolute inset-0" />
 
       {/* Modal panel */}
       <div
@@ -339,6 +341,7 @@ function SchoolModal({ school, level, grandTotal, onClose }) {
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 

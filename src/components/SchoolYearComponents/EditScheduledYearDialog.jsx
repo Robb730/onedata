@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { X, CalendarClock, Info } from "lucide-react";
 import { CustomDatePicker } from "./CustomDatePicker";
 import { CustomTimePicker } from "./CustomTimePicker";
+import ModalPortal from "../Modals/ModalPortal";
 
 /**
  * EditScheduledYearDialog — Modal dedicated to editing an already-scheduled
@@ -58,8 +59,9 @@ export default function EditScheduledYearDialog({ open, onClose, onSubmit, year 
 
   return (
     /* Backdrop */
+    <ModalPortal>
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/40 backdrop-blur-[2px] p-0 sm:p-4"
+      className="modal-overlay fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={onClose}
     >
       {/* Dialog */}
@@ -183,5 +185,6 @@ export default function EditScheduledYearDialog({ open, onClose, onSubmit, year 
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

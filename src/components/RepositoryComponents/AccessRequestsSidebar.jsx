@@ -34,6 +34,7 @@ import {
   denyRequest,
   revokeAccess,
 } from "../../utils/accessRequestsApi";
+import ModalPortal from "../Modals/ModalPortal";
 
 const roleDisplayMap = {
   division_focal: "Division Focal Person",
@@ -162,8 +163,9 @@ function ActionConfirmModal({ open, kind, request, onClose, onConfirm, isWorking
   }[kind];
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-slate-950/50 backdrop-blur-[2px] p-0 sm:p-4"
+      className="modal-overlay fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ animation: "arSidebarBackdropIn 180ms ease-out" }}
     >
       <style>{`
@@ -235,6 +237,7 @@ function ActionConfirmModal({ open, kind, request, onClose, onConfirm, isWorking
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 
@@ -569,9 +572,10 @@ export default function AccessRequestsSidebar({ isOpen, onClose, userProfile }) 
   if (!shouldRender) return null;
 
   return (
+    <ModalPortal>
     <>
       <div
-        className={`fixed inset-0 z-[55] bg-slate-950/40 lg:bg-slate-950/10 backdrop-blur-[1px] transition-opacity duration-300 ${
+        className={`modal-overlay fixed inset-0 z-[55] transition-opacity duration-300 ${
           entered ? "opacity-100" : "opacity-0"
         }`}
         onClick={handleClose}
@@ -735,5 +739,6 @@ export default function AccessRequestsSidebar({ isOpen, onClose, userProfile }) 
         isWorking={isWorking}
       />
     </>
+    </ModalPortal>
   );
 }

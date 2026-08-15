@@ -130,7 +130,7 @@ export function TopHeader({
 
   return (
     <header
-      className="sticky top-0 z-30 flex items-center gap-3 bg-white/90 backdrop-blur-xl px-4 sm:px-6 py-2.5 supports-[backdrop-filter]:bg-white/80"
+      className="app-header sticky top-0 z-30 flex items-center gap-3 bg-white/90 backdrop-blur-xl px-4 sm:px-6 py-2.5 supports-[backdrop-filter]:bg-white/80"
       style={{
         borderBottom: "1px solid rgba(203,213,225,0.45)",
         boxShadow: "0 1px 8px rgba(15,23,42,0.04)",

@@ -17,6 +17,7 @@ import {
 } from "../../utils/divisionAccessRequestsApi";
 import { notifyScope } from "../../utils/notifications";
 import { RepositorySectionHeader } from "../../components/RepositoryComponents";
+import ModalPortal from "../../components/Modals/ModalPortal";
 
 const roleDisplayMap = {
   administrator: "Administrator",
@@ -427,8 +428,9 @@ export default function AccessRestrictedPage() {
 
       {/* Request modal — bottom sheet mobile / centered desktop */}
       {requestOpen && (
+        <ModalPortal>
         <div
-          className="fixed inset-0 z-[60] flex items-end lg:items-center justify-center bg-slate-950/40 backdrop-blur-[2px] p-0 lg:p-4"
+          className="modal-overlay fixed inset-0 z-[60] flex items-end lg:items-center justify-center p-0 lg:p-4"
           onClick={() => !submitting && setRequestOpen(false)}
         >
           <div
@@ -496,6 +498,7 @@ export default function AccessRestrictedPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* Success toast */}

@@ -46,6 +46,7 @@ import FloatingAccessRequestsButton from "../../components/RepositoryComponents/
 import { RepositorySearchBar } from "../../components/RepositoryComponents";
 import FileRequestModal from "../../components/RepositoryComponents/FileRequestModal";
 import FileRequestsPanel from "../../components/RepositoryComponents/FileRequestsPanel";
+import ModalPortal from "../../components/Modals/ModalPortal";
 
 import DownloadOptionsMenu from "../../components/RepositoryComponents/DownloadOptionsMenu";
 
@@ -661,7 +662,8 @@ function DeleteFileConfirmModal({
 }) {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
+    <ModalPortal>
+    <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
         <div className="flex flex-col items-center text-center gap-4 px-8 pt-8 pb-6">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50 ring-1 ring-red-100">
@@ -696,6 +698,7 @@ function DeleteFileConfirmModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 
@@ -725,7 +728,8 @@ function VerifyConfirmModal({
   const isVerified = file.status === "Verified";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+    <ModalPortal>
+    <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-[0_32px_80px_rgba(15,23,42,0.22)] border border-slate-200 overflow-hidden">
         {/* Header */}
         <div className="flex items-start gap-4 px-6 pt-6 pb-5 border-b border-slate-100">
@@ -838,6 +842,7 @@ function VerifyConfirmModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 

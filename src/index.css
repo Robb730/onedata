@@ -166,6 +166,20 @@ body.hide-mobile-nav .mobile-fab {
   pointer-events: none;
 }
 
+/* Dim only — real frost comes from filter on .app-shell-inner. */
+.modal-overlay {
+  background-color: rgb(15 23 42 / 0.36);
+}
+
+html.modal-blur-root .app-shell-inner {
+  filter: blur(4px);
+}
+
+html.app-nav-overlay .app-header,
+html.app-nav-overlay .app-main {
+  filter: blur(4px);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .liquid-glass-pill {
     transition: transform 180ms ease;
