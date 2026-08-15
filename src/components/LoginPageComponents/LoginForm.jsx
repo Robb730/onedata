@@ -7,6 +7,10 @@ import { supabase } from "../../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../contexts/UserContext";
 
+// After this many consecutive failed logins for the same account,
+// a "Security Alert" audit log entry is raised for admins to review.
+const FAILED_LOGIN_ALERT_THRESHOLD = 5;
+
 /**
  * LoginForm — Right-side form panel with top-right floating notification overlay
  * that automatically closes after 5 seconds.
@@ -48,6 +52,62 @@ export function LoginForm() {
     }, 350);
   };
 
+  // ─── Audit logging helpers ─────────────────────────────────
+  async function logLoginAudit({ action, details, performedBy, role, status }) {
+    const { error } = await supabase.from("audit_logs").insert({
+      action,
+      file_name: performedBy ?? "Unknown",
+      details,
+      performed_by: performedBy ?? "Unknown",
+      role: role ?? "Unknown",
+      status,
+    });
+    if (error) console.error("Audit log insert failed:", error.message);
+  }
+
+  // Counts how many "Login Failed" attempts have happened in a row for this
+  // email, most recent first, stopping as soon as a "Login Success" (or an
+  // unrelated log) is hit. Includes the attempt that was just logged.
+  async function getConsecutiveFailedCount(emailValue) {
+  const windowStart = new Date(Date.now() - 30 * 60 * 1000).toISOString(); // last 30 min
+
+  const { data, error } = await supabase
+    .from("audit_logs")
+    .select("id")
+    .eq("performed_by", emailValue)
+    .eq("action", "Login Failed")
+    .gte("performed_on", windowStart)
+    .order("performed_on", { ascending: false });
+
+  if (error) {
+    console.error("Failed to check login attempt history:", error.message);
+    return 0;
+  }
+  return data.length;
+}
+
+  async function handleFailedLogin(emailValue, reason) {
+    await logLoginAudit({
+      action: "Login Failed",
+      details: reason,
+      performedBy: emailValue,
+      role: "Unknown",
+      status: "Failed",
+    });
+
+    const consecutiveFailures = await getConsecutiveFailedCount(emailValue);
+
+    if (consecutiveFailures >= FAILED_LOGIN_ALERT_THRESHOLD) {
+      await logLoginAudit({
+        action: "Security Alert",
+        details: `${consecutiveFailures} consecutive failed login attempts detected for ${emailValue}. Review this account and consider deactivating it.`,
+        performedBy: emailValue,
+        role: "Unknown",
+        status: "Pending",
+      });
+    }
+  }
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setEmailError(false);
@@ -79,10 +139,11 @@ export function LoginForm() {
       return;
     }
 
+    const trimmedEmail = email.trim();
     setLoading(true);
 
     const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+      email: trimmedEmail,
       password,
     });
 
@@ -91,6 +152,11 @@ export function LoginForm() {
       setEmailError(true);
       setPasswordError(true);
 
+      const reason =
+        authError.message ||
+        "Failed to log in. Please check your credentials.";
+      await handleFailedLogin(trimmedEmail, reason);
+
       if (
         authError.message.toLowerCase().includes("invalid login credentials")
       ) {
@@ -98,10 +164,7 @@ export function LoginForm() {
           "Incorrect email or password. Please verify your details and try again.",
         );
       } else {
-        triggerError(
-          authError.message ||
-          "Failed to log in. Please check your credentials.",
-        );
+        triggerError(reason);
       }
       return;
     }
@@ -113,6 +176,10 @@ export function LoginForm() {
       .single();
 
     if (userError) {
+      await handleFailedLogin(
+        trimmedEmail,
+        userError.message || "Error retrieving user profile.",
+      );
       triggerError(userError.message || "Error retrieving user profile.");
       setLoading(false);
       return;
@@ -120,6 +187,13 @@ export function LoginForm() {
 
     if (!userData.is_active) {
       await supabase.auth.signOut();
+      await logLoginAudit({
+        action: "Login Failed",
+        details: "Login attempt on a deactivated account.",
+        performedBy: trimmedEmail,
+        role: userData.role,
+        status: "Failed",
+      });
       triggerError(
         "This account has been deactivated. Please contact your administrator.",
       );
@@ -128,6 +202,16 @@ export function LoginForm() {
       setLoading(false);
       return;
     }
+
+    // Successful login — resets the consecutive-failure streak since the
+    // next lookup will stop as soon as it hits this "Login Success" row.
+    await logLoginAudit({
+      action: "Login Success",
+      details: "Logged in successfully.",
+      performedBy: trimmedEmail,
+      role: userData.role,
+      status: "Success",
+    });
 
     localStorage.setItem("userProfile", JSON.stringify(userData));
     setUserProfile(userData);
