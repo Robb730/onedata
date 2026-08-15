@@ -1,18 +1,32 @@
 import React from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Sector,
+  PieChart, Pie, Cell,
 } from "recharts";
 import { CalendarDays, ChevronDown, Search, MapPin } from "lucide-react";
 import { useLandingStats } from "../../hooks/useLandingStats";
 import { School, Users, GraduationCap, Building } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 
+function useMdUp() {
+  const [md, setMd] = React.useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 768px)").matches : true,
+  );
+  React.useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const onChange = () => setMd(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return md;
+}
+
 const CustomTooltip = ({ active, payload, label, totalForPercent }) => {
   if (!active || !payload?.length) return null;
   const sum = totalForPercent ?? payload.reduce((acc, p) => acc + (p.value || 0), 0);
   return (
-    <div className="rounded-[12px] px-4 py-3.5 text-[0.7rem] bg-slate-900/95 backdrop-blur-md border border-white/10 shadow-2xl min-w-[150px]">
+    <div className="rounded-[12px] px-3 py-3 text-[0.68rem] bg-slate-900/95 backdrop-blur-md border border-white/10 shadow-2xl min-w-[132px] max-w-[min(220px,calc(100vw-2rem))]">
       {label && (
         <p className="text-white/50 font-semibold mb-2 text-[0.62rem] uppercase tracking-wide">{label}</p>
       )}
@@ -39,9 +53,9 @@ const CustomTooltip = ({ active, payload, label, totalForPercent }) => {
 
 function ChartCard({ title, subtitle, children, className = "" }) {
   return (
-    <div className={`rounded-2xl border border-slate-200/70 bg-white p-4 sm:p-6 transition-all duration-300 hover:shadow-[0_12px_40px_rgba(15,23,42,0.09)] hover:-translate-y-[2px] ${className}`}>
-      {title && <h4 className="text-[0.88rem] font-bold text-slate-800 leading-tight">{title}</h4>}
-      {subtitle && <p className="text-[0.7rem] text-slate-400 mt-0.5 mb-3">{subtitle}</p>}
+    <div className={`rounded-2xl border border-slate-200/70 bg-white p-3.5 sm:p-6 transition-all duration-300 hover:shadow-[0_12px_40px_rgba(15,23,42,0.09)] sm:hover:-translate-y-[2px] ${className}`}>
+      {title && <h4 className="text-[0.82rem] sm:text-[0.88rem] font-bold text-slate-800 leading-tight">{title}</h4>}
+      {subtitle && <p className="text-[0.68rem] sm:text-[0.7rem] text-slate-400 mt-0.5 mb-3">{subtitle}</p>}
       {children}
     </div>
   );
@@ -149,22 +163,22 @@ function SchoolDirectory({ schoolList }) {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row gap-2.5 mb-4">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-2.5 mb-3 sm:mb-4">
+        <div className="relative">
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search schools…"
-            className="w-full h-[38px] rounded-[10px] border border-slate-200/80 bg-slate-50/60 pl-9 pr-3 text-[0.8rem] font-medium text-slate-700 placeholder:text-slate-350 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 transition-all"
+            className="w-full h-[42px] sm:h-[38px] rounded-[10px] border border-slate-200/80 bg-slate-50/60 pl-9 pr-3 text-[0.8rem] font-medium text-slate-700 placeholder:text-slate-350 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 transition-all"
           />
         </div>
-        <div className="flex gap-1.5 rounded-[10px] bg-slate-50/60 border border-slate-200/80 p-1 w-full sm:w-max">
+        <div className="flex gap-1.5 rounded-[10px] bg-slate-50/60 border border-slate-200/80 p-1">
           {["All", "Public", "Private"].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`flex-1 sm:flex-none px-3 h-[30px] rounded-[8px] text-[0.72rem] font-bold transition-all ${filter === f
+              className={`flex-1 min-h-[36px] sm:min-h-0 sm:h-[30px] px-3 rounded-[8px] text-[0.72rem] font-bold transition-all ${filter === f
                 ? "bg-white text-blue-700 shadow-sm"
                 : "text-slate-400 hover:text-slate-600"
                 }`}
@@ -180,14 +194,14 @@ function SchoolDirectory({ schoolList }) {
           No schools match "{query}"
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-2.5 max-h-[340px] overflow-y-auto pr-1 -mr-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[min(52vh,380px)] sm:max-h-[340px] overflow-y-auto pr-1 -mr-1">
           {filtered.map((s) => {
             const pct = Math.round((s.enrollment / maxEnrollment) * 100);
             const isPublic = (s.category || "").trim().toLowerCase() === "public";
             return (
               <div
                 key={s.name}
-                className="group rounded-[12px] border border-slate-100 bg-slate-50/40 p-3.5 hover:bg-white hover:border-slate-200 hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)] transition-all duration-200"
+                className="group rounded-[12px] border border-slate-100 bg-slate-50/40 p-3 sm:p-3.5"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex items-start gap-2 min-w-0">
@@ -197,7 +211,7 @@ function SchoolDirectory({ schoolList }) {
                     >
                       <MapPin size={12} style={{ color: isPublic ? "#3b82f6" : "#10b981" }} />
                     </div>
-                    <p className="text-[0.78rem] font-bold text-slate-700 leading-tight truncate">
+                    <p className="text-[0.78rem] font-bold text-slate-700 leading-snug">
                       {s.name}
                     </p>
                   </div>
@@ -241,8 +255,12 @@ function SchoolDirectory({ schoolList }) {
 }
 
 function ResourceGaugeGrid({ data }) {
+  const md = useMdUp();
+  const inner = md ? 40 : 34;
+  const outer = md ? 54 : 46;
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
       {data.map((d, idx) => {
         const denom = d.total + d.needs;
         const pctFulfilled = denom > 0 ? Math.round((d.total / denom) * 100) : 100;
@@ -253,9 +271,9 @@ function ResourceGaugeGrid({ data }) {
         return (
           <div
             key={d.level}
-            className="rounded-[14px] border border-slate-100 bg-slate-50/40 p-4 flex flex-col items-center"
+            className="rounded-[14px] border border-slate-100 bg-slate-50/40 p-3 sm:p-4 flex flex-col items-center"
           >
-            <div className="relative h-[120px] w-full">
+            <div className="relative h-[100px] sm:h-[120px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <defs>
@@ -274,8 +292,8 @@ function ResourceGaugeGrid({ data }) {
                     cy="50%"
                     startAngle={90}
                     endAngle={-270}
-                    innerRadius={40}
-                    outerRadius={54}
+                    innerRadius={inner}
+                    outerRadius={outer}
                     paddingAngle={2}
                     cornerRadius={6}
                     dataKey="value"
@@ -287,7 +305,7 @@ function ResourceGaugeGrid({ data }) {
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-[1.1rem] font-black text-slate-800 leading-none">
+                <span className="text-[1rem] sm:text-[1.1rem] font-black text-slate-800 leading-none">
                   {pctFulfilled}%
                 </span>
                 <span className="text-[0.58rem] font-bold text-slate-400 mt-1 uppercase tracking-wide">
@@ -300,7 +318,7 @@ function ResourceGaugeGrid({ data }) {
               {d.level}
             </p>
 
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-2">
               <span className="flex items-center gap-1 text-[0.66rem] font-semibold text-emerald-600">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 {d.total.toLocaleString()} on hand
@@ -318,6 +336,7 @@ function ResourceGaugeGrid({ data }) {
 }
 
 export function HeroStats({ selectedYear, onYearChange, availableYears }) {
+  const md = useMdUp();
   const { loading, error, learners, schools, teachers, classrooms } = useLandingStats(selectedYear);
 
   const schoolPieData = [
@@ -427,14 +446,14 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
         {!loading && !error && (
           <>
             {/* ── Learners section ─────────────────── */}
-            <div ref={learnersRef} className="mb-10 md:mb-14 scroll-mt-20">
+            <div ref={learnersRef} className="mb-8 md:mb-14 scroll-mt-24">
               <SectionHeader
                 label="Dashboard Overview"
                 title="Learners"
                 subtitle="Demographic distribution and enrollment breakdown across schools"
               />
 
-              <div className="grid md:grid-cols-2 gap-5">
+              <div className="grid md:grid-cols-2 gap-3.5 md:gap-5">
                 <ChartCard
                   title="Learners"
                   subtitle={`${learners.total.toLocaleString()} total enrolled`}
@@ -442,7 +461,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                   {noLearners ? (
                     <EmptyState icon={Users} height="h-[220px]" />
                   ) : (
-                    <div className="relative h-[220px]">
+                    <div className="relative h-[190px] sm:h-[220px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <defs>
@@ -459,8 +478,8 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                             data={learnerPieData}
                             cx="50%"
                             cy="50%"
-                            innerRadius={62}
-                            outerRadius={85}
+                            innerRadius={md ? 62 : 48}
+                            outerRadius={md ? 85 : 68}
                             paddingAngle={4}
                             cornerRadius={6}
                             dataKey="value"
@@ -478,7 +497,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                         </PieChart>
                       </ResponsiveContainer>
                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-[1.5rem] font-black text-slate-800 leading-none">
+                        <span className="text-[1.25rem] sm:text-[1.5rem] font-black text-slate-800 leading-none">
                           {learners.total.toLocaleString()}
                         </span>
                         <span className="text-[0.62rem] font-bold text-slate-400 mt-1 uppercase tracking-wider">
@@ -489,7 +508,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                   )}
 
                   {!noLearners && (
-                    <div className="flex justify-center gap-3 mt-3 flex-wrap">
+                    <div className="flex justify-center gap-2 sm:gap-3 mt-3 flex-wrap">
                       {learnerPieData.map((d) => {
                         const pct = learners.total > 0 ? Math.round((d.value / learners.total) * 100) : 0;
                         return (
@@ -511,9 +530,14 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                   {noLearners ? (
                     <EmptyState icon={Users} height="h-[280px]" />
                   ) : (
-                    <div className="h-[280px]">
+                    <div className="h-[210px] sm:h-[280px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={learners.byLevel} barGap={4} barSize={24} margin={{ top: 10, right: 4, left: -12, bottom: 0 }}>
+                        <BarChart
+                          data={learners.byLevel}
+                          barGap={4}
+                          barSize={md ? 24 : 16}
+                          margin={{ top: 8, right: 4, left: md ? -12 : -8, bottom: 0 }}
+                        >
                           <defs>
                             <linearGradient id="barPublic" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="0%" stopColor="#60a5fa" />
@@ -527,12 +551,15 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                           <CartesianGrid strokeDasharray="4 8" vertical={false} stroke="#e2e8f0" strokeOpacity={0.6} />
                           <XAxis
                             dataKey="level"
-                            tick={{ fontSize: 10.5, fill: "#64748b", fontWeight: 600 }}
+                            tick={{ fontSize: md ? 10.5 : 9, fill: "#64748b", fontWeight: 600 }}
                             axisLine={false}
                             tickLine={false}
                             dy={6}
+                            interval={0}
                           />
-                          <YAxis tick={{ fontSize: 10, fill: "#cbd5e1" }} axisLine={false} tickLine={false} />
+                          {md && (
+                            <YAxis tick={{ fontSize: 10, fill: "#cbd5e1" }} axisLine={false} tickLine={false} />
+                          )}
                           <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(59,130,246,0.05)", radius: 8 }} />
                           <Bar dataKey="public" name="Public" fill="url(#barPublic)" radius={[6, 6, 0, 0]} />
                           <Bar dataKey="private" name="Private" fill="url(#barPrivate)" radius={[6, 6, 0, 0]} />
@@ -558,9 +585,10 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                   {noLearners ? (
                     <EmptyState icon={Users} height="h-[280px]" />
                   ) : (
-                    <div className="h-[280px]">
+                    <div className="-mx-1 overflow-x-auto overscroll-x-contain">
+                      <div className="h-[210px] sm:h-[280px] min-w-[480px] sm:min-w-0">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={learners.elemByGrade} barGap={3} barSize={18} margin={{ top: 10, right: 4, left: -12, bottom: 0 }}>
+                        <BarChart data={learners.elemByGrade} barGap={3} barSize={md ? 18 : 12} margin={{ top: 8, right: 8, left: md ? -12 : 0, bottom: 4 }}>
                           <defs>
                             <linearGradient id="barMale" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="0%" stopColor="#60a5fa" />
@@ -572,13 +600,16 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                             </linearGradient>
                           </defs>
                           <CartesianGrid strokeDasharray="4 8" vertical={false} stroke="#e2e8f0" strokeOpacity={0.6} />
-                          <XAxis dataKey="grade" tick={{ fontSize: 9.5, fill: "#64748b", fontWeight: 600 }} axisLine={false} tickLine={false} dy={6} />
-                          <YAxis tick={{ fontSize: 10, fill: "#cbd5e1" }} axisLine={false} tickLine={false} />
+                          <XAxis dataKey="grade" tick={{ fontSize: md ? 9.5 : 9, fill: "#64748b", fontWeight: 600 }} axisLine={false} tickLine={false} dy={6} interval={0} />
+                          {md && (
+                            <YAxis tick={{ fontSize: 10, fill: "#cbd5e1" }} axisLine={false} tickLine={false} />
+                          )}
                           <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(148,163,184,0.06)", radius: 8 }} />
                           <Bar dataKey="male" name="Male" fill="url(#barMale)" radius={[5, 5, 0, 0]} />
                           <Bar dataKey="female" name="Female" fill="url(#barFemale)" radius={[5, 5, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
+                      </div>
                     </div>
                   )}
                   {!noLearners && (
@@ -596,14 +627,14 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
             </div>
 
             {/* ── Schools section ──────────────────── */}
-            <div ref={schoolsRef} className="mb-10 md:mb-14 scroll-mt-20">
+            <div ref={schoolsRef} className="mb-8 md:mb-14 scroll-mt-24">
               <SectionHeader
                 label="Dashboard Overview"
                 title="Schools"
                 subtitle="Public vs. private distribution and per-school enrollment"
               />
 
-              <div className="grid lg:grid-cols-[280px_1fr] gap-5">
+              <div className="grid lg:grid-cols-[280px_1fr] gap-3.5 md:gap-5">
                 <ChartCard
                   title="Overview"
                   subtitle={`${schools.total.toLocaleString()} total schools`}
@@ -611,10 +642,10 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                   {noSchools ? (
                     <EmptyState icon={School} height="h-[180px]" />
                   ) : (
-                    <div className="h-[180px]">
+                    <div className="h-[160px] sm:h-[180px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie data={schoolPieData} cx="50%" cy="50%" innerRadius={52} outerRadius={72} paddingAngle={3} dataKey="value" stroke="none">
+                          <Pie data={schoolPieData} cx="50%" cy="50%" innerRadius={md ? 52 : 42} outerRadius={md ? 72 : 58} paddingAngle={3} dataKey="value" stroke="none">
                             {schoolPieData.map((e, i) => <Cell key={i} fill={e.color} />)}
                           </Pie>
                           <Tooltip content={<CustomTooltip />} />
@@ -648,7 +679,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
             </div>
 
             {/* ── Teachers section ───── */}
-            <div ref={teachersRef} className="mb-10 md:mb-14 scroll-mt-20">
+            <div ref={teachersRef} className="mb-8 md:mb-14 scroll-mt-24">
               <SectionHeader
                 label="Dashboard Overview"
                 title="Teachers"
@@ -667,7 +698,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
             </div>
 
             {/* ── Classrooms section ── */}
-            <div ref={numSchoolsRef} className="mb-10 md:mb-14 scroll-mt-20">
+            <div ref={numSchoolsRef} className="mb-8 md:mb-14 scroll-mt-24">
               <SectionHeader
                 label="Dashboard Overview"
                 title="Classrooms"
