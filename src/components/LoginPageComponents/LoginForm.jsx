@@ -6,6 +6,7 @@ import { LoginCheckbox } from "./LoginCheckbox";
 import { supabase } from "../../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../contexts/UserContext";
+import ForgotPasswordModal from "./ForgotPasswordModal";
 
 // After this many consecutive failed logins for the same account,
 // a "Security Alert" audit log entry is raised for admins to review.
@@ -28,6 +29,8 @@ export function LoginForm() {
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const { setUserProfile } = useUser();
+
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const navigate = useNavigate();
 
   // Auto-dismiss notification overlay after 5 seconds
@@ -68,23 +71,31 @@ export function LoginForm() {
   // Counts how many "Login Failed" attempts have happened in a row for this
   // email, most recent first, stopping as soon as a "Login Success" (or an
   // unrelated log) is hit. Includes the attempt that was just logged.
+  // Counts how many "Login Failed" attempts have happened in a row for this
+  // email, most recent first, stopping as soon as a "Login Success" is hit.
   async function getConsecutiveFailedCount(emailValue) {
-  const windowStart = new Date(Date.now() - 30 * 60 * 1000).toISOString(); // last 30 min
+    const windowStart = new Date(Date.now() - 30 * 60 * 1000).toISOString(); // last 30 min
 
-  const { data, error } = await supabase
-    .from("audit_logs")
-    .select("id")
-    .eq("performed_by", emailValue)
-    .eq("action", "Login Failed")
-    .gte("performed_on", windowStart)
-    .order("performed_on", { ascending: false });
+    const { data, error } = await supabase
+      .from("audit_logs")
+      .select("action, performed_on")
+      .eq("performed_by", emailValue)
+      .in("action", ["Login Failed", "Login Success"])
+      .gte("performed_on", windowStart)
+      .order("performed_on", { ascending: false });
 
-  if (error) {
-    console.error("Failed to check login attempt history:", error.message);
-    return 0;
+    if (error) {
+      console.error("Failed to check login attempt history:", error.message);
+      return 0;
+    }
+
+    let count = 0;
+    for (const log of data) {
+      if (log.action === "Login Success") break; // streak resets here
+      count++;
+    }
+    return count;
   }
-  return data.length;
-}
 
   async function handleFailedLogin(emailValue, reason) {
     await logLoginAudit({
@@ -98,13 +109,27 @@ export function LoginForm() {
     const consecutiveFailures = await getConsecutiveFailedCount(emailValue);
 
     if (consecutiveFailures >= FAILED_LOGIN_ALERT_THRESHOLD) {
-      await logLoginAudit({
-        action: "Security Alert",
-        details: `${consecutiveFailures} consecutive failed login attempts detected for ${emailValue}. Review this account and consider deactivating it.`,
-        performedBy: emailValue,
-        role: "Unknown",
-        status: "Pending",
-      });
+      const { data: userRow } = await supabase
+        .from("users")
+        .select("id, full_name, role, is_active")
+        .eq("email", emailValue)
+        .maybeSingle();
+
+      // Only act if the account exists and isn't already locked/inactive
+      if (userRow?.is_active) {
+        await supabase
+          .from("users")
+          .update({ is_active: false })
+          .eq("id", userRow.id);
+
+        await logLoginAudit({
+          action: "Security Alert",
+          details: `Account automatically locked after ${consecutiveFailures} consecutive failed login attempts. Review before reactivating.`,
+          performedBy: emailValue,
+          role: userRow.role,
+          status: "Pending",
+        });
+      }
     }
   }
 
@@ -153,8 +178,7 @@ export function LoginForm() {
       setPasswordError(true);
 
       const reason =
-        authError.message ||
-        "Failed to log in. Please check your credentials.";
+        authError.message || "Failed to log in. Please check your credentials.";
       await handleFailedLogin(trimmedEmail, reason);
 
       if (
@@ -213,6 +237,16 @@ export function LoginForm() {
       status: "Success",
     });
 
+    await supabase
+      .from("audit_logs")
+      .update({
+        status: "Success",
+        details: "Resolved automatically after a successful login.",
+      })
+      .eq("performed_by", trimmedEmail)
+      .eq("action", "Security Alert")
+      .eq("status", "Pending");
+
     localStorage.setItem("userProfile", JSON.stringify(userData));
     setUserProfile(userData);
 
@@ -237,10 +271,11 @@ export function LoginForm() {
       {/* ========================================================= */}
       {notification && (
         <div
-          className={`fixed top-4 right-4 left-4 z-50 flex max-w-sm sm:left-auto sm:w-[90vw] items-start gap-3 rounded-2xl border border-rose-200/90 bg-white/95 p-4 text-rose-900 shadow-[0_20px_50px_rgba(225,29,72,0.18),0_8px_20px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-350 ease-in-out ${isExiting
+          className={`fixed top-4 right-4 left-4 z-50 flex max-w-sm sm:left-auto sm:w-[90vw] items-start gap-3 rounded-2xl border border-rose-200/90 bg-white/95 p-4 text-rose-900 shadow-[0_20px_50px_rgba(225,29,72,0.18),0_8px_20px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-350 ease-in-out ${
+            isExiting
               ? "opacity-0 translate-x-12 scale-95 pointer-events-none"
               : "opacity-100 translate-x-0 scale-100 animate-[toastPopRight_0.4s_cubic-bezier(0.16,1,0.3,1)]"
-            }`}
+          }`}
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-600 shadow-sm mt-0.5">
             <AlertCircle size={20} strokeWidth={2.25} />
@@ -330,17 +365,18 @@ export function LoginForm() {
         </div>
 
         {/* Forgot password link */}
-        <p className="text-center">
-          <a
-            href="#"
-            id="login-forgot-password"
-            className="text-[0.82rem] font-semibold text-[#2986e8] hover:text-[#1565c0] transition-colors relative
-                       after:absolute after:bottom-[-2px] after:left-0 after:w-0 after:h-[1.5px] after:bg-[#2986e8] after:transition-all after:duration-300
-                       hover:after:w-full"
-          >
-            Forgot password?
-          </a>
-        </p>
+<p className="text-center">
+  <button
+    type="button"
+    id="login-forgot-password"
+    onClick={() => setShowForgotPassword(true)}
+    className="text-[0.82rem] font-semibold text-[#2986e8] hover:text-[#1565c0] transition-colors relative
+               after:absolute after:bottom-[-2px] after:left-0 after:w-0 after:h-[1.5px] after:bg-[#2986e8] after:transition-all after:duration-300
+               hover:after:w-full"
+  >
+    Forgot password?
+  </button>
+</p>
       </form>
 
       {/* Footer */}
@@ -349,6 +385,26 @@ export function LoginForm() {
       </p>
 
       {/* Keyframes for right-side pop entrance */}
+      {/* Keyframes for right-side pop entrance */}
+      <style>{`
+        @keyframes toastPopRight {
+          0% {
+            opacity: 0;
+            transform: translateX(40px) scale(0.92);
+          }
+          100% {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+          }
+        }
+      `}</style>
+
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+      />
+    
+
       <style>{`
         @keyframes toastPopRight {
           0% {
