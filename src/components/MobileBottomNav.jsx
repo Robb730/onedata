@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -129,50 +130,25 @@ export function MobileBottomNav() {
     setMoreOpen(false);
   }, [location.pathname]);
 
-  useEffect(() => {
-    if (!moreOpen) {
-      document.body.style.overflow = "";
-      document.documentElement.classList.remove("app-nav-overlay");
-      return undefined;
-    }
-    document.body.style.overflow = "hidden";
-    document.documentElement.classList.add("app-nav-overlay");
-    return () => {
-      document.body.style.overflow = "";
-      document.documentElement.classList.remove("app-nav-overlay");
-    };
-  }, [moreOpen]);
-
-  return (
+  const nav = (
     <>
-      {/* Dim page only — stops above the floating nav */}
-      <div
-        className={`lg:hidden fixed inset-0 z-40 transition-opacity duration-200 ${
-          moreOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-        style={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
-        onClick={() => setMoreOpen(false)}
-        aria-hidden={!moreOpen}
-      >
-        <div className="modal-overlay absolute inset-0" />
-      </div>
+      {moreOpen && (
+        <div
+          className="lg:hidden more-scrim-in fixed inset-0 z-40 bg-slate-900/25"
+          onClick={() => setMoreOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
       <nav
-        className="mobile-bottom-nav lg:hidden fixed bottom-0 left-0 right-0 z-50 px-4 transition-[transform,opacity] duration-200"
-        style={{ paddingBottom: "calc(10px + env(safe-area-inset-bottom))" }}
+        className="mobile-bottom-nav lg:hidden pointer-events-none fixed inset-x-0 bottom-0 z-50 bg-transparent px-4"
+        style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}
       >
-        <div className="relative mx-auto max-w-md">
-          {/* More menu */}
-          {hasMore && (
-            <div
-              className={`absolute bottom-full left-0 right-0 mb-3 origin-bottom transition-all duration-300 ease-[cubic-bezier(0.34,1.4,0.64,1)] ${
-                moreOpen
-                  ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
-                  : "pointer-events-none translate-y-3 scale-95 opacity-0"
-              }`}
-            >
-              <div className="liquid-glass-panel rounded-[22px] px-4 pt-3 pb-4">
-                <div className="mb-3 flex items-center justify-between">
+        <div className="pointer-events-auto relative mx-auto w-full max-w-md overflow-visible">
+          {hasMore && moreOpen && (
+            <div className="absolute bottom-full left-0 right-0 z-10 mb-3 more-panel-in">
+              <div className="liquid-glass-panel overflow-hidden rounded-[22px] px-3 pt-3 pb-3.5">
+                <div className="mb-2.5 flex items-center justify-between">
                   <p className="text-[0.82rem] font-bold text-slate-800">More</p>
                   <button
                     type="button"
@@ -184,25 +160,26 @@ export function MobileBottomNav() {
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  {visibleMoreItems.map((item) => {
+                  {visibleMoreItems.map((item, index) => {
                     const active = isPathActive(location.pathname, item.path);
                     return (
                       <NavLink
                         key={item.path}
                         to={item.path}
                         onClick={() => setMoreOpen(false)}
-                        className={`flex items-center gap-3 rounded-2xl border px-3.5 py-3 no-underline transition-colors ${
+                        className={`more-tile-in flex min-w-0 items-center gap-2 rounded-2xl border px-2.5 py-2.5 no-underline transition-colors ${
                           active
                             ? "border-blue-200/70 bg-blue-50/80"
                             : "border-white/50 bg-white/45 hover:bg-white/70"
                         }`}
+                        style={{ animationDelay: `${80 + index * 55}ms` }}
                       >
                         <item.icon
-                          size={18}
-                          className={active ? "text-blue-600" : "text-slate-500"}
+                          size={16}
+                          className={`shrink-0 ${active ? "text-blue-600" : "text-slate-500"}`}
                         />
                         <span
-                          className={`text-[0.8rem] font-semibold ${
+                          className={`min-w-0 truncate text-[0.72rem] font-semibold ${
                             active ? "text-blue-700" : "text-slate-700"
                           }`}
                         >
@@ -285,4 +262,7 @@ export function MobileBottomNav() {
       </nav>
     </>
   );
+
+  if (typeof document === "undefined") return null;
+  return createPortal(nav, document.body);
 }
