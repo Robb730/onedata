@@ -240,8 +240,85 @@ function SchoolDirectory({ schoolList }) {
   );
 }
 
+function ResourceGaugeGrid({ data }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {data.map((d, idx) => {
+        const denom = d.total + d.needs;
+        const pctFulfilled = denom > 0 ? Math.round((d.total / denom) * 100) : 100;
+        const gaugeData = [
+          { name: "Fulfilled", value: pctFulfilled, color: "#3b82f6" },
+          { name: "Gap", value: 100 - pctFulfilled, color: "#d1fae5" },
+        ];
+        return (
+          <div
+            key={d.level}
+            className="rounded-[14px] border border-slate-100 bg-slate-50/40 p-4 flex flex-col items-center"
+          >
+            <div className="relative h-[120px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <defs>
+                    <linearGradient id={`gauge-${idx}`} x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#60a5fa" />
+                      <stop offset="100%" stopColor="#3b82f6" />
+                    </linearGradient>
+                    <linearGradient id={`gauge-gap-${idx}`} x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#34d399" />
+                      <stop offset="100%" stopColor="#10b981" />
+                    </linearGradient>
+                  </defs>
+                  <Pie
+                    data={gaugeData}
+                    cx="50%"
+                    cy="50%"
+                    startAngle={90}
+                    endAngle={-270}
+                    innerRadius={40}
+                    outerRadius={54}
+                    paddingAngle={2}
+                    cornerRadius={6}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    <Cell fill={`url(#gauge-gap-${idx})`} />
+                    <Cell fill={`url(#gauge-${idx})`} />
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-[1.1rem] font-black text-slate-800 leading-none">
+                  {pctFulfilled}%
+                </span>
+                <span className="text-[0.58rem] font-bold text-slate-400 mt-1 uppercase tracking-wide">
+                  Fulfilled
+                </span>
+              </div>
+            </div>
+
+            <p className="text-[0.74rem] font-bold text-slate-700 mt-1 text-center">
+              {d.level}
+            </p>
+
+            <div className="flex items-center gap-3 mt-2">
+              <span className="flex items-center gap-1 text-[0.66rem] font-semibold text-emerald-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                {d.total.toLocaleString()} on hand
+              </span>
+              <span className="flex items-center gap-1 text-[0.66rem] font-semibold text-slate-500">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                {d.needs.toLocaleString()} needed
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function HeroStats({ selectedYear, onYearChange, availableYears }) {
-  const { loading, error, learners, schools } = useLandingStats(selectedYear);
+  const { loading, error, learners, schools, teachers, classrooms } = useLandingStats(selectedYear);
 
   const schoolPieData = [
     { name: "Public", value: schools.public, color: "#3b82f6" },
@@ -317,7 +394,9 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
               <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full mb-4" style={{ background: "linear-gradient(135deg, #34d399 0%, #047857 100%)" }}>
                 <GraduationCap size={18} color="#fff" strokeWidth={2} />
               </div>
-              <p className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-tight leading-none">—</p>
+              <p className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-tight leading-none">
+                {teachers.total.toLocaleString()}
+              </p>
               <p className="text-[0.7rem] font-semibold text-slate-400 mt-1.5 tracking-wide">Teachers</p>
             </button>
 
@@ -329,8 +408,10 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
               <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full mb-4" style={{ background: "linear-gradient(135deg, #fbbf24 0%, #b45309 100%)" }}>
                 <Building size={18} color="#fff" strokeWidth={2} />
               </div>
-              <p className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-tight leading-none">—</p>
-              <p className="text-[0.7rem] font-semibold text-slate-400 mt-1.5 tracking-wide">Number of Schools</p>
+              <p className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-tight leading-none">
+                {classrooms.total.toLocaleString()}
+              </p>
+              <p className="text-[0.7rem] font-semibold text-slate-400 mt-1.5 tracking-wide">Classrooms</p>
             </button>
           </div>
         )}
@@ -566,27 +647,41 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
               </div>
             </div>
 
-            {/* ── Teachers section (placeholder) ───── */}
+            {/* ── Teachers section ───── */}
             <div ref={teachersRef} className="mb-10 md:mb-14 scroll-mt-20">
               <SectionHeader
                 label="Dashboard Overview"
                 title="Teachers"
-                subtitle="School personnel data"
+                subtitle="Teacher needs and excess per level"
               />
-              <ChartCard title="Teachers" subtitle="No data available yet">
-                <EmptyState icon={GraduationCap} height="h-[200px]" />
+              <ChartCard
+                title="Teachers"
+                subtitle="Total teaching workforce vs. current staffing needs"
+              >
+                {teachers.total + teachers.totalNeeds === 0 ? (
+                  <EmptyState icon={GraduationCap} height="h-[280px]" />
+                ) : (
+                  <ResourceGaugeGrid data={teachers.byLevel} />
+                )}
               </ChartCard>
             </div>
 
-            {/* ── Number of Schools section (placeholder) ── */}
+            {/* ── Classrooms section ── */}
             <div ref={numSchoolsRef} className="mb-10 md:mb-14 scroll-mt-20">
               <SectionHeader
                 label="Dashboard Overview"
-                title="Number of Schools"
-                subtitle="Community Learning Center data"
+                title="Classrooms"
+                subtitle="Classroom inventory, needs, and excess per level"
               />
-              <ChartCard title="Number of Schools" subtitle="No data available yet">
-                <EmptyState icon={Building} height="h-[200px]" />
+              <ChartCard
+                title="Classrooms"
+                subtitle="Total available classrooms vs. current shortage"
+              >
+                {classrooms.total + classrooms.totalNeeds === 0 ? (
+                  <EmptyState icon={Building} height="h-[280px]" />
+                ) : (
+                  <ResourceGaugeGrid data={classrooms.byLevel} />
+                )}
               </ChartCard>
             </div>
           </>

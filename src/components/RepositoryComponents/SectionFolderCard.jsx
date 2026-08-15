@@ -364,3 +364,4 @@ export function SectionFolderCard({
     </div>
   );
 }
+

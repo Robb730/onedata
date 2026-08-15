@@ -23,6 +23,7 @@ import {
 } from "../../utils/sectionDeletion";
 import DeleteSectionWarningModal from "../../components/RepositoryComponents/DeleteSectionWarningModal";
 import PasswordConfirmModal from "../../components/RepositoryComponents/PasswordConfirmModal";
+import { CheckCircle, XCircle, X as CloseIcon } from "lucide-react";
 
 export default function RepositoryDivisionPage() {
   const navigate = useNavigate();
@@ -52,6 +53,46 @@ export default function RepositoryDivisionPage() {
   const [showCreateSectionModal, setShowCreateSectionModal] = useState(false);
   const [sectionToast, setSectionToast] = useState(null); // { type: 'success'|'error', message }
 
+  const logAudit = async ({ action, fileName, details, status }) => {
+    try {
+      const { data, error } = await supabase
+        .from("audit_logs")
+        .insert({
+          action,
+          file_name: fileName ?? null,
+          details: details ?? "",
+          performed_by: userProfile?.full_name,
+          role: userProfile?.role,
+          performed_on: new Date().toISOString(),
+          status,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      console.error("Failed to write audit log:", e);
+      return null;
+    }
+  };
+
+  const updateAuditLog = async (id, { action, details, status }) => {
+    if (!id) return;
+    try {
+      await supabase
+        .from("audit_logs")
+        .update({
+          action,
+          details: details ?? "",
+          performed_on: new Date().toISOString(),
+          status,
+        })
+        .eq("id", id);
+    } catch (e) {
+      console.error("Failed to update audit log:", e);
+    }
+  };
+
   const handleSectionCreated = (newSection) => {
     setSections((prev) =>
       [...prev, newSection].sort((a, b) => a.name.localeCompare(b.name)),
@@ -59,9 +100,15 @@ export default function RepositoryDivisionPage() {
     setShowCreateSectionModal(false);
     setSectionToast({
       type: "success",
-      message: `"${newSection.name}" was added.`,
+      message: `"${newSection.name}" folder has been successfully added.`,
     });
     setTimeout(() => setSectionToast(null), 4000);
+    logAudit({
+      action: "Create",
+      fileName: newSection.name,
+      details: `Section "${newSection.name}" created in ${division?.name ?? "division"}.`,
+      status: "Success",
+    });
   };
 
   const canCreateSection =
@@ -97,13 +144,22 @@ export default function RepositoryDivisionPage() {
       requestedBy: userProfile.id,
       requestedByName: userProfile.full_name,
     });
-    setPendingRequests((prev) => ({ ...prev, [section.id]: req }));
     setPasswordFlow(null);
     setSectionToast({
       type: "success",
       message: `Deletion of "${section.name}" is now pending admin approval.`,
     });
     setTimeout(() => setSectionToast(null), 4000);
+    const auditRow = await logAudit({
+      action: "Access Request",
+      fileName: section.name,
+      details: `Deletion of section "${section.name}" requested — pending admin approval.`,
+      status: "Pending",
+    });
+    setPendingRequests((prev) => ({
+      ...prev,
+      [section.id]: { ...req, auditLogId: auditRow?.id },
+    }));
   };
 
   // Admin clicks "Confirm" on a pending card → open password modal in "approve" mode
@@ -132,9 +188,23 @@ export default function RepositoryDivisionPage() {
       setPasswordFlow(null);
       setSectionToast({
         type: "success",
-        message: `"${section.name}" and its files were deleted.`,
+        message: `"${section.name}" folder and its files has been successfully deleted.`,
       });
       setTimeout(() => setSectionToast(null), 4000);
+      if (request.auditLogId) {
+        updateAuditLog(request.auditLogId, {
+          action: "Delete",
+          details: `Section "${section.name}" and its files were permanently deleted (approved by ${userProfile.full_name}).`,
+          status: "Success",
+        });
+      } else {
+        logAudit({
+          action: "Delete",
+          fileName: section.name,
+          details: `Section "${section.name}" and its files were permanently deleted (approved by ${userProfile.full_name}).`,
+          status: "Success",
+        });
+      }
     } finally {
       setDeleteBusy(false);
     }
@@ -156,6 +226,20 @@ export default function RepositoryDivisionPage() {
         message: `Deletion request for "${section.name}" was declined.`,
       });
       setTimeout(() => setSectionToast(null), 4000);
+      if (request.auditLogId) {
+        updateAuditLog(request.auditLogId, {
+          action: "Access Grant",
+          details: `Deletion request for section "${section.name}" was declined by ${userProfile.full_name}.`,
+          status: "Failed",
+        });
+      } else {
+        logAudit({
+          action: "Access Grant",
+          fileName: section.name,
+          details: `Deletion request for section "${section.name}" was declined by ${userProfile.full_name}.`,
+          status: "Failed",
+        });
+      }
     } catch (e) {
       setSectionToast({
         type: "error",
@@ -466,6 +550,63 @@ export default function RepositoryDivisionPage() {
             : handleRequestPassword
         }
       />
+
+      {/* Success / Error Toast */}
+      <div
+        className={`fixed bottom-8 right-8 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${sectionToast
+            ? "translate-x-0 opacity-100 pointer-events-auto"
+            : "translate-x-[120%] opacity-0 pointer-events-none"
+          }`}
+        style={{
+          width: "380px",
+          minHeight: "76px",
+          borderRadius: "16px",
+          boxShadow: sectionToast
+            ? sectionToast.type === "error"
+              ? "0 4px 24px rgba(244, 63, 94, 0.25), 0 1px 3px rgba(0,0,0,0.05)"
+              : "0 4px 24px rgba(16, 185, 129, 0.25), 0 1px 3px rgba(0,0,0,0.05)"
+            : "0 12px 30px rgba(0,0,0,0)",
+          fontFamily: "Poppins, sans-serif",
+          border: "1px solid rgba(241, 245, 249, 1)",
+        }}
+      >
+        <div
+          className={`absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r ${sectionToast?.type === "error"
+              ? "from-rose-100/60 to-transparent"
+              : "from-emerald-100/60 to-transparent"
+            }`}
+        />
+        <div
+          className="flex items-center relative z-10 py-4 flex-1"
+          style={{ padding: "0 20px", gap: "16px", minHeight: "76px" }}
+        >
+          <div
+            className="flex items-center justify-center shrink-0 bg-white rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.06),_0_1px_3px_rgba(0,0,0,0.03)]"
+            style={{ width: "42px", height: "42px" }}
+          >
+            {sectionToast?.type === "error" ? (
+              <XCircle size={22} className="text-rose-500" strokeWidth={2.5} />
+            ) : (
+              <CheckCircle size={22} className="text-emerald-500" strokeWidth={2.5} />
+            )}
+          </div>
+          <div className="flex flex-col justify-center flex-1">
+            <p style={{ fontSize: "15px", fontWeight: 700, color: "#0F172A", lineHeight: 1.2, margin: 0 }}>
+              {sectionToast?.type === "error" ? "Error" : "Success"}
+            </p>
+            <p style={{ fontSize: "13px", fontWeight: 500, color: "#64748B", marginTop: "3px", margin: 0 }}>
+              {sectionToast?.message}
+            </p>
+          </div>
+          <button
+            onClick={() => setSectionToast(null)}
+            className="absolute top-1/2 -translate-y-1/2 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-md hover:bg-slate-100"
+            aria-label="Close notification"
+          >
+            <CloseIcon size={18} strokeWidth={2.5} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

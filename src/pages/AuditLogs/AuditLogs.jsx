@@ -23,6 +23,7 @@ export default function AuditLogs() {
     "Upload",
     "Download",
     "Verify",
+    "Create",
     "Delete",
     "Edit",
     "Role Change",
