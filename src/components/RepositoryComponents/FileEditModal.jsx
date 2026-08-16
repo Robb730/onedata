@@ -12,6 +12,7 @@ import {
   Minimize2,
   Download,
   FileType,
+  ArrowRight,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { parseAndSyncStructuredData } from "../../utils/structuredDataSync";
@@ -918,6 +919,87 @@ export default function FileEditModal({
     }
   };
 
+  const handleTransitionTo2ndSem = () => {
+    const operationsSheet = sheetNames.find(n => /PART\s*I\b/i.test(n) && /OPERATIONS/i.test(n) && !/SUPPORT/i.test(n) && !/GENERAL/i.test(n) && !/GERAL/i.test(n));
+    const supportOpsSheet = sheetNames.find(n => /PART\s*I\b/i.test(n) && /SUPPORT/i.test(n));
+    const generalAdminSheet = sheetNames.find(n => /PART\s*I\b/i.test(n) && (/GENERAL/i.test(n) || /GERAL/i.test(n)));
+
+    const sheetsToUpdate = [operationsSheet, supportOpsSheet, generalAdminSheet].filter(Boolean);
+    if (sheetsToUpdate.length === 0) return;
+
+    const nextSheets = { ...sheets };
+    let missingFormulas = false;
+    const formulaUpdates = { ...sheetFormulaCells };
+
+    for (const sheetName of sheetsToUpdate) {
+      if (!nextSheets[sheetName] && xWorkbookRef.current) {
+        const { rows, formulaRefs } = extractSheetDataFast(xWorkbookRef.current, sheetName);
+        nextSheets[sheetName] = rows;
+        formulaUpdates[sheetName] = formulaRefs;
+        missingFormulas = true;
+      }
+    }
+
+    const editsToSend = [];
+    
+    for (const sheetName of sheetsToUpdate) {
+      const rows = nextSheets[sheetName];
+      if (!rows) continue;
+      
+      const updatedRows = rows.map(r => [...r]);
+      const currentFormulaSet = formulaUpdates[sheetName] ? new Set(formulaUpdates[sheetName]) : new Set();
+      let formulaSetChanged = false;
+
+      for (let r = 2; r < updatedRows.length; r++) {
+        const row = updatedRows[r];
+        const isEmpty = row.every(cell => (cell === null || cell === undefined || String(cell).trim() === ""));
+        if (isEmpty) continue;
+        
+        while (updatedRows[r].length <= 4) updatedRows[r].push("");
+        
+        const valToCopy = row[3] !== undefined ? String(row[3]) : "";
+        
+        updatedRows[r][4] = valToCopy;
+        
+        const key = `${sheetName}::${r}::4`;
+        editedCellsRef.current.set(key, {
+          sheet: sheetName,
+          r,
+          c: 4,
+          value: valToCopy
+        });
+        
+        const cellRef = XLSX.utils.encode_cell({ r, c: 4 });
+        if (currentFormulaSet.has(cellRef)) {
+          currentFormulaSet.delete(cellRef);
+          formulaSetChanged = true;
+        }
+        
+        editsToSend.push({
+          sheet: sheetName,
+          row: r,
+          col: 4,
+          value: valToCopy
+        });
+      }
+      
+      nextSheets[sheetName] = updatedRows;
+      if (formulaSetChanged || missingFormulas) {
+        formulaUpdates[sheetName] = currentFormulaSet;
+      }
+    }
+
+    setSheets(nextSheets);
+    setSheetFormulaCells(formulaUpdates);
+    setIsDirty(true);
+    
+    if (formulaEngineReady && editsToSend.length > 0) {
+      editsToSend.forEach(edit => {
+         formulaRpc("edit", edit);
+      });
+    }
+  };
+
   // ── Mode transitions ──────────────────────────────────────────
   function enterEditMode() {
     if (!canEdit) return;
@@ -1479,6 +1561,17 @@ export default function FileEditModal({
             </button>
           ) : (
             <>
+              {file?.data_category === "cespes" && (
+                <button
+                  onClick={handleTransitionTo2ndSem}
+                  disabled={saving}
+                  className="mr-auto flex items-center gap-1.5 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 text-sm font-semibold transition-colors disabled:opacity-50"
+                  title="Copy 1st Sem Accomplishment to 2nd Sem Target"
+                >
+                  <ArrowRight size={15} />
+                  Transition to 2nd Sem
+                </button>
+              )}
               <button
                 onClick={handleCancelEdit}
                 disabled={saving}
