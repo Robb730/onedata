@@ -4,6 +4,8 @@ import {
   HeroSection,
   MobileIntro,
   HeroStats,
+  AboutSection,
+  ContactSection,
   Footer,
 } from "../../components/LandingPageComponents";
 import { getAllSchoolYearsForSelector } from "../../utils/schoolYearsApi"; // adjust path as needed
@@ -48,6 +50,7 @@ export default function LandingPage() {
       <Navbar />
       <MobileIntro />
       <HeroSection />
+      <AboutSection />
       {!yearsLoading && selectedYear && (
         <HeroStats
           selectedYear={selectedYear}
@@ -55,6 +58,7 @@ export default function LandingPage() {
           availableYears={availableYears}
         />
       )}
+      <ContactSection />
       <Footer />
     </div>
   );

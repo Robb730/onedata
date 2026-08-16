@@ -100,8 +100,14 @@ export default function FileAccessRequestModal({
 
   return (
     <ModalPortal>
-    <div className="modal-overlay fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="w-full max-w-md max-h-[92dvh] overflow-y-auto bg-white rounded-t-2xl sm:rounded-2xl shadow-[0_32px_80px_rgba(15,23,42,0.22)] border border-slate-200">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <button
+        type="button"
+        className="modal-overlay absolute inset-0 border-0 p-0"
+        aria-label="Close"
+        onClick={onClose}
+      />
+      <div className="relative z-10 w-full max-w-md max-h-[92dvh] overflow-y-auto bg-white rounded-t-2xl sm:rounded-2xl shadow-[0_32px_80px_rgba(15,23,42,0.22)] border border-slate-200">
         <div className="flex items-start gap-3 sm:gap-4 px-4 sm:px-6 pt-5 sm:pt-6 pb-4 sm:pb-5 border-b border-slate-100">
           <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
             <Lock size={20} className="text-white" />
