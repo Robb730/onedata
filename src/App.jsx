@@ -1,26 +1,35 @@
 import { Routes, Route } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { supabase } from "./lib/supabaseClient.js";
 import { useUser } from "./contexts/UserContext.jsx";
 
 import LandingPage from "./pages/LandingPage/LandingPage.jsx";
 import LoginPage from "./pages/Login/LoginPage.jsx";
-import Dashboard from "./pages/Dashboard/Dashboard.jsx";
-import BaliwagExtractor from "./utils/ExcelParsers/BaliwagExtractor.jsx";
-import ManageUsers from "./pages/ManageUsers/ManageUsers.jsx";
-import UploadFilesPage from "./pages/UploadFiles/UploadFilesPage.jsx";
-import AuditLogs from "./pages/AuditLogs/AuditLogs.jsx";
-import Repository from "./pages/Repository/Repository.jsx";
-import RepositoryFolderDetailPage from "./pages/Repository/RepositoryFolderDetailPage.jsx";
-import RepositoryDivisionPage from "./pages/Repository/RepositoryDivisionPage.jsx";
-import AccessRestrictedPage from "./pages/Repository/AccessRestrictedPage.jsx";
-import SchoolYearPage from "./pages/SchoolYear/SchoolYearPage.jsx";
-import SettingsPage from "./pages/Settings/SettingsPage.jsx";
-import ChangePasswordPage from "./pages/Settings/ChangePasswordPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import RoleProtectedRoute from "./components/RoleProtectedRoute.jsx";
-import NotFoundPage from "./pages/NotFound/NotFoundPage.jsx"; // adjust path to wherever you saved it
+import NotFoundPage from './pages/NotFound/NotFoundPage.jsx'
+
+const Dashboard = lazy(() => import("./pages/Dashboard/Dashboard.jsx"));
+const ManageUsers = lazy(() => import("./pages/ManageUsers/ManageUsers.jsx"));
+const UploadFilesPage = lazy(() => import("./pages/UploadFiles/UploadFilesPage.jsx"));
+const AuditLogs = lazy(() => import("./pages/AuditLogs/AuditLogs.jsx"));
+const Repository = lazy(() => import("./pages/Repository/Repository.jsx"));
+const RepositoryFolderDetailPage = lazy(() => import("./pages/Repository/RepositoryFolderDetailPage.jsx"));
+const RepositoryDivisionPage = lazy(() => import("./pages/Repository/RepositoryDivisionPage.jsx"));
+const AccessRestrictedPage = lazy(() => import("./pages/Repository/AccessRestrictedPage.jsx"));
+const SchoolYearPage = lazy(() => import("./pages/SchoolYear/SchoolYearPage.jsx"));
+const SettingsPage = lazy(() => import("./pages/Settings/SettingsPage.jsx"));
+const ChangePasswordPage = lazy(() => import("./pages/Settings/ChangePasswordPage.jsx"));
+const BaliwagExtractor = lazy(() => import("./utils/ExcelParsers/BaliwagExtractor.jsx"));
+
+function PageFallback() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center text-sm font-medium text-slate-400">
+      Loading…
+    </div>
+  );
+}
 
 function App() {
   const [session, setSession] = useState(null);
@@ -49,6 +58,7 @@ function App() {
   if (loading) return null;
 
   return (
+    <Suspense fallback={<PageFallback />}>
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
@@ -171,6 +181,7 @@ function App() {
       />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    </Suspense>
   );
 }
 

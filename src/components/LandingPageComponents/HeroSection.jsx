@@ -2,7 +2,7 @@ import React from "react";
 import { ChevronDown } from "lucide-react";
 import photoBackground from "../../assets/photo-background.png";
 import gradientOverlay from "../../assets/gradient-overlay.png";
-import wavesOverlay from "../../assets/waves-overlay.png";
+import wavesOverlay from "../../assets/waves-overlay-revised.png";
 import sdoLogo from "../../assets/sdo-logo.png";
 
 export function HeroSection() {
@@ -154,7 +154,7 @@ export function HeroSection() {
           >
             <button
               onClick={handleExploreClick}
-              className="group inline-flex items-center gap-2 rounded-full px-5 py-2 sm:px-6 sm:py-2.5 text-xs sm:text-sm font-medium text-white bg-white/10 border border-white/30 backdrop-blur-md shadow-lg transition-all duration-300 hover:bg-white/20 hover:border-white/50 hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
+              className="hover-flare group inline-flex items-center gap-2 rounded-full px-5 py-2 sm:px-6 sm:py-2.5 text-xs sm:text-sm font-medium text-white bg-white/10 border border-white/30 backdrop-blur-md shadow-lg transition-all duration-300 hover:bg-white/20 hover:border-white/50 hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
             >
               <span>Explore Dashboard</span>
               <ChevronDown

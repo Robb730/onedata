@@ -4,6 +4,7 @@ export { MobileIntro } from "./MobileIntro";
 export { HeroStats } from "./HeroStats";
 export { SectionHeader } from "./SectionHeader";
 export { AboutSection } from "./AboutSection";
+export { ContactSection } from "./ContactSection";
 export { AnalyticsPreview } from "./AnalyticsPreview";
 export { CTASection } from "./CTASection";
 export { Footer } from "./Footer";

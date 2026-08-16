@@ -20,6 +20,24 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
 
   const unreadCount = notificationsList.filter((n) => n.unread).length;
 
+  const [mounted, setMounted] = useState(false);
+  const [phase, setPhase] = useState("closed");
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setMounted(true);
+      const id = requestAnimationFrame(() => setPhase("in"));
+      return () => cancelAnimationFrame(id);
+    }
+    if (!mounted) return undefined;
+    setPhase("out");
+    const t = setTimeout(() => {
+      setMounted(false);
+      setPhase("closed");
+    }, 260);
+    return () => clearTimeout(t);
+  }, [isOpen]);
+
   React.useEffect(() => {
     if (onUnreadChange) {
       onUnreadChange(unreadCount);
@@ -182,28 +200,34 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
   return (
     <>
       <div
-        className={`hidden lg:block absolute right-0 top-[calc(100%+8px)] w-[420px] rounded-2xl bg-white z-50 overflow-hidden transition-all duration-300 origin-top-right ${
-          isOpen
-            ? "opacity-100 scale-100 visible pointer-events-auto"
-            : "opacity-0 scale-95 invisible pointer-events-none"
+        className={`hidden lg:block absolute right-0 top-[calc(100%+8px)] w-[420px] rounded-2xl bg-white z-50 overflow-hidden origin-top-right ${
+          phase === "in"
+            ? "notif-panel-in pointer-events-auto"
+            : phase === "out"
+              ? "notif-panel-out pointer-events-none"
+              : "invisible pointer-events-none opacity-0"
         }`}
         style={panelStyle}
       >
-        {panelInner}
+        {mounted && panelInner}
       </div>
 
-      {isOpen &&
+      {mounted &&
         typeof document !== "undefined" &&
         createPortal(
           <div className="lg:hidden">
             <button
               type="button"
-              className="fixed inset-0 z-[70] bg-slate-900/30 border-0 p-0"
+              className={`fixed inset-0 z-[70] border-0 p-0 bg-slate-900/30 ${
+                phase === "in" ? "notif-scrim-in" : "notif-scrim-out"
+              }`}
               aria-label="Close notifications"
               onClick={onClose}
             />
             <div
-              className="fixed left-3 right-3 z-[71] flex max-h-[min(72dvh,520px)] flex-col overflow-hidden rounded-2xl bg-white"
+              className={`fixed left-3 right-3 z-[71] flex max-h-[min(72dvh,520px)] flex-col overflow-hidden rounded-2xl bg-white ${
+                phase === "in" ? "notif-panel-in" : "notif-panel-out"
+              }`}
               style={{
                 ...panelStyle,
                 top: "calc(3.75rem + env(safe-area-inset-top))",

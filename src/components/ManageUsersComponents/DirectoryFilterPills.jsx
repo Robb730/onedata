@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
+import { SlidersHorizontal, X } from "lucide-react";
 import { CustomDropdown } from "./CustomDropdown";
 import ModalPortal from "../Modals/ModalPortal";
 
@@ -31,6 +31,65 @@ function SelectField({ id, label, value, onChange, options, zIndex = 10 }) {
         className="bg-slate-50/70"
       />
     </label>
+  );
+}
+
+function FilterFields({
+  divisions,
+  selectedDivision,
+  onDivisionChange,
+  selectedRole,
+  onRoleChange,
+  selectedStatus,
+  onStatusChange,
+}) {
+  return (
+    <div className="space-y-3">
+      <SelectField
+        id="user-division-filter"
+        label="Division"
+        value={selectedDivision}
+        onChange={onDivisionChange}
+        options={divisions.map((div) => ({
+          value: div,
+          label: div === "All" ? "All divisions" : div,
+        }))}
+        zIndex={50}
+      />
+      <SelectField
+        id="user-role-filter"
+        label="Role"
+        value={selectedRole}
+        onChange={onRoleChange}
+        options={ROLE_OPTIONS.map((r) => ({ value: r.id, label: r.label }))}
+        zIndex={40}
+      />
+      <SelectField
+        id="user-status-filter"
+        label="Status"
+        value={selectedStatus}
+        onChange={onStatusChange}
+        options={STATUS_OPTIONS.map((s) => ({ value: s.id, label: s.label }))}
+        zIndex={30}
+      />
+    </div>
+  );
+}
+
+function FilterPanelHeader({ activeCount, clearAll }) {
+  return (
+    <div className="mb-3 flex items-center justify-between">
+      <p className="text-[0.8rem] font-bold text-slate-800">Filter directory</p>
+      {activeCount > 0 && (
+        <button
+          type="button"
+          onClick={clearAll}
+          className="text-[0.72rem] font-semibold text-blue-600 hover:text-blue-700"
+        >
+          Clear all
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -74,6 +133,8 @@ export default function DirectoryFilterPills({
 
   useEffect(() => {
     if (!open) return undefined;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    if (!mq.matches) return undefined;
     const onPointerDown = (e) => {
       if (panelRef.current && !panelRef.current.contains(e.target)) {
         setOpen(false);
@@ -120,53 +181,39 @@ export default function DirectoryFilterPills({
       {open && (
         <>
           <ModalPortal>
-          <div
-            className="modal-overlay fixed inset-0 z-[60] lg:hidden"
-            onClick={() => setOpen(false)}
-          />
+            <div className="lg:hidden">
+              <div
+                className="modal-overlay fixed inset-0 z-[60]"
+                onClick={() => setOpen(false)}
+              />
+              <div className="fixed inset-x-0 bottom-0 z-[70] rounded-t-2xl border border-slate-200 border-b-0 bg-white p-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-[0_-16px_40px_rgba(15,23,42,0.12)]">
+                <div className="mb-3 flex justify-center">
+                  <div className="h-1 w-10 rounded-full bg-slate-200" />
+                </div>
+                <FilterPanelHeader activeCount={activeCount} clearAll={clearAll} />
+                <FilterFields
+                  divisions={divisions}
+                  selectedDivision={selectedDivision}
+                  onDivisionChange={onDivisionChange}
+                  selectedRole={selectedRole}
+                  onRoleChange={onRoleChange}
+                  selectedStatus={selectedStatus}
+                  onStatusChange={onStatusChange}
+                />
+              </div>
+            </div>
           </ModalPortal>
-          <div className="fixed inset-x-0 bottom-0 z-[70] rounded-t-2xl border border-slate-200 border-b-0 bg-white p-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-[0_-16px_40px_rgba(15,23,42,0.12)] lg:absolute lg:inset-auto lg:right-0 lg:bottom-auto lg:mt-2 lg:w-[min(20rem,calc(100vw-2rem))] lg:rounded-2xl lg:border-b lg:p-3.5 lg:shadow-[0_16px_40px_rgba(15,23,42,0.12)]">
-            <div className="mb-3 flex justify-center lg:hidden">
-              <div className="h-1 w-10 rounded-full bg-slate-200" />
-            </div>
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-[0.8rem] font-bold text-slate-800">Filter directory</p>
-              {activeCount > 0 && (
-                <button
-                  type="button"
-                  onClick={clearAll}
-                  className="text-[0.72rem] font-semibold text-blue-600 hover:text-blue-700"
-                >
-                  Clear all
-                </button>
-              )}
-            </div>
-            <div className="space-y-3">
-              <SelectField
-                id="user-division-filter"
-                label="Division"
-                value={selectedDivision}
-                onChange={onDivisionChange}
-                options={divisions.map((div) => ({ value: div, label: div === "All" ? "All divisions" : div }))}
-                zIndex={50}
-              />
-              <SelectField
-                id="user-role-filter"
-                label="Role"
-                value={selectedRole}
-                onChange={onRoleChange}
-                options={ROLE_OPTIONS.map((r) => ({ value: r.id, label: r.label }))}
-                zIndex={40}
-              />
-              <SelectField
-                id="user-status-filter"
-                label="Status"
-                value={selectedStatus}
-                onChange={onStatusChange}
-                options={STATUS_OPTIONS.map((s) => ({ value: s.id, label: s.label }))}
-                zIndex={30}
-              />
-            </div>
+          <div className="hidden lg:block absolute right-0 top-full z-[70] mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-3.5 shadow-[0_16px_40px_rgba(15,23,42,0.12)]">
+            <FilterPanelHeader activeCount={activeCount} clearAll={clearAll} />
+            <FilterFields
+              divisions={divisions}
+              selectedDivision={selectedDivision}
+              onDivisionChange={onDivisionChange}
+              selectedRole={selectedRole}
+              onRoleChange={onRoleChange}
+              selectedStatus={selectedStatus}
+              onStatusChange={onStatusChange}
+            />
           </div>
         </>
       )}
