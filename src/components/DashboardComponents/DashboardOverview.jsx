@@ -1,8 +1,6 @@
 import React from "react";
-import { useState, useEffect } from "react";
 import { Users, TrendingDown, Award, AlertTriangle } from "lucide-react";
 import { StatCard } from "./StatCard";
-import { supabase } from "../../lib/supabaseClient";
 
 /**
  * DashboardOverview — The top KPI stats row showing
@@ -17,38 +15,7 @@ import { supabase } from "../../lib/supabaseClient";
  */
 export function DashboardOverview({ data, selectedYear, compareYear, compareData }) {
 
-  const [totalEnrollment, setTotalEnrollment] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    async function fetchTotalEnrollment() {
-      setLoading(true);
-      setError(null);
-
-      let query = supabase
-        .from("enrollment_data")
-        .select("grand_total");
-
-      if (selectedYear) {
-        query = query.eq("school_year", selectedYear);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-        return;
-      }
-
-      const total = data.reduce((acc, row) => acc + (row.grand_total ?? 0), 0);
-      setTotalEnrollment(total);
-      setLoading(false);
-    }
-
-    fetchTotalEnrollment();
-  }, [selectedYear]);
+  const totalEnrollment = data.totalEnrollment ?? 0;
 
   const isComparing = !!(compareYear && compareData);
 
@@ -89,7 +56,7 @@ export function DashboardOverview({ data, selectedYear, compareYear, compareData
   const stats = [
     {
       label: "Total Enrollment",
-      value: loading ? "—" : error ? "Error" : totalEnrollment?.toLocaleString() ?? "—",
+      value: totalEnrollment?.toLocaleString() ?? "—",
       icon: <Users size={18} />,
       iconColor: "text-blue-600",
       iconBg: "bg-blue-50",
@@ -132,4 +99,4 @@ export function DashboardOverview({ data, selectedYear, compareYear, compareData
       ))}
     </div>
   );
-}
+}

@@ -64,7 +64,7 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/change-password" element={<ChangePasswordPage />} />
       <Route path="/not-found" element={<NotFoundPage />} />
-      
+
       <Route path="/test" element={<BaliwagExtractor />} />
       <Route
         path="/dashboard"
@@ -160,15 +160,15 @@ function App() {
         }
       />
       <Route
-  path="/school-year"
-  element={
-    <RoleProtectedRoute session={session} roles={["administrator"]}>
-      <AppLayout>
-        <SchoolYearPage />
-      </AppLayout>
-    </RoleProtectedRoute>
-  }
-/>
+        path="/school-year"
+        element={
+          <RoleProtectedRoute session={session} roles={["administrator"]}>
+            <AppLayout>
+              <SchoolYearPage />
+            </AppLayout>
+          </RoleProtectedRoute>
+        }
+      />
       <Route
         path="/settings"
         element={

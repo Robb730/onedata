@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import {
   AuditLogsHeader,
@@ -13,8 +14,6 @@ export default function AuditLogs() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterAction, setFilterAction] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
-  const [auditLogs, setAuditLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
 
@@ -299,38 +298,35 @@ export default function AuditLogs() {
     setCurrentPage(1);
   }, [searchQuery, filterAction, filterStatus]);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function fetchLogs() {
-      setLoading(true);
+  const queryClient = useQueryClient();
+  const { data: auditLogsData } = useQuery({
+    queryKey: ["auditLogs"],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("audit_logs")
         .select("*")
         .order("performed_on", { ascending: false })
-        .limit(200); // paginate/adjust as needed
+        .limit(200);
 
-      if (error) {
-        console.error("Failed to fetch audit logs:", error);
-      } else if (isMounted) {
-        setAuditLogs(
-          data.map((row) => ({
-            id: row.id,
-            action: row.action,
-            fileName: row.file_name ?? "N/A",
-            details: row.details ?? "",
-            performedBy: row.performed_by,
-            role: row.role,
-            performedOn: row.performed_on,
-            status: row.status,
-          }))
-        );
-      }
-      if (isMounted) setLoading(false);
-    }
+      if (error) throw error;
+      
+      return data.map((row) => ({
+        id: row.id,
+        action: row.action,
+        fileName: row.file_name ?? "N/A",
+        details: row.details ?? "",
+        performedBy: row.performed_by,
+        role: row.role,
+        performedOn: row.performed_on,
+        status: row.status,
+      }));
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-    fetchLogs();
+  const auditLogs = auditLogsData || [];
 
+  useEffect(() => {
     // Optional: live updates so new uploads (and security alerts) appear
     // without a refresh
     const channel = supabase
@@ -340,7 +336,7 @@ export default function AuditLogs() {
         { event: "INSERT", schema: "public", table: "audit_logs" },
         (payload) => {
           const row = payload.new;
-          setAuditLogs((prev) => [
+          queryClient.setQueryData(["auditLogs"], (prev) => [
             {
               id: row.id,
               action: row.action,
@@ -351,17 +347,16 @@ export default function AuditLogs() {
               performedOn: row.performed_on,
               status: row.status,
             },
-            ...prev,
+            ...(prev || []),
           ]);
         }
       )
       .subscribe();
 
     return () => {
-      isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [queryClient]);
 
   // ─── Handle "Deactivate" action on a Security Alert row ───────
   // Security Alert logs store the offending account's email in
@@ -427,8 +422,8 @@ async function handleDeactivateFromAlert(log) {
     .update({ status: "Success", details: `${log.details}${resolutionNote}` })
     .eq("id", log.id);
 
-  setAuditLogs((prev) =>
-    prev.map((l) =>
+  queryClient.setQueryData(["auditLogs"], (prev) =>
+    (prev || []).map((l) =>
       l.id === log.id
         ? { ...l, status: "Success", details: `${l.details}${resolutionNote}` }
         : l,

@@ -7,15 +7,28 @@ import App from './App.jsx'
 import { UserProvider } from './contexts/UserContext.jsx'
 import { User } from 'lucide-react'
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+})
+
 console.log("main loaded")
 
 createRoot(document.getElementById('root')).render(
 
   <StrictMode>
-    <BrowserRouter>
-      <UserProvider>
-        <App />
-      </UserProvider>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <UserProvider>
+          <App />
+        </UserProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   </StrictMode>,
 )

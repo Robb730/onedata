@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Upload,
   FileText,
@@ -186,22 +187,19 @@ export default function UploadFilesPage() {
     return () => clearInterval(interval);
   }, [uploadToastStatus]);
 
-  const fetchRecentUploads = async () => {
-    const { data, error } = await supabase
-      .from("audit_logs")
-      .select("id, file_name, details, performed_on, status")
-      .eq("action", "Upload")
-      .order("performed_on", { ascending: false })
-      .limit(50);
+  const { data: fetchedUploads, refetch: refetchUploads } = useQuery({
+    queryKey: ["recentUploads"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("audit_logs")
+        .select("id, file_name, details, performed_on, status")
+        .eq("action", "Upload")
+        .order("performed_on", { ascending: false })
+        .limit(50);
 
-    if (error) {
-      console.error("Failed to fetch recent uploads:", error);
-      return;
-    }
+      if (error) throw error;
 
-    setUploadedFiles(
-      data.map((row) => {
-        // details looks like: "Uploaded to SectionName (2024-2025)"
+      return data.map((row) => {
         const match = row.details?.match(/^Uploaded to (.+?) \((.+?)\)$/);
         return {
           id: row.id,
@@ -215,40 +213,44 @@ export default function UploadFilesPage() {
             year: "numeric",
           }),
         };
-      }),
-    );
-    setUploadsPage(1);
-  };
+      });
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-  const fetchFileRequests = async () => {
-    if (!userProfile?.section_id) return;
-    const { data, error } = await supabase
-      .from("file_requests")
-      .select(
-        `
-      id, file_name, description, deadline, status, created_at,
-      requested_by,
-      users:requested_by ( full_name, role )
-    `,
-      )
-      .eq("section_id", userProfile.section_id)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Failed to fetch file requests:", error);
-      return;
+  useEffect(() => {
+    if (fetchedUploads) {
+      setUploadedFiles(fetchedUploads);
+      setUploadsPage(1);
     }
+  }, [fetchedUploads]);
 
-    const today = new Date();
-    setFileRequests(
-      (data || []).map((r) => {
+  const { data: fetchedFileRequests, refetch: refetchFileRequests } = useQuery({
+    queryKey: ["fileRequests", userProfile?.section_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("file_requests")
+        .select(
+          `
+        id, file_name, description, deadline, status, created_at,
+        requested_by,
+        users:requested_by ( full_name, role )
+      `,
+        )
+        .eq("section_id", userProfile.section_id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const today = new Date();
+      return (data || []).map((r) => {
         const isOverdue =
           r.status === "pending" && r.deadline && new Date(r.deadline) < today;
         return {
           id: r.id,
           fileName: r.file_name,
           message: r.description,
-          requestedOn: r.created_at, // ← add this line
+          requestedOn: r.created_at,
           dueDate: r.deadline
             ? new Date(r.deadline).toLocaleDateString("en-US", {
                 month: "short",
@@ -265,17 +267,25 @@ export default function UploadFilesPage() {
                 ? "Overdue"
                 : "Pending",
         };
-      }),
-    );
+      });
+    },
+    enabled: !!userProfile?.section_id,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (fetchedFileRequests) {
+      setFileRequests(fetchedFileRequests);
+    }
+  }, [fetchedFileRequests]);
+
+  const fetchRecentUploads = async () => {
+    refetchUploads();
   };
-
-  useEffect(() => {
-    fetchRecentUploads();
-  }, []);
-
-  useEffect(() => {
-    fetchFileRequests();
-  }, [userProfile?.section_id]);
+  
+  const fetchFileRequests = async () => {
+    refetchFileRequests();
+  };
 
   // Near the top, after your state declarations
 
