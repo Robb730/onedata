@@ -164,7 +164,6 @@ export function AnalyticsPreview() {
 
         {/* Section Header */}
         <SectionHeader
-          label="Dashboard Overview"
           title="Learners"
           subtitle="Demographic distribution and division breakdown across the SDO Baliwag division"
         />

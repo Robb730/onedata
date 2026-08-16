@@ -23,7 +23,6 @@ export function Footer() {
 
   return (
     <footer
-      id="contact"
       className="relative overflow-hidden"
       style={{
         background: "linear-gradient(180deg, #0c1222 0%, #080c16 100%)",
@@ -56,9 +55,7 @@ export function Footer() {
                 onClick={() => handleNav("#home")}
                 className="flex items-center gap-2.5 mb-5 bg-transparent border-none p-0 cursor-pointer"
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10">
-                  <img src={logo} alt="" className="w-7 h-7 object-contain" />
-                </span>
+                <img src={logo} alt="" className="w-8 h-8 object-contain shrink-0" />
                 <span className="text-[1.2rem] font-bold text-white tracking-tight">
                   One<span className="text-emerald-400">Data</span>
                 </span>

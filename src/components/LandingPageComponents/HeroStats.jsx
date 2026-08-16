@@ -370,13 +370,18 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
       style={{ background: "linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%)" }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-1">
-        <div className="flex items-center justify-between gap-3 mb-5">
-          <p className="text-[0.72rem] text-slate-400 font-medium shrink-0">Live enrollment data</p>
-          <YearPicker
-            selectedYear={selectedYear}
-            onYearChange={onYearChange}
-            availableYears={availableYears}
+        <div className="relative w-full mb-1 flex flex-col md:block">
+          <SectionHeader
+            title="Analytics"
+            subtitle="Live enrollment data across learners, schools, teachers, and classrooms"
           />
+          <div className="md:absolute md:right-0 md:top-2 mt-4 md:mt-0 z-10 flex justify-start sm:justify-end">
+            <YearPicker
+              selectedYear={selectedYear}
+              onYearChange={onYearChange}
+              availableYears={availableYears}
+            />
+          </div>
         </div>
 
         {!loading && !error && (
@@ -448,7 +453,6 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
             {/* ── Learners section ─────────────────── */}
             <div ref={learnersRef} className="mb-8 md:mb-14 scroll-mt-24">
               <SectionHeader
-                label="Dashboard Overview"
                 title="Learners"
                 subtitle="Demographic distribution and enrollment breakdown across schools"
               />
@@ -681,7 +685,6 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
             {/* ── Teachers section ───── */}
             <div ref={teachersRef} className="mb-8 md:mb-14 scroll-mt-24">
               <SectionHeader
-                label="Dashboard Overview"
                 title="Teachers"
                 subtitle="Teacher needs and excess per level"
               />
@@ -700,7 +703,6 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
             {/* ── Classrooms section ── */}
             <div ref={numSchoolsRef} className="mb-8 md:mb-14 scroll-mt-24">
               <SectionHeader
-                label="Dashboard Overview"
                 title="Classrooms"
                 subtitle="Classroom inventory, needs, and excess per level"
               />

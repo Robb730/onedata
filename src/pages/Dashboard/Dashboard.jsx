@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import {
   TrendingUp,
   Info,
@@ -29,18 +29,57 @@ import {
   MetricProgress,
   InsightCard,
   SectionDivider,
-  EnrollmentChart,
-  DropoutChart,
-  PromotionChart,
-  CohortChart,
   PerformanceCard,
   TrendCard,
-  ResourcesInventoryChart,
-  TextbooksChart,
   GenderCard,
-  EnrollmentByLevel,
-  ResourcesByLevel,
 } from "../../components/DashboardComponents";
+
+const EnrollmentChart = lazy(() =>
+  import("../../components/DashboardComponents/EnrollmentChart.jsx").then((m) => ({
+    default: m.EnrollmentChart,
+  })),
+);
+const DropoutChart = lazy(() =>
+  import("../../components/DashboardComponents/DropoutChart.jsx").then((m) => ({
+    default: m.DropoutChart,
+  })),
+);
+const PromotionChart = lazy(() =>
+  import("../../components/DashboardComponents/PromotionChart.jsx").then((m) => ({
+    default: m.PromotionChart,
+  })),
+);
+const CohortChart = lazy(() =>
+  import("../../components/DashboardComponents/CohortChart.jsx").then((m) => ({
+    default: m.CohortChart,
+  })),
+);
+const ResourcesInventoryChart = lazy(() =>
+  import("../../components/DashboardComponents/ResourcesInventoryChart.jsx").then((m) => ({
+    default: m.ResourcesInventoryChart,
+  })),
+);
+const TextbooksChart = lazy(() =>
+  import("../../components/DashboardComponents/TextbooksChart.jsx").then((m) => ({
+    default: m.TextbooksChart,
+  })),
+);
+const EnrollmentByLevel = lazy(() =>
+  import("../../components/DashboardComponents/EnrollmentByLevel.jsx").then((m) => ({
+    default: m.EnrollmentByLevel,
+  })),
+);
+const ResourcesByLevel = lazy(() =>
+  import("../../components/DashboardComponents/ResourcesByLevel.jsx").then((m) => ({
+    default: m.ResourcesByLevel,
+  })),
+);
+
+function ChartFallback() {
+  return (
+    <div className="h-[220px] animate-pulse rounded-xl bg-slate-100/80" />
+  );
+}
 import { DEFAULT_CESPES_DATA } from "../../data/cespesTemplateData";
 import { getAllSchoolYearsForSelector } from "../../utils/schoolYearsApi"; // adjust path as needed
 import { useLocation, useNavigate } from "react-router-dom";
@@ -101,10 +140,33 @@ function getDaysUntilLabel(dateStr) {
 }
 
 async function fetchResourcesForYear(year) {
-  // 1. Teachers
-  const { data: tKes } = await supabase.from("teachers_kes").select("*").eq("school_year", year);
-  const { data: tJhs } = await supabase.from("teachers_jhs").select("*").eq("school_year", year);
-  const { data: tShs } = await supabase.from("teachers_shs").select("*").eq("school_year", year);
+  const [
+    { data: tKes },
+    { data: tJhs },
+    { data: tShs },
+    { data: cKes },
+    { data: cJhs },
+    { data: cShs },
+    { data: sKes },
+    { data: sJhs },
+    { data: sShs },
+    { data: txKes },
+    { data: txJhs },
+    { data: txShs },
+  ] = await Promise.all([
+    supabase.from("teachers_kes").select("*").eq("school_year", year),
+    supabase.from("teachers_jhs").select("*").eq("school_year", year),
+    supabase.from("teachers_shs").select("*").eq("school_year", year),
+    supabase.from("classrooms_kes").select("*").eq("school_year", year),
+    supabase.from("classrooms_jhs").select("*").eq("school_year", year),
+    supabase.from("classrooms_shs").select("*").eq("school_year", year),
+    supabase.from("seats_kes").select("*").eq("school_year", year),
+    supabase.from("seats_jhs").select("*").eq("school_year", year),
+    supabase.from("seats_shs").select("*").eq("school_year", year),
+    supabase.from("textbooks_kes").select("*").eq("school_year", year),
+    supabase.from("textbooks_jhs").select("*").eq("school_year", year),
+    supabase.from("textbooks_shs").select("*").eq("school_year", year),
+  ]);
 
   const tKesTotal = tKes?.reduce((acc, r) => acc + (r.prev_total_teachers_inventory || 0), 0) || 0;
   const tJhsTotal = tJhs?.reduce((acc, r) => acc + (r.prev_total_teachers_inventory || 0), 0) || 0;
@@ -114,11 +176,6 @@ async function fetchResourcesForYear(year) {
   const tJhsNeeds = tJhs?.reduce((acc, r) => acc + (r.teacher_needs || 0), 0) || 0;
   const tShsNeeds = tShs?.reduce((acc, r) => acc + (r.teacher_needs || 0), 0) || 0;
 
-  // 2. Classrooms
-  const { data: cKes } = await supabase.from("classrooms_kes").select("*").eq("school_year", year);
-  const { data: cJhs } = await supabase.from("classrooms_jhs").select("*").eq("school_year", year);
-  const { data: cShs } = await supabase.from("classrooms_shs").select("*").eq("school_year", year);
-
   const cKesTotal = cKes?.reduce((acc, r) => acc + (r.prev_total_classroom_inventory || 0), 0) || 0;
   const cJhsTotal = cJhs?.reduce((acc, r) => acc + (r.total_classroom || 0), 0) || 0;
   const cShsTotal = cShs?.reduce((acc, r) => acc + (r.total_classroom || 0), 0) || 0;
@@ -127,11 +184,6 @@ async function fetchResourcesForYear(year) {
   const cJhsNeeds = cJhs?.reduce((acc, r) => acc + (r.classroom_needs || 0), 0) || 0;
   const cShsNeeds = cShs?.reduce((acc, r) => acc + (r.classroom_needs || 0), 0) || 0;
 
-  // 3. Seats
-  const { data: sKes } = await supabase.from("seats_kes").select("*").eq("school_year", year);
-  const { data: sJhs } = await supabase.from("seats_jhs").select("*").eq("school_year", year);
-  const { data: sShs } = await supabase.from("seats_shs").select("*").eq("school_year", year);
-
   const sKesTotal = sKes?.reduce((acc, r) => acc + (r.prev_total_seats_inventory || 0), 0) || 0;
   const sJhsTotal = sJhs?.reduce((acc, r) => acc + (r.total_jhs_seats || 0), 0) || 0;
   const sShsTotal = sShs?.reduce((acc, r) => acc + (r.total_shs_seats || 0), 0) || 0;
@@ -139,11 +191,6 @@ async function fetchResourcesForYear(year) {
   const sKesNeeds = sKes?.reduce((acc, r) => acc + (r.kinder_needs || 0) + (r.g1g6_needs || 0) + (r.sned_needs || 0), 0) || 0;
   const sJhsNeeds = sJhs?.reduce((acc, r) => acc + (r.seat_needs || 0), 0) || 0;
   const sShsNeeds = sShs?.reduce((acc, r) => acc + (r.seat_needs || 0), 0) || 0;
-
-  // 4. Textbooks
-  const { data: txKes } = await supabase.from("textbooks_kes").select("*").eq("school_year", year);
-  const { data: txJhs } = await supabase.from("textbooks_jhs").select("*").eq("school_year", year);
-  const { data: txShs } = await supabase.from("textbooks_shs").select("*").eq("school_year", year);
 
   const txKesNeeds = txKes?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
   const txJhsNeeds = txJhs?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
@@ -518,16 +565,14 @@ export default function Dashboard() {
         // 1. Get the active year first — this is the one thing that
         //    actually determines what data loads, so resolve it before
         //    anything else touches state.
-        const { data: activeRow, error: activeErr } = await supabase
-          .from("school_years")
-          .select("label")
-          .eq("status", "active")
-          .maybeSingle();
-
-        if (cancelled) return;
-
-        // 2. Get the full list for the dropdown (doesn't block selection)
-        const yearsData = await getAllSchoolYearsForSelector();
+        const [{ data: activeRow, error: activeErr }, yearsData] = await Promise.all([
+          supabase
+            .from("school_years")
+            .select("label")
+            .eq("status", "active")
+            .maybeSingle(),
+          getAllSchoolYearsForSelector(),
+        ]);
         if (cancelled) return;
 
         setSchoolYears(yearsData);
@@ -559,12 +604,17 @@ export default function Dashboard() {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
-        .from("enrollment_data")
-        .select(
-          "category, grand_total, school_name, elementary_data, junior_high_data, senior_high_s1_data, senior_high_s2_data",
-        )
-        .eq("school_year", selectedYear);
+      const [{ data, error }, { data: allEnrollment }] = await Promise.all([
+        supabase
+          .from("enrollment_data")
+          .select(
+            "category, grand_total, school_name, elementary_data, junior_high_data, senior_high_s1_data, senior_high_s2_data",
+          )
+          .eq("school_year", selectedYear),
+        supabase
+          .from("enrollment_data")
+          .select("school_year, category, grand_total"),
+      ]);
 
       if (error) {
         setError(error.message);
@@ -572,10 +622,6 @@ export default function Dashboard() {
         return;
       }
 
-      // Fetch all enrollment data for trend chart
-      const { data: allEnrollment } = await supabase
-        .from("enrollment_data")
-        .select("school_year, category, grand_total");
       if (allEnrollment) {
         const trendYears = [
           ...new Set(allEnrollment.map((d) => d.school_year)),
@@ -1084,6 +1130,19 @@ export default function Dashboard() {
   const isComparing = compareMode && !!compareYear;
 
   return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50/40 px-4 py-8">
+        <div className="mx-auto max-w-7xl space-y-4">
+          <div className="h-10 w-48 animate-pulse rounded-lg bg-slate-200/80" />
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-200/70" />
+            ))}
+          </div>
+          <ChartFallback />
+        </div>
+      </div>
+    }>
     <div className="min-h-screen bg-slate-50/40">
       {/* ── Welcome toast (top-right) ─────────────────────── */}
       <div
@@ -2310,6 +2369,7 @@ export default function Dashboard() {
         <div className="h-8" />
       </div>
     </div>
+    </Suspense>
   );
 }
 

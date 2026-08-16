@@ -71,7 +71,7 @@ export function Navbar() {
 
           <Link
             to="/login"
-            className={`ml-3 inline-flex items-center gap-1.5 rounded-[10px] px-5 py-[7px] text-[0.8rem] font-semibold transition-all duration-300 no-underline ${solid
+            className={`hover-flare ml-3 inline-flex items-center gap-1.5 rounded-[10px] px-5 py-[7px] text-[0.8rem] font-semibold transition-all duration-300 no-underline ${solid
               ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-[0_2px_10px_rgba(99,102,241,0.3)]"
               : "bg-white/12 text-white border border-white/20"
               }`}
@@ -116,7 +116,7 @@ export function Navbar() {
             ))}
             <Link
               to="/login"
-              className="mt-2 mb-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-5 py-3 text-[0.85rem] font-semibold text-white no-underline"
+              className="hover-flare mt-2 mb-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-5 py-3 text-[0.85rem] font-semibold text-white no-underline"
               style={{ background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)" }}
             >
               Log in <ArrowRight size={14} />
