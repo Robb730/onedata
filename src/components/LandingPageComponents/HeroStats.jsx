@@ -632,11 +632,11 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
 
             {/* ── Schools section ──────────────────── */}
             <div ref={schoolsRef} className="mb-8 md:mb-14 scroll-mt-24">
-              <SectionHeader
+              {/* <SectionHeader
                 label="Dashboard Overview"
                 title="Schools"
                 subtitle="Public vs. private distribution and per-school enrollment"
-              />
+              /> */}
 
               <div className="grid lg:grid-cols-[280px_1fr] gap-3.5 md:gap-5">
                 <ChartCard

@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   TrendingUp,
   Info,
@@ -30,57 +30,18 @@ import {
   MetricProgress,
   InsightCard,
   SectionDivider,
+  EnrollmentChart,
+  DropoutChart,
+  PromotionChart,
+  CohortChart,
   PerformanceCard,
   TrendCard,
+  ResourcesInventoryChart,
+  TextbooksChart,
   GenderCard,
+  EnrollmentByLevel,
+  ResourcesByLevel,
 } from "../../components/DashboardComponents";
-
-const EnrollmentChart = lazy(() =>
-  import("../../components/DashboardComponents/EnrollmentChart.jsx").then((m) => ({
-    default: m.EnrollmentChart,
-  })),
-);
-const DropoutChart = lazy(() =>
-  import("../../components/DashboardComponents/DropoutChart.jsx").then((m) => ({
-    default: m.DropoutChart,
-  })),
-);
-const PromotionChart = lazy(() =>
-  import("../../components/DashboardComponents/PromotionChart.jsx").then((m) => ({
-    default: m.PromotionChart,
-  })),
-);
-const CohortChart = lazy(() =>
-  import("../../components/DashboardComponents/CohortChart.jsx").then((m) => ({
-    default: m.CohortChart,
-  })),
-);
-const ResourcesInventoryChart = lazy(() =>
-  import("../../components/DashboardComponents/ResourcesInventoryChart.jsx").then((m) => ({
-    default: m.ResourcesInventoryChart,
-  })),
-);
-const TextbooksChart = lazy(() =>
-  import("../../components/DashboardComponents/TextbooksChart.jsx").then((m) => ({
-    default: m.TextbooksChart,
-  })),
-);
-const EnrollmentByLevel = lazy(() =>
-  import("../../components/DashboardComponents/EnrollmentByLevel.jsx").then((m) => ({
-    default: m.EnrollmentByLevel,
-  })),
-);
-const ResourcesByLevel = lazy(() =>
-  import("../../components/DashboardComponents/ResourcesByLevel.jsx").then((m) => ({
-    default: m.ResourcesByLevel,
-  })),
-);
-
-function ChartFallback() {
-  return (
-    <div className="h-[220px] animate-pulse rounded-xl bg-slate-100/80" />
-  );
-}
 import { DEFAULT_CESPES_DATA } from "../../data/cespesTemplateData";
 import { getAllSchoolYearsForSelector } from "../../utils/schoolYearsApi"; // adjust path as needed
 import { useLocation, useNavigate } from "react-router-dom";
@@ -141,33 +102,10 @@ function getDaysUntilLabel(dateStr) {
 }
 
 async function fetchResourcesForYear(year) {
-  const [
-    { data: tKes },
-    { data: tJhs },
-    { data: tShs },
-    { data: cKes },
-    { data: cJhs },
-    { data: cShs },
-    { data: sKes },
-    { data: sJhs },
-    { data: sShs },
-    { data: txKes },
-    { data: txJhs },
-    { data: txShs },
-  ] = await Promise.all([
-    supabase.from("teachers_kes").select("*").eq("school_year", year),
-    supabase.from("teachers_jhs").select("*").eq("school_year", year),
-    supabase.from("teachers_shs").select("*").eq("school_year", year),
-    supabase.from("classrooms_kes").select("*").eq("school_year", year),
-    supabase.from("classrooms_jhs").select("*").eq("school_year", year),
-    supabase.from("classrooms_shs").select("*").eq("school_year", year),
-    supabase.from("seats_kes").select("*").eq("school_year", year),
-    supabase.from("seats_jhs").select("*").eq("school_year", year),
-    supabase.from("seats_shs").select("*").eq("school_year", year),
-    supabase.from("textbooks_kes").select("*").eq("school_year", year),
-    supabase.from("textbooks_jhs").select("*").eq("school_year", year),
-    supabase.from("textbooks_shs").select("*").eq("school_year", year),
-  ]);
+  // 1. Teachers
+  const { data: tKes } = await supabase.from("teachers_kes").select("*").eq("school_year", year);
+  const { data: tJhs } = await supabase.from("teachers_jhs").select("*").eq("school_year", year);
+  const { data: tShs } = await supabase.from("teachers_shs").select("*").eq("school_year", year);
 
   const tKesTotal = tKes?.reduce((acc, r) => acc + (r.prev_total_teachers_inventory || 0), 0) || 0;
   const tJhsTotal = tJhs?.reduce((acc, r) => acc + (r.prev_total_teachers_inventory || 0), 0) || 0;
@@ -177,6 +115,11 @@ async function fetchResourcesForYear(year) {
   const tJhsNeeds = tJhs?.reduce((acc, r) => acc + (r.teacher_needs || 0), 0) || 0;
   const tShsNeeds = tShs?.reduce((acc, r) => acc + (r.teacher_needs || 0), 0) || 0;
 
+  // 2. Classrooms
+  const { data: cKes } = await supabase.from("classrooms_kes").select("*").eq("school_year", year);
+  const { data: cJhs } = await supabase.from("classrooms_jhs").select("*").eq("school_year", year);
+  const { data: cShs } = await supabase.from("classrooms_shs").select("*").eq("school_year", year);
+
   const cKesTotal = cKes?.reduce((acc, r) => acc + (r.prev_total_classroom_inventory || 0), 0) || 0;
   const cJhsTotal = cJhs?.reduce((acc, r) => acc + (r.total_classroom || 0), 0) || 0;
   const cShsTotal = cShs?.reduce((acc, r) => acc + (r.total_classroom || 0), 0) || 0;
@@ -185,6 +128,11 @@ async function fetchResourcesForYear(year) {
   const cJhsNeeds = cJhs?.reduce((acc, r) => acc + (r.classroom_needs || 0), 0) || 0;
   const cShsNeeds = cShs?.reduce((acc, r) => acc + (r.classroom_needs || 0), 0) || 0;
 
+  // 3. Seats
+  const { data: sKes } = await supabase.from("seats_kes").select("*").eq("school_year", year);
+  const { data: sJhs } = await supabase.from("seats_jhs").select("*").eq("school_year", year);
+  const { data: sShs } = await supabase.from("seats_shs").select("*").eq("school_year", year);
+
   const sKesTotal = sKes?.reduce((acc, r) => acc + (r.prev_total_seats_inventory || 0), 0) || 0;
   const sJhsTotal = sJhs?.reduce((acc, r) => acc + (r.total_jhs_seats || 0), 0) || 0;
   const sShsTotal = sShs?.reduce((acc, r) => acc + (r.total_shs_seats || 0), 0) || 0;
@@ -192,6 +140,11 @@ async function fetchResourcesForYear(year) {
   const sKesNeeds = sKes?.reduce((acc, r) => acc + (r.kinder_needs || 0) + (r.g1g6_needs || 0) + (r.sned_needs || 0), 0) || 0;
   const sJhsNeeds = sJhs?.reduce((acc, r) => acc + (r.seat_needs || 0), 0) || 0;
   const sShsNeeds = sShs?.reduce((acc, r) => acc + (r.seat_needs || 0), 0) || 0;
+
+  // 4. Textbooks
+  const { data: txKes } = await supabase.from("textbooks_kes").select("*").eq("school_year", year);
+  const { data: txJhs } = await supabase.from("textbooks_jhs").select("*").eq("school_year", year);
+  const { data: txShs } = await supabase.from("textbooks_shs").select("*").eq("school_year", year);
 
   const txKesNeeds = txKes?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
   const txJhsNeeds = txJhs?.reduce((acc, r) => acc + (r.textbook_needs || 0), 0) || 0;
@@ -231,68 +184,8 @@ async function fetchResourcesForYear(year) {
   };
 }
 
-// ─── Missing Components ─────────────────────────────────────
-function ResourcesChartsPanel({ color, year, ongoing, resources }) {
-  const teachersData = Object.entries(resources.teachers.breakdown || {}).map(([level, val]) => ({
-    level, inventory: val, needs: resources.teachers.needsBreakdown?.[level] || 0,
-  }));
-  const classroomsData = Object.entries(resources.classrooms.breakdown || {}).map(([level, val]) => ({
-    level, inventory: val, needs: resources.classrooms.needsBreakdown?.[level] || 0,
-  }));
-  const seatsData = Object.entries(resources.seats.breakdown || {}).map(([level, val]) => ({
-    level, inventory: val, needs: resources.seats.needsBreakdown?.[level] || 0,
-  }));
-  const textbooksData = Object.entries(resources.textbooks.breakdown || {}).map(([level, val]) => ({ 
-    level, shortage: val 
-  }));
-
-  const colorClasses = {
-    blue: "text-blue-600 bg-blue-500",
-    orange: "text-orange-600 bg-orange-500",
-  };
-  const [textColor, bgColor] = colorClasses[color] ? colorClasses[color].split(' ') : ["text-slate-600", "bg-slate-500"];
-
-  return (
-    <div className="space-y-3">
-      <p className={`flex items-center gap-1.5 text-[0.72rem] font-bold ${textColor}`}>
-        <span className={`h-[6px] w-[6px] rounded-full ${bgColor}`} />
-        {year}
-        {ongoing && <Clock size={11} className="text-orange-400" />}
-      </p>
-      <div className="space-y-4">
-        <DashboardGrid cols={2}>
-          <ResourcesInventoryChart title="Teachers · Inventory vs Needs" data={teachersData} />
-          <ResourcesInventoryChart title="Classrooms · Inventory vs Needs" data={classroomsData} />
-        </DashboardGrid>
-        <DashboardGrid cols={2}>
-          <ResourcesInventoryChart title="Seats · Inventory vs Needs" data={seatsData} />
-          <TextbooksChart data={textbooksData} />
-        </DashboardGrid>
-      </div>
-    </div>
-  );
-}
-
-function renderBreakdownRows(resourceType, resources) {
-  const resourceKey = resourceType.toLowerCase();
-  const resData = resources[resourceKey];
-  if (!resData) return null;
-
-  return Object.entries(resData.breakdown || {}).map(([level, val]) => (
-    <div key={level} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-      <span className="text-[0.75rem] font-medium text-slate-600">{level}</span>
-      <div className="text-right">
-        <span className="text-[0.8rem] font-bold text-slate-800">{val}</span>
-        <p className="text-[0.65rem] text-slate-400">
-          {resourceType === "Textbooks" ? "Shortage: " : "Needs: "}
-          {resourceType === "Textbooks" ? val : (resData.needsBreakdown?.[level] || 0)}
-        </p>
-      </div>
-    </div>
-  ));
-}
-
 // ─── Component ──────────────────────────────────────────────
+
 export default function Dashboard() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -824,19 +717,6 @@ export default function Dashboard() {
   const isComparing = compareMode && !!compareYear;
 
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-slate-50/40 px-4 py-8">
-        <div className="mx-auto max-w-7xl space-y-4">
-          <div className="h-10 w-48 animate-pulse rounded-lg bg-slate-200/80" />
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-200/70" />
-            ))}
-          </div>
-          <ChartFallback />
-        </div>
-      </div>
-    }>
     <div className="min-h-screen bg-slate-50/40">
       {/* ── Welcome toast (top-right) ─────────────────────── */}
       <div
@@ -2063,7 +1943,6 @@ export default function Dashboard() {
         <div className="h-8" />
       </div>
     </div>
-    </Suspense>
   );
 }
 

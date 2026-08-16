@@ -126,7 +126,7 @@ export function Footer() {
                     <Phone size={15} className="text-emerald-400" />
                   </span>
                   <span className="text-[0.82rem] text-slate-400 group-hover:text-white transition-colors font-medium pt-2">
-                    (044) 766-2360
+                    (044) 762 2793
                   </span>
                 </a>
                 <a
