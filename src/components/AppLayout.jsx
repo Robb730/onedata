@@ -3,14 +3,12 @@ import React, { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
 import { MobileBottomNav } from "./MobileBottomNav";
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from "../lib/supabaseClient";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import { ChangePasswordModal } from "./Modals/ChangePasswordModal";
 
-export function AppLayout({
-  children,
-}) {
+export function AppLayout({ children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showPasswordToast, setShowPasswordToast] = useState(false);
   const navigate = useNavigate();
@@ -53,91 +51,122 @@ export function AppLayout({
       style={{ background: "#f0f4f9" }}
     >
       <div className="app-shell-inner flex w-full min-h-dvh lg:h-full lg:min-h-0">
-      <ChangePasswordModal
-        isOpen={mustChange}
-        onSuccess={handlePasswordChange}
-      />
-
-      {/* Sidebar */}
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed((v) => !v)}
-      />
-
-      {/* Main content area */}
-      <div className="flex flex-1 flex-col min-w-0 lg:min-h-0 lg:overflow-hidden">
-        {/* Top header */}
-        <TopHeader
-          userName={userProfile?.full_name || "User"}
-          userRole={userProfile?.role || "Role"}
-          onLogout={handleLogout}
+        <ChangePasswordModal
+          isOpen={mustChange}
+          onSuccess={handlePasswordChange}
         />
 
-        <main
-          key={location.pathname}
-          className={`app-main flex-1 pb-[calc(6.25rem+env(safe-area-inset-bottom))] lg:min-h-0 lg:overflow-y-auto lg:pb-0 ${isAnimating ? "animate-page-in" : ""}`}
-        >
-          {children}
-        </main>
-      </div>
+        {/* Sidebar */}
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed((v) => !v)}
+        />
 
-      <MobileBottomNav />
+        {/* Main content area */}
+        <div className="flex flex-1 flex-col min-w-0 lg:min-h-0 lg:overflow-hidden">
+          {/* Top header */}
+          <TopHeader
+            userName={userProfile?.full_name || "User"}
+            userRole={userProfile?.role || "Role"}
+            onLogout={handleLogout}
+          />
 
-      {showPasswordToast && (
-        <div
-          className="fixed top-4 left-4 right-4 z-50 flex bg-white overflow-hidden animate-toast-in sm:left-auto sm:right-6 sm:w-[360px]"
-          style={{
-            height: "72px",
-            borderRadius: "12px",
-            boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
-            fontFamily: "Poppins, sans-serif",
-          }}
-        >
-          <div style={{ width: "6px", backgroundColor: "#43D45B", flexShrink: 0 }} />
+          <main
+            key={location.pathname}
+            className={`app-main flex-1 pb-[calc(6.25rem+env(safe-area-inset-bottom))] lg:min-h-0 lg:overflow-y-auto lg:pb-0 ${isAnimating ? "animate-page-in" : ""}`}
+          >
+            {children}
+          </main>
+        </div>
 
+        <MobileBottomNav />
+
+        {showPasswordToast && (
           <div
-            className="flex items-center flex-1 relative"
-            style={{ padding: "0 14px", gap: "12px" }}
+            className="fixed top-4 left-4 right-4 z-50 flex bg-white overflow-hidden animate-toast-in sm:left-auto sm:right-6 sm:w-[360px]"
+            style={{
+              height: "72px",
+              borderRadius: "12px",
+              boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
+              fontFamily: "Poppins, sans-serif",
+            }}
           >
             <div
-              className="flex items-center justify-center shrink-0"
               style={{
-                width: "34px",
-                height: "34px",
-                borderRadius: "50%",
+                width: "6px",
                 backgroundColor: "#43D45B",
+                flexShrink: 0,
               }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </div>
+            />
 
-            <div className="flex flex-col justify-center">
-              <p style={{ fontSize: "15px", fontWeight: 700, color: "#1F1F2E", lineHeight: 1.2, margin: 0 }}>
-                Success
-              </p>
-              <p style={{ fontSize: "12.5px", fontWeight: 500, color: "#666666", marginTop: "2px", margin: 0 }}>
-                Password updated successfully.
-              </p>
-            </div>
-
-            <button
-              onClick={() => setShowPasswordToast(false)}
-              className="absolute top-2 right-2.5 cursor-pointer"
-              style={{
-                color: "#666666",
-                background: "none",
-                border: "none",
-                fontSize: "16px",
-                lineHeight: 1,
-              }}
+            <div
+              className="flex items-center flex-1 relative"
+              style={{ padding: "0 14px", gap: "12px" }}
             >
-              ×
-            </button>
+              <div
+                className="flex items-center justify-center shrink-0"
+                style={{
+                  width: "34px",
+                  height: "34px",
+                  borderRadius: "50%",
+                  backgroundColor: "#43D45B",
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#FFFFFF"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+
+              <div className="flex flex-col justify-center">
+                <p
+                  style={{
+                    fontSize: "15px",
+                    fontWeight: 700,
+                    color: "#1F1F2E",
+                    lineHeight: 1.2,
+                    margin: 0,
+                  }}
+                >
+                  Success
+                </p>
+                <p
+                  style={{
+                    fontSize: "12.5px",
+                    fontWeight: 500,
+                    color: "#666666",
+                    marginTop: "2px",
+                    margin: 0,
+                  }}
+                >
+                  Password updated successfully.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowPasswordToast(false)}
+                className="absolute top-2 right-2.5 cursor-pointer"
+                style={{
+                  color: "#666666",
+                  background: "none",
+                  border: "none",
+                  fontSize: "16px",
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
     </div>
   );

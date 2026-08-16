@@ -20,7 +20,7 @@ import SettingsPage from "./pages/Settings/SettingsPage.jsx";
 import ChangePasswordPage from "./pages/Settings/ChangePasswordPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import RoleProtectedRoute from "./components/RoleProtectedRoute.jsx";
-import NotFoundPage from './pages/NotFound/NotFoundPage.jsx' // adjust path to wherever you saved it
+import NotFoundPage from "./pages/NotFound/NotFoundPage.jsx"; // adjust path to wherever you saved it
 
 function App() {
   const [session, setSession] = useState(null);
@@ -54,7 +54,7 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/change-password" element={<ChangePasswordPage />} />
       <Route path="/not-found" element={<NotFoundPage />} />
-      
+
       <Route path="/test" element={<BaliwagExtractor />} />
       <Route
         path="/dashboard"
@@ -150,15 +150,15 @@ function App() {
         }
       />
       <Route
-  path="/school-year"
-  element={
-    <RoleProtectedRoute session={session} roles={["administrator"]}>
-      <AppLayout>
-        <SchoolYearPage />
-      </AppLayout>
-    </RoleProtectedRoute>
-  }
-/>
+        path="/school-year"
+        element={
+          <RoleProtectedRoute session={session} roles={["administrator"]}>
+            <AppLayout>
+              <SchoolYearPage />
+            </AppLayout>
+          </RoleProtectedRoute>
+        }
+      />
       <Route
         path="/settings"
         element={

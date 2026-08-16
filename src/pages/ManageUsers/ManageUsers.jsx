@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Search,
   UserPlus,
@@ -27,8 +28,6 @@ import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
 
 export default function ManageUsers() {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDivision, setSelectedDivision] = useState("All");
   const [selectedRole, setSelectedRole] = useState("All");
@@ -46,67 +45,61 @@ export default function ManageUsers() {
   const { userProfile, refreshProfile } = useUser();
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-
   // ─── Fetch users from Supabase ───────────────────────────────
-  const fetchUsers = async () => {
-    setLoading(true);
+  const { data: usersData, isLoading: loading, refetch } = useQuery({
+    queryKey: ["manageUsers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("users")
+        .select(
+          `
+          id,
+          full_name,
+          id_number,
+          email,
+          role,
+          is_active,
+          created_at,
+          divisions ( id, name ),
+          sections  ( id, name, division_id, divisions ( id, name ) )
+        `,
+        )
+        .order("created_at", { ascending: true });
 
-    const { data, error } = await supabase
-      .from("users")
-      .select(
-        `
-        id,
-        full_name,
-        id_number,
-        email,
-        role,
-        is_active,
-        created_at,
-        divisions ( id, name ),
-        sections  ( id, name, division_id, divisions ( id, name ) )
-      `,
-      )
-      .order("created_at", { ascending: true });
+      if (error) {
+        console.error("Error fetching users:", error.message);
+        throw error;
+      }
 
-    if (error) {
-      console.error("Error fetching users:", error.message);
-      setLoading(false);
-      return;
+      // Normalize into flat shape for the UI
+      return data.map((u) => {
+        // Prefer the user's own division; fall back to the division
+        // linked through their section (for section-scoped roles).
+        const resolvedDivision = u.divisions ?? u.sections?.divisions ?? null;
+
+        return {
+          id: u.id,
+          name: u.full_name,
+          idNumber: u.id_number,
+          email: u.email,
+          role: u.role,
+          division: u.role === "administrator" ? "Administrator" : (resolvedDivision?.name ?? "—"),
+          divisionId: resolvedDivision?.id ?? null,
+          section: u.sections?.name ?? "—",
+          sectionId: u.sections?.id ?? null,
+          status: u.is_active ? "Active" : "Inactive",
+          avatar: u.full_name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .substring(0, 2)
+            .toUpperCase(),
+        };
+      });
     }
+  });
 
-    // Normalize into flat shape for the UI
-    const normalized = data.map((u) => {
-      // Prefer the user's own division; fall back to the division
-      // linked through their section (for section-scoped roles).
-      const resolvedDivision = u.divisions ?? u.sections?.divisions ?? null;
-
-      return {
-        id: u.id,
-        name: u.full_name,
-        idNumber: u.id_number,
-        email: u.email,
-        role: u.role,
-        division: u.role === "administrator" ? "Administrator" : (resolvedDivision?.name ?? "—"),
-        divisionId: resolvedDivision?.id ?? null,
-        section: u.sections?.name ?? "—",
-        sectionId: u.sections?.id ?? null,
-        status: u.is_active ? "Active" : "Inactive",
-        avatar: u.full_name
-          .split(" ")
-          .map((n) => n[0])
-          .join("")
-          .substring(0, 2)
-          .toUpperCase(),
-      };
-    });
-
-    setUsers(normalized);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const users = usersData || [];
 
   useEffect(() => {
     localStorage.setItem("manage-users-view-mode", viewMode);
@@ -211,7 +204,7 @@ export default function ManageUsers() {
 
     setToastMessage("User updated successfully.");
     setShowToast(true);
-    fetchUsers(); // refresh from DB
+    refetch(); // refresh from DB
   };
 
   const logAuditEvent = async ({ action, fileName, details, role, status = "Success" }) => {
@@ -265,7 +258,7 @@ export default function ManageUsers() {
     setDeletingUser(null);
     setToastMessage("User deleted successfully.");
     setShowToast(true);
-    fetchUsers();
+    refetch();
   };
 
   const handleAddNewUser = async (newUserData) => {
@@ -304,7 +297,7 @@ export default function ManageUsers() {
 
     setAddingNewUser(false);
     setSuccessEmail(newUserData.email);
-    fetchUsers();
+    refetch();
   };
 
   const handleDeactivateUser = async () => {
@@ -338,7 +331,7 @@ export default function ManageUsers() {
     setDeactivatingUser(null);
     setToastMessage("User deactivated successfully.");
     setShowToast(true);
-    fetchUsers();
+    refetch();
   };
 
   const handleActivateUser = async () => {
@@ -372,7 +365,7 @@ export default function ManageUsers() {
     setActivatingUser(null);
     setToastMessage("User activated successfully.");
     setShowToast(true);
-    fetchUsers();
+    refetch();
   };
 
   // ─── Badge helpers ───────────────────────────────────────────

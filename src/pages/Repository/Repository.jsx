@@ -1,9 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
   RepositoryHeader,
   RepositorySearchBar,
-  RepositoryTabs,
   FolderGrid,
   COLOR_PRESETS,
 } from "../../components/RepositoryComponents";
@@ -23,33 +23,17 @@ export default function Repository({ onFolderClick }) {
   useEffect(() => {
     localStorage.setItem("repository-view-mode", viewMode);
   }, [viewMode]);
-  const [activeTab, setActiveTab] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [divisions, setDivisions] = useState([]);
-  const [managersByDivision, setManagersByDivision] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const [folderColors, setFolderColors] = useState({});
-
-
-
-  useEffect(() => {
-    async function fetchDivisions() {
-      setLoading(true);
-      setError(null);
-
+  const { data, isLoading: loading, error: queryError } = useQuery({
+    queryKey: ["repositoryDivisions"],
+    queryFn: async () => {
       const { data: divisionsData, error: divisionsError } = await supabase
         .from("divisions")
         .select("id, name")
         .order("name", { ascending: true });
 
-      if (divisionsError) {
-        setError(divisionsError.message);
-        setLoading(false);
-        return;
-      }
+      if (divisionsError) throw divisionsError;
 
       // Anyone actively assigned as division_focal, grouped by division_id.
       // Multiple people can manage the same division — this is a 1:many join.
@@ -60,11 +44,7 @@ export default function Repository({ onFolderClick }) {
         .eq("is_active", true)
         .not("division_id", "is", null);
 
-      if (managersError) {
-        setError(managersError.message);
-        setLoading(false);
-        return;
-      }
+      if (managersError) throw managersError;
 
       const grouped = {};
       (managersData || []).forEach(({ division_id, full_name }) => {
@@ -72,13 +52,14 @@ export default function Repository({ onFolderClick }) {
         grouped[division_id].push(full_name);
       });
 
-      setDivisions(divisionsData || []);
-      setManagersByDivision(grouped);
-      setLoading(false);
+      return { divisions: divisionsData || [], managersByDivision: grouped };
     }
+  });
 
-    fetchDivisions();
-  }, []);
+  const divisions = data?.divisions || [];
+  const managersByDivision = data?.managersByDivision || {};
+  const [folderColors, setFolderColors] = useState({});
+  const error = queryError?.message || null;
 
   const handleFolderColorChange = (divisionId, newColorId) => {
     setFolderColors((prev) => ({ ...prev, [divisionId]: newColorId }));

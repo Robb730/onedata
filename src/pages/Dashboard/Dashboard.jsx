@@ -19,6 +19,7 @@ import {
   Clock,
   CheckCircle,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../../lib/supabaseClient";
 import {
   DashboardOverview,
@@ -210,610 +211,242 @@ export default function Dashboard() {
   const [selectedYear, setSelectedYear] = useState(null);
   const [rateView, setRateView] = useState("Dropout");
   const [enrollmentView, setEnrollmentView] = useState("Summary");
-
-  const [schoolYears, setSchoolYears] = useState([]);
-  const [yearsLoading, setYearsLoading] = useState(true);
-
-  // ── Crucial Resources State ────────────────────────────────
+  
+  // ── Year & Dropdowns
+  const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
+  const yearDropdownRef = useRef(null);
+  
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareYear, setCompareYear] = useState(null);
+  const [isCompareYearDropdownOpen, setIsCompareYearDropdownOpen] = useState(false);
+  const compareYearDropdownRef = useRef(null);
+  
+  // ── Crucial Resources Views
   const [resourceView, setResourceView] = useState("Summary");
   const [resourceType, setResourceType] = useState("Teachers");
-  const [resources, setResources] = useState({
+
+  const [activeCespesTab, setActiveCespesTab] = useState("Operations");
+
+  // --- useQuery logic replaces all the fetching useEffects ---
+  const { data: yearData, isLoading: yearsLoading } = useQuery({
+    queryKey: ["schoolYears"],
+    queryFn: async () => {
+      const { data: activeRow } = await supabase.from("school_years").select("label").eq("status", "active").maybeSingle();
+      const years = await getAllSchoolYearsForSelector();
+      return { years, defaultYear: years.length > 0 ? years[0].year : (activeRow?.label || null) };
+    }
+  });
+  
+  const schoolYears = yearData?.years || [];
+  
+  useEffect(() => {
+    if (yearData && !selectedYear) setSelectedYear(yearData.defaultYear);
+  }, [yearData, selectedYear]);
+
+  // Enrollment
+  const { data: enrollmentObj, isLoading: isEnrollmentLoading, error: enrollmentError } = useQuery({
+    queryKey: ["enrollment", selectedYear],
+    enabled: !!selectedYear,
+    queryFn: async ({ queryKey }) => {
+      const [, year] = queryKey;
+      const { data, error } = await supabase
+        .from("enrollment_data")
+        .select("category, grand_total, school_name, elementary_data, junior_high_data, senior_high_s1_data, senior_high_s2_data")
+        .eq("school_year", year);
+      if (error) throw error;
+      
+      const { data: allEnrollment } = await supabase.from("enrollment_data").select("school_year, category, grand_total");
+      let trendData = enrollmentTrendStatic;
+      if (allEnrollment) {
+        const trendYears = [...new Set(allEnrollment.map(d => d.school_year))].sort();
+        trendData = trendYears.map(year => {
+          const yData = allEnrollment.filter(d => d.school_year === year);
+          return {
+            year,
+            public: yData.filter(d => d.category === "PUBLIC").reduce((acc, row) => acc + (row.grand_total ?? 0), 0),
+            private: yData.filter(d => d.category === "PRIVATE").reduce((acc, row) => acc + (row.grand_total ?? 0), 0)
+          };
+        });
+      }
+      
+      const totals = computeEnrollmentTotals(data || []);
+      let malePublic = 0, malePrivate = 0, femalePublic = 0, femalePrivate = 0;
+      (data || []).forEach(row => {
+        const isPublic = row.category === "PUBLIC";
+        const cols = [row.elementary_data, row.junior_high_data, row.senior_high_s1_data, row.senior_high_s2_data];
+        cols.forEach(col => {
+          if (col?.total) {
+            const m = col.total.m ?? 0;
+            const f = col.total.f ?? 0;
+            if (isPublic) { malePublic += m; femalePublic += f; }
+            else { malePrivate += m; femalePrivate += f; }
+          }
+        });
+      });
+      
+      return {
+        rows: data,
+        summary: totals,
+        gender: { male: { total: malePublic + malePrivate, public: malePublic, private: malePrivate }, female: { total: femalePublic + femalePrivate, public: femalePublic, private: femalePrivate } },
+        trend: trendData
+      };
+    }
+  });
+
+  const enrollmentRows = enrollmentObj?.rows || [];
+  const enrollmentSummary = enrollmentObj?.summary || { public: 0, private: 0, total: 0 };
+  const genderSummary = enrollmentObj?.gender || { male: { total: 0, public: 0, private: 0 }, female: { total: 0, public: 0, private: 0 } };
+  const enrollmentTrend = enrollmentObj?.trend || enrollmentTrendStatic;
+  
+  const loading = isEnrollmentLoading || !selectedYear;
+  const error = enrollmentError?.message || null;
+
+  // Crucial Resources
+  const { data: resourcesObj, isLoading: resourcesLoading } = useQuery({
+    queryKey: ["resources", selectedYear],
+    enabled: !!selectedYear,
+    queryFn: ({ queryKey }) => fetchResourcesForYear(queryKey[1])
+  });
+  
+  const resources = resourcesObj || {
     teachers: { total: 0, needs: 0, breakdown: {}, loading: true },
     classrooms: { total: 0, needs: 0, breakdown: {}, loading: true },
     seats: { total: 0, needs: 0, breakdown: {}, loading: true },
     textbooks: { needs: 0, excess: 0, breakdown: {}, loading: true },
+  };
+
+  // CESPES
+  const { data: cespesObj } = useQuery({
+    queryKey: ["cespes", selectedYear],
+    enabled: !!selectedYear,
+    queryFn: async ({ queryKey }) => {
+      const [, year] = queryKey;
+      const [ops, support, admin, perf, innov] = await Promise.all([
+        supabase.from("cespes_operations").select("*").eq("school_year", year),
+        supabase.from("cespes_support_operations").select("*").eq("school_year", year),
+        supabase.from("cespes_general_admin").select("*").eq("school_year", year),
+        supabase.from("cespes_individual_performance").select("*").eq("school_year", year),
+        supabase.from("cespes_innovation").select("*").eq("school_year", year),
+      ]);
+      return {
+        operations: ops.data || [],
+        supportOperations: support.data || [],
+        generalAdmin: admin.data || [],
+        individualPerformance: perf.data || [],
+        innovation: innov.data || [],
+        loading: false,
+      };
+    }
   });
 
-  const [enrollmentSummary, setEnrollmentSummary] = useState({
-    public: 0,
-    private: 0,
-    total: 0,
+  const cespes = cespesObj || { operations: [], supportOperations: [], generalAdmin: [], individualPerformance: [], innovation: [], loading: true };
+
+  // KPIs
+  const { data: kpiDataObj } = useQuery({
+    queryKey: ["kpiData"],
+    queryFn: async () => {
+      const { data } = await supabase.from("performance_indicators_data").select("*");
+      return data || [];
+    }
   });
+  const kpiData = kpiDataObj || [];
 
-  const [genderSummary, setGenderSummary] = useState({
-    male: { total: 0, public: 0, private: 0 },
-    female: { total: 0, public: 0, private: 0 },
+  // Compare Enrollment
+  const { data: compareEnrollmentObj, isLoading: compareLoading } = useQuery({
+    queryKey: ["enrollment", compareYear],
+    enabled: !!compareMode && !!compareYear,
+    queryFn: async ({ queryKey }) => {
+      const [, year] = queryKey;
+      const { data } = await supabase
+        .from("enrollment_data")
+        .select("category, grand_total, school_name, elementary_data, junior_high_data, senior_high_s1_data, senior_high_s2_data")
+        .eq("school_year", year);
+      return {
+        rows: data || [],
+        summary: computeEnrollmentTotals(data || [])
+      };
+    }
   });
+  
+  const compareEnrollmentRows = compareEnrollmentObj?.rows || [];
+  const compareEnrollmentSummary = compareEnrollmentObj?.summary || { public: 0, private: 0, total: 0 };
 
-  const [enrollmentRows, setEnrollmentRows] = useState([]);
-  const [kpiData, setKpiData] = useState([]);
-  const [enrollmentTrend, setEnrollmentTrend] = useState(enrollmentTrendStatic);
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // ── CESPES State ───────────────────────────────────────────
-  const [cespes, setCespes] = useState({
-    operations: [],
-    supportOperations: [],
-    generalAdmin: [],
-    individualPerformance: [],
-    innovation: [],
-    loading: true,
+  // Compare Resources
+  const { data: compareResourcesObj, isLoading: compareResourcesLoading } = useQuery({
+    queryKey: ["resources", compareYear],
+    enabled: !!compareMode && !!compareYear,
+    queryFn: ({ queryKey }) => fetchResourcesForYear(queryKey[1])
   });
-  const [activeCespesTab, setActiveCespesTab] = useState("Operations");
-
-  const [compareCespes, setCompareCespes] = useState({
-    operations: [],
-    supportOperations: [],
-    generalAdmin: [],
-    individualPerformance: [],
-    innovation: [],
-    loading: false,
-  });
-
-  const [compareResources, setCompareResources] = useState({
+  
+  const compareResources = compareResourcesObj || {
     teachers: { total: 0, needs: 0, breakdown: {}, loading: false },
     classrooms: { total: 0, needs: 0, breakdown: {}, loading: false },
     seats: { total: 0, needs: 0, breakdown: {}, loading: false },
     textbooks: { needs: 0, excess: 0, breakdown: {}, loading: false },
-  });
-  const [compareResourcesLoading, setCompareResourcesLoading] = useState(false);
+  };
 
-  // ── Year Dropdown State ─────────────────────────────────────
-  const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
-  const yearDropdownRef = useRef(null);
-
-  // ── Compare Mode State ──────────────────────────────────────
-  const [compareMode, setCompareMode] = useState(false);
-  const [compareYear, setCompareYear] = useState(null);
-  const [isCompareYearDropdownOpen, setIsCompareYearDropdownOpen] =
-    useState(false);
-  const compareYearDropdownRef = useRef(null);
-
-  const [compareEnrollmentSummary, setCompareEnrollmentSummary] = useState({
-    public: 0,
-    private: 0,
-    total: 0,
-  });
-  const [compareEnrollmentRows, setCompareEnrollmentRows] = useState([]);
-  const [compareLoading, setCompareLoading] = useState(false);
-
-  const [scheduledTransition, setScheduledTransition] = useState(null);
-  const [showTransitionBanner, setShowTransitionBanner] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchScheduledTransition() {
-      const { data, error } = await supabase
-        .from("school_years")
-        .select("id, label, activation_date")
-        .eq("status", "scheduled")
-        .order("activation_date", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (cancelled || error || !data) return;
-
-      setScheduledTransition(data);
-
-      const dismissedKey = `transitionBannerDismissed:${data.id}`;
-      const alreadyDismissed = sessionStorage.getItem(dismissedKey) === "1";
-      if (!alreadyDismissed) setShowTransitionBanner(true);
+  // Compare Cespes
+  const { data: compareCespesObj } = useQuery({
+    queryKey: ["cespes", compareYear],
+    enabled: !!compareMode && !!compareYear,
+    queryFn: async ({ queryKey }) => {
+      const [, year] = queryKey;
+      const [ops, support, admin, perf, innov] = await Promise.all([
+        supabase.from("cespes_operations").select("*").eq("school_year", year),
+        supabase.from("cespes_support_operations").select("*").eq("school_year", year),
+        supabase.from("cespes_general_admin").select("*").eq("school_year", year),
+        supabase.from("cespes_individual_performance").select("*").eq("school_year", year),
+        supabase.from("cespes_innovation").select("*").eq("school_year", year),
+      ]);
+      return {
+        operations: ops.data || [],
+        supportOperations: support.data || [],
+        generalAdmin: admin.data || [],
+        individualPerformance: perf.data || [],
+        innovation: innov.data || [],
+        loading: false,
+      };
     }
+  });
 
-    fetchScheduledTransition();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const compareCespes = compareCespesObj || { operations: [], supportOperations: [], generalAdmin: [], individualPerformance: [], innovation: [], loading: false };
+
+  // Scheduled transition
+  const { data: scheduledTransitionObj } = useQuery({
+    queryKey: ["scheduledTransition"],
+    queryFn: async () => {
+      const { data } = await supabase.from("school_years").select("id, label, activation_date").eq("status", "scheduled").order("activation_date", { ascending: true }).limit(1).maybeSingle();
+      return data;
+    }
+  });
+  
+  const [showTransitionBanner, setShowTransitionBanner] = useState(false);
+  useEffect(() => {
+    if (scheduledTransitionObj) {
+      const dismissedKey = `transitionBannerDismissed:${scheduledTransitionObj.id}`;
+      if (sessionStorage.getItem(dismissedKey) !== "1") {
+        setShowTransitionBanner(true);
+      }
+    }
+  }, [scheduledTransitionObj]);
+  
+  const scheduledTransition = scheduledTransitionObj || null;
 
   const dismissTransitionBanner = () => {
     if (scheduledTransition) {
-      sessionStorage.setItem(
-        `transitionBannerDismissed:${scheduledTransition.id}`,
-        "1",
-      );
+      sessionStorage.setItem(`transitionBannerDismissed:${scheduledTransition.id}`, "1");
     }
     setShowTransitionBanner(false);
   };
 
   useEffect(() => {
     function handleClickOutside(event) {
-      if (
-        yearDropdownRef.current &&
-        !yearDropdownRef.current.contains(event.target)
-      ) {
-        setIsYearDropdownOpen(false);
-      }
-      if (
-        compareYearDropdownRef.current &&
-        !compareYearDropdownRef.current.contains(event.target)
-      ) {
-        setIsCompareYearDropdownOpen(false);
-      }
+      if (yearDropdownRef.current && !yearDropdownRef.current.contains(event.target)) setIsYearDropdownOpen(false);
+      if (compareYearDropdownRef.current && !compareYearDropdownRef.current.contains(event.target)) setIsCompareYearDropdownOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  useEffect(() => {
-    if (!compareMode || !compareYear) {
-      setCompareResources({
-        teachers: { total: 0, needs: 0, breakdown: {}, loading: false },
-        classrooms: { total: 0, needs: 0, breakdown: {}, loading: false },
-        seats: { total: 0, needs: 0, breakdown: {}, loading: false },
-        textbooks: { needs: 0, excess: 0, breakdown: {}, loading: false },
-      });
-      setCompareResourcesLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    async function fetchCompareResources() {
-      setCompareResourcesLoading(true);
-      try {
-        const result = await fetchResourcesForYear(compareYear);
-        if (!cancelled) setCompareResources(result);
-      } catch (error) {
-        console.error("Error fetching compare crucial resources:", error);
-      } finally {
-        if (!cancelled) setCompareResourcesLoading(false);
-      }
-    }
-
-    fetchCompareResources();
-    return () => {
-      cancelled = true;
-    };
-  }, [compareMode, compareYear]);
-
-  function ResourcesChartsPanel({ color, year, ongoing, resources }) {
-    const isBlue = color === "blue";
-    const dotColor = isBlue ? "bg-blue-500" : "bg-orange-500";
-    const textColor = isBlue ? "text-blue-600" : "text-orange-600";
-    const borderColor = isBlue ? "border-blue-100" : "border-orange-100";
-    const bgTint = isBlue ? "bg-blue-50/20" : "bg-orange-50/20";
-
-    const teachersData = Object.entries(resources.teachers.breakdown || {}).map(
-      ([level, val]) => ({
-        level,
-        inventory: val,
-        needs: resources.teachers.needsBreakdown?.[level] || 0,
-      }),
-    );
-    const classroomsData = Object.entries(
-      resources.classrooms.breakdown || {},
-    ).map(([level, val]) => ({
-      level,
-      inventory: val,
-      needs: resources.classrooms.needsBreakdown?.[level] || 0,
-    }));
-    const seatsData = Object.entries(resources.seats.breakdown || {}).map(
-      ([level, val]) => ({
-        level,
-        inventory: val,
-        needs: resources.seats.needsBreakdown?.[level] || 0,
-      }),
-    );
-    const textbooksData = Object.entries(resources.textbooks.breakdown || {}).map(
-      ([level, val]) => ({ level, shortage: val }),
-    );
-
-    const hasAnyData =
-      teachersData.some((d) => d.inventory > 0 || d.needs > 0) ||
-      classroomsData.some((d) => d.inventory > 0 || d.needs > 0) ||
-      seatsData.some((d) => d.inventory > 0 || d.needs > 0) ||
-      textbooksData.some((d) => d.shortage > 0);
-
-    return (
-      <div className={`rounded-[12px] border ${borderColor} ${bgTint} p-4`}>
-        <div className="flex items-center justify-between mb-3">
-          <p className={`flex items-center gap-1.5 text-[0.72rem] font-bold ${textColor}`}>
-            <span className={`h-[6px] w-[6px] rounded-full ${dotColor}`} />
-            SY {year}
-            {ongoing && <Clock size={11} className="text-orange-400" />}
-          </p>
-          {!hasAnyData && (
-            <span className="text-[0.6rem] font-semibold text-slate-400 italic">
-              No data yet
-            </span>
-          )}
-        </div>
-
-        {!hasAnyData ? (
-          <div className="flex items-center justify-center py-8 text-center">
-            <p className="text-[0.72rem] text-slate-400 italic max-w-[280px]">
-              No resource data uploaded for SY {year} yet.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <DashboardGrid cols={2}>
-              <ResourcesInventoryChart
-                title="Teachers · Inventory vs Needs"
-                data={teachersData}
-              />
-              <ResourcesInventoryChart
-                title="Classrooms · Inventory vs Needs"
-                data={classroomsData}
-              />
-            </DashboardGrid>
-            <DashboardGrid cols={2}>
-              <ResourcesInventoryChart
-                title="Seats · Inventory vs Needs"
-                data={seatsData}
-              />
-              <TextbooksChart data={textbooksData} />
-            </DashboardGrid>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  function renderBreakdownRows(resourceType, resourcesState) {
-    const resKey = resourceType.toLowerCase();
-    const resource = resourcesState[resKey];
-    const breakdown = resource.breakdown || {};
-    const needsBreakdown = resource.needsBreakdown || {};
-    const total = resource.total || 1;
-
-    return Object.entries(breakdown).map(([level, val]) => {
-      const percentage = (val / total) * 100;
-      let color = "bg-blue-500";
-
-      if (resKey === "classrooms") color = "bg-emerald-500";
-      else if (resKey === "seats") color = "bg-amber-500";
-      else if (resKey === "textbooks") color = "bg-rose-500";
-
-      const needs = needsBreakdown[level] || 0;
-      const displayValue = val.toLocaleString();
-      const countText = needs > 0 ? `${needs.toLocaleString()} needs` : "No needs";
-
-      if (resKey === "textbooks") {
-        const totalNeeds = resource.needs || 1;
-        return (
-          <MetricProgress
-            key={level}
-            label={level}
-            display={`${val.toLocaleString()} shortage`}
-            value={(val / totalNeeds) * 100}
-            color="bg-rose-500"
-          />
-        );
-      }
-
-      return (
-        <MetricProgress
-          key={level}
-          label={level}
-          display={displayValue}
-          count={countText}
-          value={percentage}
-          color={color}
-        />
-      );
-    });
-  }
-
-  // ── Resolve the default (active) school year once on mount ──
-  useEffect(() => {
-    let cancelled = false;
-
-    async function initYear() {
-      try {
-        // 1. Get the active year first — this is the one thing that
-        //    actually determines what data loads, so resolve it before
-        //    anything else touches state.
-        const { data: activeRow, error: activeErr } = await supabase
-          .from("school_years")
-          .select("label")
-          .eq("status", "active")
-          .maybeSingle();
-
-        if (cancelled) return;
-
-        // 2. Get the full list for the dropdown (doesn't block selection)
-        const yearsData = await getAllSchoolYearsForSelector();
-        if (cancelled) return;
-
-        setSchoolYears(yearsData);
-
-        if (yearsData.length > 0) {
-          // Default to the latest year
-          setSelectedYear(yearsData[0].year);
-        } else if (!activeErr && activeRow?.label) {
-          // Fallback to active year if yearsData is empty for some reason
-          setSelectedYear(activeRow.label);
-        }
-      } catch (err) {
-        console.error("Error initializing school year:", err);
-      } finally {
-        if (!cancelled) setYearsLoading(false);
-      }
-    }
-
-    initYear();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!selectedYear) return; // wait until the active year is resolved
-
-    async function fetchEnrollmentSummary() {
-      setLoading(true);
-      setError(null);
-
-      const { data, error } = await supabase
-        .from("enrollment_data")
-        .select(
-          "category, grand_total, school_name, elementary_data, junior_high_data, senior_high_s1_data, senior_high_s2_data",
-        )
-        .eq("school_year", selectedYear);
-
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch all enrollment data for trend chart
-      const { data: allEnrollment } = await supabase
-        .from("enrollment_data")
-        .select("school_year, category, grand_total");
-      if (allEnrollment) {
-        const trendYears = [
-          ...new Set(allEnrollment.map((d) => d.school_year)),
-        ].sort();
-        const trendData = trendYears.map((year) => {
-          const yData = allEnrollment.filter((d) => d.school_year === year);
-          return {
-            year,
-            public: yData
-              .filter((d) => d.category === "PUBLIC")
-              .reduce((acc, row) => acc + (row.grand_total ?? 0), 0),
-            private: yData
-              .filter((d) => d.category === "PRIVATE")
-              .reduce((acc, row) => acc + (row.grand_total ?? 0), 0),
-          };
-        });
-        if (trendData.length > 0) setEnrollmentTrend(trendData);
-      }
-
-      setEnrollmentRows(data);
-
-      // ── Enrollment by category ──────────────────────────────
-      const { public: publicTotal, private: privateTotal } =
-        computeEnrollmentTotals(data);
-
-      // ── Gender totals split by public / private ─────────────
-      let malePublic = 0,
-        malePrivate = 0;
-      let femalePublic = 0,
-        femalePrivate = 0;
-
-      data.forEach((row) => {
-        const isPublic = row.category === "PUBLIC";
-        const cols = [
-          row.elementary_data,
-          row.junior_high_data,
-          row.senior_high_s1_data,
-          row.senior_high_s2_data,
-        ];
-
-        cols.forEach((col) => {
-          if (col?.total) {
-            const m = col.total.m ?? 0;
-            const f = col.total.f ?? 0;
-            if (isPublic) {
-              malePublic += m;
-              femalePublic += f;
-            } else {
-              malePrivate += m;
-              femalePrivate += f;
-            }
-          }
-        });
-      });
-
-      setEnrollmentSummary({
-        public: publicTotal,
-        private: privateTotal,
-        total: publicTotal + privateTotal,
-      });
-
-      setGenderSummary({
-        male: {
-          total: malePublic + malePrivate,
-          public: malePublic,
-          private: malePrivate,
-        },
-        female: {
-          total: femalePublic + femalePrivate,
-          public: femalePublic,
-          private: femalePrivate,
-        },
-      });
-
-      setLoading(false);
-    }
-
-    async function fetchCrucialResources() {
-      try {
-        const result = await fetchResourcesForYear(selectedYear);
-        setResources(result);
-      } catch (error) {
-        console.error("Error fetching crucial resources:", error);
-      }
-    }
-
-    async function fetchCespes() {
-      try {
-        const [ops, support, admin, perf, innov] = await Promise.all([
-          supabase
-            .from("cespes_operations")
-            .select("*")
-            .eq("school_year", selectedYear),
-          supabase
-            .from("cespes_support_operations")
-            .select("*")
-            .eq("school_year", selectedYear),
-          supabase
-            .from("cespes_general_admin")
-            .select("*")
-            .eq("school_year", selectedYear),
-          supabase
-            .from("cespes_individual_performance")
-            .select("*")
-            .eq("school_year", selectedYear),
-          supabase
-            .from("cespes_innovation")
-            .select("*")
-            .eq("school_year", selectedYear),
-        ]);
-        setCespes({
-          operations: ops.data || [],
-          supportOperations: support.data || [],
-          generalAdmin: admin.data || [],
-          individualPerformance: perf.data || [],
-          innovation: innov.data || [],
-          loading: false,
-        });
-      } catch (err) {
-        console.error("Error fetching CESPES:", err);
-        setCespes((prev) => ({ ...prev, loading: false }));
-      }
-    }
-
-    async function fetchPerformanceIndicators() {
-      const { data, error } = await supabase
-        .from("performance_indicators_data")
-        .select("*");
-      if (!error && data) {
-        setKpiData(data);
-      }
-    }
-
-    fetchEnrollmentSummary();
-    fetchCrucialResources();
-    fetchCespes();
-    fetchPerformanceIndicators();
-  }, [selectedYear]);
-
-  // ── Fetch enrollment data for the compare year ───────────────
-  // Runs independently of the primary fetch above so toggling compare
-  // mode never re-triggers the primary-year queries.
-  useEffect(() => {
-    if (!compareMode || !compareYear) {
-      setCompareEnrollmentSummary({ public: 0, private: 0, total: 0 });
-      setCompareEnrollmentRows([]);
-      return;
-    }
-
-    let cancelled = false;
-
-    async function fetchCompareEnrollment() {
-      setCompareLoading(true);
-      const { data, error } = await supabase
-        .from("enrollment_data")
-        .select(
-          "category, grand_total, school_name, elementary_data, junior_high_data, senior_high_s1_data, senior_high_s2_data",
-        )
-        .eq("school_year", compareYear);
-
-      if (cancelled) return;
-
-      if (!error && data) {
-        setCompareEnrollmentRows(data);
-        setCompareEnrollmentSummary(computeEnrollmentTotals(data));
-      } else if (error) {
-        console.error("Error fetching compare enrollment:", error);
-      }
-      setCompareLoading(false);
-    }
-
-    fetchCompareEnrollment();
-    return () => {
-      cancelled = true;
-    };
-  }, [compareMode, compareYear]);
-
-  useEffect(() => {
-    if (!compareMode || !compareYear) {
-      setCompareCespes({
-        operations: [],
-        supportOperations: [],
-        generalAdmin: [],
-        individualPerformance: [],
-        innovation: [],
-        loading: false,
-      });
-      return;
-    }
-
-    let cancelled = false;
-
-    async function fetchCompareCespes() {
-      setCompareCespes((prev) => ({ ...prev, loading: true }));
-      try {
-        const [ops, support, admin, perf, innov] = await Promise.all([
-          supabase
-            .from("cespes_operations")
-            .select("*")
-            .eq("school_year", compareYear),
-          supabase
-            .from("cespes_support_operations")
-            .select("*")
-            .eq("school_year", compareYear),
-          supabase
-            .from("cespes_general_admin")
-            .select("*")
-            .eq("school_year", compareYear),
-          supabase
-            .from("cespes_individual_performance")
-            .select("*")
-            .eq("school_year", compareYear),
-          supabase
-            .from("cespes_innovation")
-            .select("*")
-            .eq("school_year", compareYear),
-        ]);
-        if (cancelled) return;
-        setCompareCespes({
-          operations: ops.data || [],
-          supportOperations: support.data || [],
-          generalAdmin: admin.data || [],
-          individualPerformance: perf.data || [],
-          innovation: innov.data || [],
-          loading: false,
-        });
-      } catch (err) {
-        console.error("Error fetching compare CESPES:", err);
-        if (!cancelled)
-          setCompareCespes((prev) => ({ ...prev, loading: false }));
-      }
-    }
-
-    fetchCompareCespes();
-    return () => {
-      cancelled = true;
-    };
-  }, [compareMode, compareYear]);
 
   // ── Derived KPI Calculations ───────────────────────────────
   const getKpiRate = (yearData, sheetName, headerSubstring) => {

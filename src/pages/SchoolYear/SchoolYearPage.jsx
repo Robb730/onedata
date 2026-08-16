@@ -1,17 +1,16 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
 import { CheckCircle, X as XIcon } from "lucide-react";
 import SchoolYearHeader from "../../components/SchoolYearComponents/SchoolYearHeader";
 import ActiveSchoolYearCard from "../../components/SchoolYearComponents/ActiveSchoolYearCard";
 import ScheduledSchoolYearCard from "../../components/SchoolYearComponents/ScheduledSchoolYearCard";
-import TransitionReadinessCard from "../../components/SchoolYearComponents/TransitionReadinessCard";
 import PreviousSchoolYearsTable from "../../components/SchoolYearComponents/PreviousSchoolYearsTable";
 import ScheduleSchoolYearDialog from "../../components/SchoolYearComponents/ScheduleSchoolYearDialog";
 import EditScheduledYearDialog from "../../components/SchoolYearComponents/EditScheduledYearDialog";
 import {
   getSchoolYearPageData,
-  getUpcomingYearOptions,
   scheduleSchoolYear,
   updateScheduledSchoolYear,
   cancelScheduledTransition,
@@ -24,15 +23,23 @@ export default function SchoolYearPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingYear, setEditingYear] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [activeYear, setActiveYear] = useState(null);
-  const [scheduledYear, setScheduledYear] = useState(null);
-  const [previousYears, setPreviousYears] = useState([]);
-  const [upcomingYearOptions, setUpcomingYearOptions] = useState([]);
   const { userProfile } = useUser();
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+
+  const { data: schoolYearData, isLoading: loading, error: queryError, refetch: loadData } = useQuery({
+    queryKey: ["schoolYearData"],
+    queryFn: async () => {
+      const data = await getSchoolYearPageData();
+      return { data };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const activeYear = schoolYearData?.data?.activeYear || null;
+  const scheduledYear = schoolYearData?.data?.scheduledYear || null;
+  const previousYears = schoolYearData?.data?.previousYears || [];
+  const error = queryError?.message || null;
 
   const roleDisplayMap = {
     administrator: "Administrator",
@@ -47,7 +54,7 @@ export default function SchoolYearPage() {
     setTimeout(() => setShowToast(false), 4000);
   }
 
-  async function logAuditEvent({ action, fileName, details, role, status = "Success" }) {
+  async function logAuditEvent({ action, fileName, details, status = "Success" }) {
     const { error } = await supabase.from("audit_logs").insert({
       action,
       file_name: fileName,
@@ -59,27 +66,7 @@ export default function SchoolYearPage() {
     if (error) console.error("Audit log insert failed:", error.message);
   }
 
-  const loadData = useCallback(async () => {
-    try {
-      setError(null);
-      const [data, options] = await Promise.all([
-        getSchoolYearPageData(),
-        getUpcomingYearOptions(),
-      ]);
-      setActiveYear(data.activeYear);
-      setScheduledYear(data.scheduledYear);
-      setPreviousYears(data.previousYears);
-      setUpcomingYearOptions(options);
-    } catch (err) {
-      setError(err.message ?? "Failed to load school year data.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  // Data is fetched via useQuery
 
   const openCreateDialog = () => {
     setCreateDialogOpen(true);
@@ -248,9 +235,6 @@ export default function SchoolYearPage() {
     }
   };
 
-  // Readiness is a placeholder until you define what "ready" means
-  // (e.g. required inventories uploaded, seat counts finalized, etc).
-  const transitionReadiness = scheduledYear ? 60 : 0;
 
   if (loading) {
     return (
