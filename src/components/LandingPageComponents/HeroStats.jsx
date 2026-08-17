@@ -3,9 +3,17 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from "recharts";
-import { CalendarDays, ChevronDown, Search, MapPin } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronDown,
+  Search,
+  MapPin,
+  School,
+  Users,
+  GraduationCap,
+  Building
+} from "lucide-react";
 import { useLandingStats } from "../../hooks/useLandingStats";
-import { School, Users, GraduationCap, Building } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 
 function useMdUp() {
@@ -20,6 +28,56 @@ function useMdUp() {
     return () => mq.removeEventListener("change", onChange);
   }, []);
   return md;
+}
+
+function StatValue({ value, isFetching }) {
+  if (isFetching) {
+    return <span className="inline-block h-[1.35rem] sm:h-[1.65rem] w-16 rounded bg-slate-200 animate-pulse align-middle" />;
+  }
+  return <>{value.toLocaleString()}</>;
+}
+
+function SeeDetailsButton({ open, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center gap-1 text-[0.68rem] sm:text-[0.7rem] font-bold text-blue-500 hover:text-blue-600 transition-colors cursor-pointer shrink-0"
+    >
+      {open ? "Hide details" : "See details"}
+      <ChevronDown
+        size={12}
+        strokeWidth={2.5}
+        className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+      />
+    </button>
+  );
+}
+
+function DetailsPanel({ open, children }) {
+  return (
+    <div
+      className={`grid transition-all duration-300 ease-in-out ${open ? "grid-rows-[1fr] opacity-100 mt-4" : "grid-rows-[0fr] opacity-0 mt-0"
+        }`}
+    >
+      <div className="overflow-hidden">
+        <div className="border-t border-slate-100 pt-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function DetailRow({ label, value, sub }) {
+  return (
+    <div className="flex items-center justify-between rounded-[10px] bg-slate-50/70 px-3.5 py-2.5">
+      <div className="min-w-0">
+        <p className="text-[0.74rem] font-semibold text-slate-600">{label}</p>
+        {sub && <p className="text-[0.64rem] text-slate-400 mt-0.5">{sub}</p>}
+      </div>
+      <span className="text-[0.8rem] font-black text-slate-800 shrink-0 ml-2">
+        {typeof value === "number" ? value.toLocaleString() : value}
+      </span>
+    </div>
+  );
 }
 
 const CustomTooltip = ({ active, payload, label, totalForPercent }) => {
@@ -51,10 +109,15 @@ const CustomTooltip = ({ active, payload, label, totalForPercent }) => {
   );
 };
 
-function ChartCard({ title, subtitle, children, className = "" }) {
+function ChartCard({ title, subtitle, children, className = "", action }) {
   return (
     <div className={`rounded-2xl border border-slate-200/70 bg-white p-3.5 sm:p-6 transition-all duration-300 hover:shadow-[0_12px_40px_rgba(15,23,42,0.09)] sm:hover:-translate-y-[2px] ${className}`}>
-      {title && <h4 className="text-[0.82rem] sm:text-[0.88rem] font-bold text-slate-800 leading-tight">{title}</h4>}
+      {(title || action) && (
+        <div className="flex items-start justify-between gap-2">
+          {title && <h4 className="text-[0.82rem] sm:text-[0.88rem] font-bold text-slate-800 leading-tight">{title}</h4>}
+          {action}
+        </div>
+      )}
       {subtitle && <p className="text-[0.68rem] sm:text-[0.7rem] text-slate-400 mt-0.5 mb-3">{subtitle}</p>}
       {children}
     </div>
@@ -337,7 +400,12 @@ function ResourceGaugeGrid({ data }) {
 
 export function HeroStats({ selectedYear, onYearChange, availableYears }) {
   const md = useMdUp();
-  const { loading, error, learners, schools, teachers, classrooms } = useLandingStats(selectedYear);
+  const [learnersDetailsOpen, setLearnersDetailsOpen] = React.useState(false);
+  const [byLevelDetailsOpen, setByLevelDetailsOpen] = React.useState(false);
+  const [elemGradeDetailsOpen, setElemGradeDetailsOpen] = React.useState(false);
+  const [teachersDetailsOpen, setTeachersDetailsOpen] = React.useState(false);
+  const [classroomsDetailsOpen, setClassroomsDetailsOpen] = React.useState(false);
+  const { loading, isFetching, error, learners, schools, teachers, classrooms } = useLandingStats(selectedYear);
 
   const schoolPieData = [
     { name: "Public", value: schools.public, color: "#3b82f6" },
@@ -394,7 +462,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
               <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full mb-4" style={{ background: "linear-gradient(135deg, #818cf8 0%, #4338ca 100%)" }}>
                 <Users size={18} color="#fff" strokeWidth={2} />
               </div>
-              <p className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-tight leading-none">{learners.total.toLocaleString()}</p>
+              <p className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-tight leading-none"><StatValue value={learners.total} isFetching={isFetching} /></p>
               <p className="text-[0.7rem] font-semibold text-slate-400 mt-1.5 tracking-wide">Learners</p>
             </button>
 
@@ -406,7 +474,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
               <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full mb-4" style={{ background: "linear-gradient(135deg, #5b9bff 0%, #2352d6 100%)" }}>
                 <School size={18} color="#fff" strokeWidth={2} />
               </div>
-              <p className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-tight leading-none">{schools.total.toLocaleString()}</p>
+              <p className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-tight leading-none"><StatValue value={schools.total} isFetching={isFetching} /></p>
               <p className="text-[0.7rem] font-semibold text-slate-400 mt-1.5 tracking-wide">Schools</p>
             </button>
 
@@ -419,7 +487,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                 <GraduationCap size={18} color="#fff" strokeWidth={2} />
               </div>
               <p className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-tight leading-none">
-                {teachers.total.toLocaleString()}
+                <StatValue value={teachers.total} isFetching={isFetching} />
               </p>
               <p className="text-[0.7rem] font-semibold text-slate-400 mt-1.5 tracking-wide">Teachers</p>
             </button>
@@ -433,7 +501,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                 <Building size={18} color="#fff" strokeWidth={2} />
               </div>
               <p className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-tight leading-none">
-                {classrooms.total.toLocaleString()}
+                <StatValue value={classrooms.total} isFetching={isFetching} />
               </p>
               <p className="text-[0.7rem] font-semibold text-slate-400 mt-1.5 tracking-wide">Classrooms</p>
             </button>
@@ -449,7 +517,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
         )}
 
         {!loading && !error && (
-          <>
+          <div>
             {/* ── Learners section ─────────────────── */}
             <div ref={learnersRef} className="mb-8 md:mb-14 scroll-mt-24">
               <SectionHeader
@@ -461,8 +529,11 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                 <ChartCard
                   title="Learners"
                   subtitle={`${learners.total.toLocaleString()} total enrolled`}
+                  action={<SeeDetailsButton open={learnersDetailsOpen} onClick={() => setLearnersDetailsOpen((v) => !v)} />}
                 >
-                  {noLearners ? (
+                  {isFetching ? (
+                    <div className="h-[190px] sm:h-[220px] rounded-xl bg-slate-100 animate-pulse" />
+                  ) : noLearners ? (
                     <EmptyState icon={Users} height="h-[220px]" />
                   ) : (
                     <div className="relative h-[190px] sm:h-[220px]">
@@ -528,10 +599,34 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                       })}
                     </div>
                   )}
+
+                  <DetailsPanel open={learnersDetailsOpen}>
+                    {!noLearners && (
+                      <div className="space-y-2">
+                        <DetailRow label="Public learners" value={learners.public} />
+                        <DetailRow label="Private learners" value={learners.private} />
+                        <DetailRow label="Total learners" value={learners.total} />
+                        {learners.byLevel?.map((lvl) => (
+                          <DetailRow
+                            key={lvl.level}
+                            label={lvl.level}
+                            value={(lvl.public || 0) + (lvl.private || 0)}
+                            sub={`Public: ${lvl.public?.toLocaleString() ?? 0} · Private: ${lvl.private?.toLocaleString() ?? 0}`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </DetailsPanel>
                 </ChartCard>
 
-                <ChartCard title="Learners by Level" subtitle="Public vs. Private breakdown per level">
-                  {noLearners ? (
+                <ChartCard
+                  title="Learners by Level"
+                  subtitle="Public vs. Private breakdown per level"
+                  action={<SeeDetailsButton open={byLevelDetailsOpen} onClick={() => setByLevelDetailsOpen((v) => !v)} />}
+                >
+                  {isFetching ? (
+                    <div className="h-[210px] sm:h-[280px] rounded-xl bg-slate-100 animate-pulse" />
+                  ) : noLearners ? (
                     <EmptyState icon={Users} height="h-[280px]" />
                   ) : (
                     <div className="h-[210px] sm:h-[280px]">
@@ -581,38 +676,63 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                       ))}
                     </div>
                   )}
+
+                  <DetailsPanel open={byLevelDetailsOpen}>
+                    {!noLearners && (
+                      <div className="space-y-2">
+                        {learners.byLevel?.map((lvl) => {
+                          const lvlTotal = (lvl.public || 0) + (lvl.private || 0);
+                          const pubPct = lvlTotal > 0 ? Math.round((lvl.public / lvlTotal) * 100) : 0;
+                          return (
+                            <DetailRow
+                              key={lvl.level}
+                              label={lvl.level}
+                              value={lvlTotal}
+                              sub={`${pubPct}% public (${lvl.public.toLocaleString()}) · ${100 - pubPct}% private (${lvl.private.toLocaleString()})`}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
+                  </DetailsPanel>
                 </ChartCard>
               </div>
 
               <div className="mt-5">
-                <ChartCard title="Elementary — By Grade & Gender" subtitle="Male vs. Female per grade level">
-                  {noLearners ? (
+                <ChartCard
+                  title="Elementary — By Grade & Gender"
+                  subtitle="Male vs. Female per grade level"
+                  action={<SeeDetailsButton open={elemGradeDetailsOpen} onClick={() => setElemGradeDetailsOpen((v) => !v)} />}
+                >
+                  {isFetching ? (
+                    <div className="h-[210px] sm:h-[280px] rounded-xl bg-slate-100 animate-pulse" />
+                  ) : noLearners ? (
                     <EmptyState icon={Users} height="h-[280px]" />
                   ) : (
                     <div className="-mx-1 overflow-x-auto overscroll-x-contain">
                       <div className="h-[210px] sm:h-[280px] min-w-[480px] sm:min-w-0">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={learners.elemByGrade} barGap={3} barSize={md ? 18 : 12} margin={{ top: 8, right: 8, left: md ? -12 : 0, bottom: 4 }}>
-                          <defs>
-                            <linearGradient id="barMale" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#60a5fa" />
-                              <stop offset="100%" stopColor="#3b82f6" />
-                            </linearGradient>
-                            <linearGradient id="barFemale" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#f472b6" />
-                              <stop offset="100%" stopColor="#ec4899" />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="4 8" vertical={false} stroke="#e2e8f0" strokeOpacity={0.6} />
-                          <XAxis dataKey="grade" tick={{ fontSize: md ? 9.5 : 9, fill: "#64748b", fontWeight: 600 }} axisLine={false} tickLine={false} dy={6} interval={0} />
-                          {md && (
-                            <YAxis tick={{ fontSize: 10, fill: "#cbd5e1" }} axisLine={false} tickLine={false} />
-                          )}
-                          <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(148,163,184,0.06)", radius: 8 }} />
-                          <Bar dataKey="male" name="Male" fill="url(#barMale)" radius={[5, 5, 0, 0]} />
-                          <Bar dataKey="female" name="Female" fill="url(#barFemale)" radius={[5, 5, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={learners.elemByGrade} barGap={3} barSize={md ? 18 : 12} margin={{ top: 8, right: 8, left: md ? -12 : 0, bottom: 4 }}>
+                            <defs>
+                              <linearGradient id="barMale" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#60a5fa" />
+                                <stop offset="100%" stopColor="#3b82f6" />
+                              </linearGradient>
+                              <linearGradient id="barFemale" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#f472b6" />
+                                <stop offset="100%" stopColor="#ec4899" />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="4 8" vertical={false} stroke="#e2e8f0" strokeOpacity={0.6} />
+                            <XAxis dataKey="grade" tick={{ fontSize: md ? 9.5 : 9, fill: "#64748b", fontWeight: 600 }} axisLine={false} tickLine={false} dy={6} interval={0} />
+                            {md && (
+                              <YAxis tick={{ fontSize: 10, fill: "#cbd5e1" }} axisLine={false} tickLine={false} />
+                            )}
+                            <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(148,163,184,0.06)", radius: 8 }} />
+                            <Bar dataKey="male" name="Male" fill="url(#barMale)" radius={[5, 5, 0, 0]} />
+                            <Bar dataKey="female" name="Female" fill="url(#barFemale)" radius={[5, 5, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
                       </div>
                     </div>
                   )}
@@ -626,6 +746,21 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                       ))}
                     </div>
                   )}
+
+                  <DetailsPanel open={elemGradeDetailsOpen}>
+                    {!noLearners && (
+                      <div className="space-y-2">
+                        {learners.elemByGrade?.map((g) => (
+                          <DetailRow
+                            key={g.grade}
+                            label={g.grade}
+                            value={g.total}
+                            sub={`Male: ${g.male.toLocaleString()} · Female: ${g.female.toLocaleString()}`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </DetailsPanel>
                 </ChartCard>
               </div>
             </div>
@@ -643,7 +778,9 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                   title="Overview"
                   subtitle={`${schools.total.toLocaleString()} total schools`}
                 >
-                  {noSchools ? (
+                  {isFetching ? (
+                    <div className="h-[160px] sm:h-[180px] rounded-xl bg-slate-100 animate-pulse" />
+                  ) : noSchools ? (
                     <EmptyState icon={School} height="h-[180px]" />
                   ) : (
                     <div className="h-[160px] sm:h-[180px]">
@@ -691,12 +828,39 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
               <ChartCard
                 title="Teachers"
                 subtitle="Total teaching workforce vs. current staffing needs"
+                action={
+                  <SeeDetailsButton
+                    open={teachersDetailsOpen}
+                    onClick={() => setTeachersDetailsOpen((v) => !v)}
+                  />
+                }
               >
-                {teachers.total + teachers.totalNeeds === 0 ? (
+                {isFetching ? (
+                  <div className="h-[280px] rounded-xl bg-slate-100 animate-pulse" />
+                ) : teachers.total + teachers.totalNeeds === 0 ? (
                   <EmptyState icon={GraduationCap} height="h-[280px]" />
                 ) : (
                   <ResourceGaugeGrid data={teachers.byLevel} />
                 )}
+
+                <DetailsPanel open={teachersDetailsOpen}>
+                  {teachers.total + teachers.totalNeeds > 0 && (
+                    <div className="space-y-2">
+                      {teachers.byLevel?.map((lvl) => (
+                        <DetailRow
+                          key={lvl.level}
+                          label={lvl.level}
+                          value={lvl.excess > 0 ? `+${lvl.excess.toLocaleString()} surplus` : "No surplus"}
+                          sub={`Needed: ${lvl.needs.toLocaleString()} · Excess: ${(lvl.excess ?? 0).toLocaleString()}`}
+                        />
+                      ))}
+                      <DetailRow
+                        label="Net position (excess − needs)"
+                        value={teachers.byLevel?.reduce((a, l) => a + (l.excess ?? 0) - l.needs, 0) ?? 0}
+                      />
+                    </div>
+                  )}
+                </DetailsPanel>
               </ChartCard>
             </div>
 
@@ -709,15 +873,42 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
               <ChartCard
                 title="Classrooms"
                 subtitle="Total available classrooms vs. current shortage"
+                action={
+                  <SeeDetailsButton
+                    open={classroomsDetailsOpen}
+                    onClick={() => setClassroomsDetailsOpen((v) => !v)}
+                  />
+                }
               >
-                {classrooms.total + classrooms.totalNeeds === 0 ? (
+                {isFetching ? (
+                  <div className="h-[280px] rounded-xl bg-slate-100 animate-pulse" />
+                ) : classrooms.total + classrooms.totalNeeds === 0 ? (
                   <EmptyState icon={Building} height="h-[280px]" />
                 ) : (
                   <ResourceGaugeGrid data={classrooms.byLevel} />
                 )}
+
+                <DetailsPanel open={classroomsDetailsOpen}>
+                  {classrooms.total + classrooms.totalNeeds > 0 && (
+                    <div className="space-y-2">
+                      {classrooms.byLevel?.map((lvl) => (
+                        <DetailRow
+                          key={lvl.level}
+                          label={lvl.level}
+                          value={lvl.excess > 0 ? `+${lvl.excess.toLocaleString()} surplus` : "No surplus"}
+                          sub={`Needed: ${lvl.needs.toLocaleString()} · Excess: ${(lvl.excess ?? 0).toLocaleString()}`}
+                        />
+                      ))}
+                      <DetailRow
+                        label="Net position (excess − needs)"
+                        value={classrooms.byLevel?.reduce((a, l) => a + (l.excess ?? 0) - l.needs, 0) ?? 0}
+                      />
+                    </div>
+                  )}
+                </DetailsPanel>
               </ChartCard>
             </div>
-          </>
+          </div>
         )}
       </div>
     </section>

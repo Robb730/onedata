@@ -17,7 +17,7 @@ export function useLandingStats(selectedYear) {
         let cancelled = false;
 
         async function fetchStats() {
-            setStats((prev) => ({ ...prev, loading: true, error: null }));
+            setStats((prev) => ({ ...prev, isFetching: true, error: null }));
             try {
                 const [
                     enrollmentRes,
@@ -27,6 +27,7 @@ export function useLandingStats(selectedYear) {
                     classroomsKesRes,
                     classroomsJhsRes,
                     classroomsShsRes,
+                    kpiRes,
                 ] = await Promise.all([
                     supabase
                         .from("enrollment_data")
@@ -58,6 +59,10 @@ export function useLandingStats(selectedYear) {
                         .from("classrooms_shs")
                         .select("school_id, total_classroom, classroom_needs, classroom_excess")
                         .eq("school_year", selectedYear),
+                    supabase
+                        .from("performance_indicators_data")
+                        .select("*")
+                        .eq("school_year", selectedYear),
                 ]);
 
                 if (enrollmentRes.error) throw enrollmentRes.error;
@@ -67,6 +72,7 @@ export function useLandingStats(selectedYear) {
                 if (classroomsKesRes.error) throw classroomsKesRes.error;
                 if (classroomsJhsRes.error) throw classroomsJhsRes.error;
                 if (classroomsShsRes.error) throw classroomsShsRes.error;
+                if (kpiRes.error) throw kpiRes.error;
                 if (cancelled) return;
 
                 const data = enrollmentRes.data;
@@ -76,6 +82,7 @@ export function useLandingStats(selectedYear) {
                 const classroomsKes = classroomsKesRes.data;
                 const classroomsJhs = classroomsJhsRes.data;
                 const classroomsShs = classroomsShsRes.data;
+                const kpiData = kpiRes.data;
 
                 const publicTotal = data
                     .filter((r) => r.category === "PUBLIC")
@@ -120,6 +127,39 @@ export function useLandingStats(selectedYear) {
                     total: v.m + v.f,
                 }));
 
+                const getKpiRate = (sheetName, headerSubstring) => {
+                    const sheet = kpiData.find((r) => r.sheet_name?.trim() === sheetName.trim());
+                    if (!sheet) return 0;
+                    const idx = sheet.headers_main?.findIndex((h) => h && h.toString().includes(headerSubstring));
+                    if (idx !== -1 && sheet.total_row?.[idx] !== undefined && sheet.total_row[idx] !== null) {
+                        return parseFloat(sheet.total_row[idx]) * 100;
+                    }
+                    return 0;
+                };
+
+                const elemDropout = getKpiRate("G1toG6 SLR_DR", "Ave. School Leaver Rate");
+                const jhsDropout = getKpiRate("JHS School Leaver Rate", "Ave. School Leaver Rate");
+                const shsDropout = getKpiRate(" JHS to SHS SLR_DR", "Ave. School Leaver Rate");
+                const overallDropout = (elemDropout + jhsDropout + shsDropout) / 3;
+
+                const dropoutByLevel = [
+                    { level: "Elementary", rate: elemDropout },
+                    { level: "JHS", rate: jhsDropout },
+                    { level: "SHS", rate: shsDropout },
+                ];
+
+                const kToElemPromo = getKpiRate("K to 6  Promo & Grad", "Ave. Promotion Rate");
+                const jhsPromo = getKpiRate("JHS Promo & Grad", "Ave. Promotion Rate");
+                const shsPromo = getKpiRate(" JHS to SHS Promo & Grad", "Ave. Promotion Rate");
+
+                const promotionByLevel = [
+                    { level: "Elementary", rate: kToElemPromo },
+                    { level: "JHS", rate: jhsPromo },
+                    { level: "SHS", rate: shsPromo },
+                ];
+
+                const cohortSurvival = getKpiRate("G1toG6 CSR & CompR", "CSR");
+
                 const uniqueSchools = new Map();
                 data.forEach((row) => {
                     if (!uniqueSchools.has(row.school_id)) {
@@ -130,11 +170,43 @@ export function useLandingStats(selectedYear) {
                 const publicSchools = schoolCategories.filter((c) => c === "PUBLIC").length;
                 const privateSchools = schoolCategories.filter((c) => c === "PRIVATE").length;
 
+                const gradeKeysFor = (row) => {
+                    const grades = [];
+                    if (row.elementary_data) {
+                        ["kinder", "grade1", "grade2", "grade3", "grade4", "grade5", "grade6", "nonGraded"].forEach((g) => {
+                            const v = row.elementary_data[g];
+                            if (v) grades.push({ grade: g, male: v.m ?? 0, female: v.f ?? 0, total: (v.m ?? 0) + (v.f ?? 0) });
+                        });
+                    }
+                    if (row.junior_high_data) {
+                        ["grade7", "grade8", "grade9", "grade10"].forEach((g) => {
+                            const v = row.junior_high_data[g];
+                            if (v) grades.push({ grade: g, male: v.m ?? 0, female: v.f ?? 0, total: (v.m ?? 0) + (v.f ?? 0) });
+                        });
+                    }
+                    [row.senior_high_s1_data, row.senior_high_s2_data].forEach((shsData, i) => {
+                        if (!shsData) return;
+                        Object.keys(shsData).forEach((g) => {
+                            const v = shsData[g];
+                            if (v?.m !== undefined || v?.f !== undefined) {
+                                grades.push({
+                                    grade: `${g} (S${i + 1})`,
+                                    male: v.m ?? 0,
+                                    female: v.f ?? 0,
+                                    total: (v.m ?? 0) + (v.f ?? 0),
+                                });
+                            }
+                        });
+                    });
+                    return grades.filter((g) => g.total > 0);
+                };
+
                 const schoolList = data.map((row) => ({
                     name: row.school_name,
                     type: row.school_type,
                     category: row.category,
                     enrollment: row.grand_total,
+                    byGrade: gradeKeysFor(row),
                 })).sort((a, b) => b.enrollment - a.enrollment);
 
                 // ── Teachers: total = inventory (matches Dashboard), needs kept for context ──
@@ -149,10 +221,17 @@ export function useLandingStats(selectedYear) {
                 const teacherJhsNeeds = teachersJhs.reduce((a, r) => a + (r.teacher_needs ?? 0), 0);
                 const teacherShsNeeds = teachersShs.reduce((a, r) => a + (r.teacher_needs ?? 0), 0);
 
+                const teacherKesExcess = teachersKes.reduce(
+                    (a, r) => a + (r.kinder_excess ?? 0) + (r.g1g6_excess ?? 0) + (r.sned_excess ?? 0),
+                    0
+                );
+                const teacherJhsExcess = teachersJhs.reduce((a, r) => a + (r.teacher_excess ?? 0), 0);
+                const teacherShsExcess = teachersShs.reduce((a, r) => a + (r.teacher_excess ?? 0), 0);
+
                 const teachersByLevel = [
-                    { level: "Elementary (KES)", total: teacherKesTotal, needs: teacherKesNeeds },
-                    { level: "Junior High", total: teacherJhsTotal, needs: teacherJhsNeeds },
-                    { level: "Senior High", total: teacherShsTotal, needs: teacherShsNeeds },
+                    { level: "Elementary (KES)", total: teacherKesTotal, needs: teacherKesNeeds, excess: teacherKesExcess },
+                    { level: "Junior High", total: teacherJhsTotal, needs: teacherJhsNeeds, excess: teacherJhsExcess },
+                    { level: "Senior High", total: teacherShsTotal, needs: teacherShsNeeds, excess: teacherShsExcess },
                 ];
 
                 const totalTeachers = teacherKesTotal + teacherJhsTotal + teacherShsTotal;
@@ -170,10 +249,17 @@ export function useLandingStats(selectedYear) {
                 const classroomJhsNeeds = classroomsJhs.reduce((a, r) => a + (r.classroom_needs ?? 0), 0);
                 const classroomShsNeeds = classroomsShs.reduce((a, r) => a + (r.classroom_needs ?? 0), 0);
 
+                const classroomKesExcess = classroomsKes.reduce(
+                    (a, r) => a + (r.kinder_excess ?? 0) + (r.g1g6_excess ?? 0) + (r.sned_excess ?? 0),
+                    0
+                );
+                const classroomJhsExcess = classroomsJhs.reduce((a, r) => a + (r.classroom_excess ?? 0), 0);
+                const classroomShsExcess = classroomsShs.reduce((a, r) => a + (r.classroom_excess ?? 0), 0);
+
                 const classroomsByLevel = [
-                    { level: "Elementary (KES)", total: classroomKesTotal, needs: classroomKesNeeds },
-                    { level: "Junior High", total: classroomJhsTotal, needs: classroomJhsNeeds },
-                    { level: "Senior High", total: classroomShsTotal, needs: classroomShsNeeds },
+                    { level: "Elementary (KES)", total: classroomKesTotal, needs: classroomKesNeeds, excess: classroomKesExcess },
+                    { level: "Junior High", total: classroomJhsTotal, needs: classroomJhsNeeds, excess: classroomJhsExcess },
+                    { level: "Senior High", total: classroomShsTotal, needs: classroomShsNeeds, excess: classroomShsExcess },
                 ];
 
                 const totalClassrooms = classroomKesTotal + classroomJhsTotal + classroomShsTotal;
@@ -189,6 +275,10 @@ export function useLandingStats(selectedYear) {
                         private: privateTotal,
                         byLevel,
                         elemByGrade,
+                        overallDropout,
+                        dropoutByLevel,
+                        promotionByLevel,
+                        cohortSurvival,
                     },
                     schools: {
                         total: uniqueSchools.size,
@@ -210,7 +300,7 @@ export function useLandingStats(selectedYear) {
             } catch (err) {
                 console.error("Error fetching landing stats:", err);
                 if (!cancelled) {
-                    setStats((prev) => ({ ...prev, loading: false, error: err.message }));
+                    setStats((prev) => ({ ...prev, loading: false, isFetching: false, error: err.message }));
                 }
             }
         }
