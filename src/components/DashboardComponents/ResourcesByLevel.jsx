@@ -5,7 +5,7 @@ import { DashboardFilters } from "./DashboardFilters";
 // ── Resource Configs ──────────────────────────────────────────
 const RESOURCE_CONFIGS = {
   Teachers: {
-    icon: <Users size={16} />,
+    icon: Users,          // was: <Users size={16} />
     color: "#4f7df5",
     bg: "bg-blue-50",
     text: "text-blue-600",
@@ -14,7 +14,7 @@ const RESOURCE_CONFIGS = {
     totalField: "prev_total_teachers_inventory",
   },
   Classrooms: {
-    icon: <School size={16} />,
+    icon: School,          // was: <School size={16} />
     color: "#10b981",
     bg: "bg-emerald-50",
     text: "text-emerald-600",
@@ -23,7 +23,7 @@ const RESOURCE_CONFIGS = {
     totalField: (level) => (level === "Elementary" ? "prev_total_classroom_inventory" : "total_classroom"),
   },
   Seats: {
-    icon: <GraduationCap size={16} />,
+    icon: GraduationCap,   // was: <GraduationCap size={16} />
     color: "#f59e0b",
     bg: "bg-amber-50",
     text: "text-amber-600",
@@ -36,13 +36,13 @@ const RESOURCE_CONFIGS = {
     },
   },
   Textbooks: {
-    icon: <BookOpen size={16} />,
+    icon: BookOpen,        // was: <BookOpen size={16} />
     color: "#ef4444",
     bg: "bg-rose-50",
     text: "text-rose-600",
     border: "border-rose-100",
     inventoryLabel: "Shortage",
-    totalField: "textbook_needs", // For textbooks, we primarily show needs/shortage
+    totalField: "textbook_needs",
   },
 };
 
