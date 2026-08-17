@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronLeft, ChevronRight, School, Search, Filter, X, Users, GraduationCap } from "lucide-react";
+import { ChevronLeft, ChevronRight, School, Search, Filter, X, Users, GraduationCap, BookOpen } from "lucide-react";
 import { DashboardFilters } from "./DashboardFilters";
 
 // ── Resource Configs ──────────────────────────────────────────
