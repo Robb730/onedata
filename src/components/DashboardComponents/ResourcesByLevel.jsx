@@ -1,11 +1,59 @@
 import React, { useState } from "react";
-import { ChevronLeft, ChevronRight, School, Search, Filter, X, Users, GraduationCap, BookOpen } from "lucide-react";
 import { DashboardFilters } from "./DashboardFilters";
+
+// ── Inline icons (replaces lucide-react to avoid prod bundling bug) ──
+const ChevronLeft = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="m15 18-6-6 6-6" />
+  </svg>
+);
+const ChevronRight = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+);
+const School = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M14 22v-4a2 2 0 1 0-4 0v4" />
+    <path d="m18 10 3.447 1.724a1 1 0 0 1 .553.894V20a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-7.382a1 1 0 0 1 .553-.894L6 10" />
+    <path d="M18 5v17" />
+    <path d="m4 6 8-4 8 4" />
+    <path d="M6 5v17" />
+    <circle cx="12" cy="9" r="2" />
+  </svg>
+);
+const X = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M18 6 6 18" />
+    <path d="m6 6 12 12" />
+  </svg>
+);
+const Users = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+const GraduationCap = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z" />
+    <path d="M22 10v6" />
+    <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5" />
+  </svg>
+);
+const BookOpen = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M12 7v14" />
+    <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
+  </svg>
+);
 
 // ── Resource Configs ──────────────────────────────────────────
 const RESOURCE_CONFIGS = {
   Teachers: {
-    icon: Users,          // was: <Users size={16} />
+    icon: Users,
     color: "#4f7df5",
     bg: "bg-blue-50",
     text: "text-blue-600",
@@ -14,7 +62,7 @@ const RESOURCE_CONFIGS = {
     totalField: "prev_total_teachers_inventory",
   },
   Classrooms: {
-    icon: School,          // was: <School size={16} />
+    icon: School,
     color: "#10b981",
     bg: "bg-emerald-50",
     text: "text-emerald-600",
@@ -23,7 +71,7 @@ const RESOURCE_CONFIGS = {
     totalField: (level) => (level === "Elementary" ? "prev_total_classroom_inventory" : "total_classroom"),
   },
   Seats: {
-    icon: GraduationCap,   // was: <GraduationCap size={16} />
+    icon: GraduationCap,
     color: "#f59e0b",
     bg: "bg-amber-50",
     text: "text-amber-600",
@@ -36,13 +84,13 @@ const RESOURCE_CONFIGS = {
     },
   },
   Textbooks: {
-    icon: BookOpen,        // was: <BookOpen size={16} />
+    icon: BookOpen,
     color: "#ef4444",
     bg: "bg-rose-50",
     text: "text-rose-600",
     border: "border-rose-100",
     inventoryLabel: "Shortage",
-    totalField: "textbook_needs",
+    totalField: "textbook_needs", // For textbooks, we primarily show needs/shortage
   },
 };
 
