@@ -37,27 +37,27 @@ export function useLandingStats(selectedYear) {
                         .eq("school_year", selectedYear),
                     supabase
                         .from("teachers_kes")
-                        .select("school_id, kinder_needs, kinder_excess, g1g6_needs, g1g6_excess, sned_needs, sned_excess, prev_total_teachers_inventory")
+                        .select("school_id, school_name, kinder_needs, kinder_excess, g1g6_needs, g1g6_excess, sned_needs, sned_excess, prev_total_teachers_inventory")
                         .eq("school_year", selectedYear),
                     supabase
                         .from("teachers_jhs")
-                        .select("school_id, teacher_needs, teacher_excess, prev_total_teachers_inventory")
+                        .select("school_id, school_name, teacher_needs, teacher_excess, prev_total_teachers_inventory")
                         .eq("school_year", selectedYear),
                     supabase
                         .from("teachers_shs")
-                        .select("school_id, teacher_needs, teacher_excess, prev_total_teachers_inventory")
+                        .select("school_id, school_name, teacher_needs, teacher_excess, prev_total_teachers_inventory")
                         .eq("school_year", selectedYear),
                     supabase
                         .from("classrooms_kes")
-                        .select("school_id, kinder_needs, kinder_excess, g1g6_needs, g1g6_excess, sned_needs, sned_excess, prev_total_classroom_inventory")
+                        .select("school_id, school_name, kinder_needs, kinder_excess, g1g6_needs, g1g6_excess, sned_needs, sned_excess, prev_total_classroom_inventory")
                         .eq("school_year", selectedYear),
                     supabase
                         .from("classrooms_jhs")
-                        .select("school_id, total_classroom, classroom_needs, classroom_excess")
+                        .select("school_id, school_name, total_classroom, classroom_needs, classroom_excess")
                         .eq("school_year", selectedYear),
                     supabase
                         .from("classrooms_shs")
-                        .select("school_id, total_classroom, classroom_needs, classroom_excess")
+                        .select("school_id, school_name, total_classroom, classroom_needs, classroom_excess")
                         .eq("school_year", selectedYear),
                     supabase
                         .from("performance_indicators_data")
@@ -83,6 +83,14 @@ export function useLandingStats(selectedYear) {
                 const classroomsJhs = classroomsJhsRes.data;
                 const classroomsShs = classroomsShsRes.data;
                 const kpiData = kpiRes.data;
+
+                const levelSumForRow = (row) => {
+                    const keys = ["elementary_data", "junior_high_data", "senior_high_s1_data", "senior_high_s2_data"];
+                    return keys.reduce((sum, key) => {
+                        const t = row[key]?.total ?? { m: 0, f: 0 };
+                        return sum + (t.m ?? 0) + (t.f ?? 0);
+                    }, 0);
+                };
 
                 const publicTotal = data
                     .filter((r) => r.category === "PUBLIC")
@@ -290,11 +298,13 @@ export function useLandingStats(selectedYear) {
                         total: totalTeachers,
                         totalNeeds: totalTeacherNeeds,
                         byLevel: teachersByLevel,
+                        data: { Elementary: teachersKes, JHS: teachersJhs, SHS: teachersShs },
                     },
                     classrooms: {
                         total: totalClassrooms,
                         totalNeeds: totalClassroomNeeds,
                         byLevel: classroomsByLevel,
+                        data: { Elementary: classroomsKes, JHS: classroomsJhs, SHS: classroomsShs },
                     },
                 });
             } catch (err) {

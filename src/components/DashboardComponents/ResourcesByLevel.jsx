@@ -91,7 +91,7 @@ function SchoolResourceRow({ school, resourceType, level, config, maxVal }) {
             {total.toLocaleString()}
           </span>
           <span className="text-[0.6rem] text-slate-400 w-16 text-right">
-             {resourceType === "Textbooks" ? "shortage" : `${needs.toLocaleString()} needs`}
+            {resourceType === "Textbooks" ? "shortage" : `${needs.toLocaleString()} needs`}
           </span>
         </div>
       </div>
@@ -102,20 +102,20 @@ function SchoolResourceRow({ school, resourceType, level, config, maxVal }) {
   );
 }
 
-export function ResourcesByLevel({ resources }) {
-  const [activeType, setActiveType] = useState("Teachers");
+export function ResourcesByLevel({ resources, initialType = "Teachers", allowedTypes = ["Teachers", "Classrooms", "Seats", "Textbooks"], colorOverride = null }) {
+  const [activeType, setActiveType] = useState(initialType);
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [search, setSearch] = useState("");
 
-  const config = RESOURCE_CONFIGS[activeType];
+  const config = colorOverride ? { ...RESOURCE_CONFIGS[activeType], ...colorOverride } : RESOURCE_CONFIGS[activeType];
   const resourceData = resources[activeType.toLowerCase()];
-  
+
   // Levels data (Elementary, JHS, SHS)
   const levels = ["Elementary", "JHS", "SHS"].map(lvl => {
     const records = resourceData.data?.[lvl] || [];
     const totalInventory = records.reduce((acc, r) => acc + getTotalValue(r, activeType, lvl), 0);
     const totalNeeds = records.reduce((acc, r) => acc + getNeeds(r, activeType, lvl), 0);
-    
+
     return {
       name: lvl,
       display: lvl === "Elementary" ? "Elementary" : lvl,
@@ -162,7 +162,7 @@ export function ResourcesByLevel({ resources }) {
               className="w-full text-[0.68rem] pl-2.5 pr-7 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 placeholder-slate-300 focus:outline-none focus:border-slate-400 focus:bg-white transition-all"
             />
             {search && (
-              <button 
+              <button
                 onClick={() => setSearch("")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"
               >
@@ -174,10 +174,10 @@ export function ResourcesByLevel({ resources }) {
 
         <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
           {filteredSchools.map((school, i) => (
-            <SchoolResourceRow 
-              key={school.school_id || i} 
-              school={school} 
-              resourceType={activeType} 
+            <SchoolResourceRow
+              key={school.school_id || i}
+              school={school}
+              resourceType={activeType}
               level={selectedLevel}
               config={config}
               maxVal={maxVal}
@@ -195,16 +195,18 @@ export function ResourcesByLevel({ resources }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h4 className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
-           Select Resource Type
-        </h4>
-        <DashboardFilters
-          options={["Teachers", "Classrooms", "Seats", "Textbooks"]}
-          active={activeType}
-          onChange={(t) => { setActiveType(t); setSelectedLevel(null); }}
-        />
-      </div>
+      {allowedTypes.length > 1 && (
+        <div className="flex items-center justify-between">
+          <h4 className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
+            Select Resource Type
+          </h4>
+          <DashboardFilters
+            options={allowedTypes}
+            active={activeType}
+            onChange={(t) => { setActiveType(t); setSelectedLevel(null); }}
+          />
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-3">
         {levels.map(lvl => (
@@ -224,21 +226,21 @@ export function ResourcesByLevel({ resources }) {
               {lvl.total.toLocaleString()}
             </p>
             <p className="text-[0.65rem] text-slate-400 mb-2">
-               {activeType === "Textbooks" ? "Units Shortage" : `Total Inventory`}
+              {activeType === "Textbooks" ? "Units Shortage" : `Total Inventory`}
             </p>
-            
+
             <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
-               <span className="text-[0.6rem] text-slate-400 font-medium italic">
-                 {lvl.needs.toLocaleString()} {activeType === "Textbooks" ? "total gap" : "needs"}
-               </span>
-               <span className={`text-[0.55rem] font-bold uppercase py-0.5 px-1.5 rounded-md ${config.bg} ${config.text}`}>
-                 Details →
-               </span>
+              <span className="text-[0.6rem] text-slate-400 font-medium italic">
+                {lvl.needs.toLocaleString()} {activeType === "Textbooks" ? "total gap" : "needs"}
+              </span>
+              <span className={`text-[0.55rem] font-bold uppercase py-0.5 px-1.5 rounded-md ${config.bg} ${config.text}`}>
+                Details →
+              </span>
             </div>
           </button>
         ))}
       </div>
-      
+
       <div className="mt-2 text-center text-[0.65rem] text-slate-400 flex items-center justify-center gap-1.5">
         <School size={12} /> Click on a level card to see the breakdown of individual schools.
       </div>
