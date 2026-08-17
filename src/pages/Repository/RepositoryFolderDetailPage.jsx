@@ -347,6 +347,7 @@ function MobileFileGridCard({
   const { Icon, color, bg } = getFileIcon(file.type);
   const uploaded = formatRelativeDate(file.rawCreatedAt);
   const isVerified = file.status === "Verified";
+  const { bg: avatarBg } = getAvatarColor(file.uploader);
 
   return (
     <article
@@ -396,13 +397,26 @@ function MobileFileGridCard({
         </p>
       </button>
 
-      <p className="text-[0.65rem] sm:text-[0.7rem] font-medium text-slate-400 mb-3 truncate">
+      <p className="text-[0.65rem] sm:text-[0.7rem] font-medium text-slate-400 mb-2 truncate">
         {file.size}
         <span className="text-slate-300"> · </span>
         {uploaded.relative}
       </p>
 
-      <div className="mt-auto pt-2.5 border-t border-slate-100 flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 mb-3 min-w-0">
+        <div
+          className={`w-5 h-5 ${avatarBg} rounded-full flex items-center justify-center shrink-0`}
+        >
+          <span className="text-[7px] font-bold text-white">
+            {getInitials(file.uploader)}
+          </span>
+        </div>
+        <p className="text-[0.65rem] sm:text-[0.68rem] font-medium text-slate-500 truncate">
+          {file.uploader}
+        </p>
+      </div>
+
+      <div className="mt-auto pt-2.5 border-t border-slate-100 flex items-center justify-end gap-1.5">
         {canEdit ? (
           <>
             <MobileFileActionBtn title="Preview" onClick={onPreview}>
@@ -449,7 +463,7 @@ function MobileFileGridCard({
               e.stopPropagation();
               onRequestAccess?.();
             }}
-            className="flex-1 inline-flex min-h-9 items-center justify-center gap-1 rounded-xl border border-blue-100 bg-blue-50 px-2 text-[0.68rem] font-semibold text-blue-700"
+            className="inline-flex min-h-9 items-center justify-center gap-1 rounded-xl border border-blue-100 bg-blue-50 px-2.5 text-[0.68rem] font-semibold text-blue-700"
           >
             <Lock size={11} />
             Request
@@ -550,6 +564,35 @@ function formatRelativeDate(dateStr) {
   if (diffDays < 7)
     return { relative: `${diffDays}d ago`, time: timeStr, full: fullStr };
   return { relative: fullStr, time: timeStr, full: fullStr };
+}
+
+function formatFileDateTime(dateStr) {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "—";
+  const date = d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const time = d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+  return `${date} · ${time}`;
+}
+
+/** Latest touch timestamp — edits, verification, or record updates. */
+function getFileModifiedAt(file) {
+  if (!file) return null;
+  const candidates = [file.rawUpdatedAt, file.verifiedAt, file.rawCreatedAt].filter(
+    Boolean,
+  );
+  if (candidates.length === 0) return null;
+  return candidates.reduce((latest, ts) =>
+    new Date(ts) > new Date(latest) ? ts : latest,
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -871,8 +914,8 @@ function VerifyConfirmModal({
 function FileInfoCard({ file, onPreview, onDownload, canEdit }) {
   if (!file) return null;
   const { Icon, color, bg } = getFileIcon(file.type);
-  const uploaded = formatRelativeDate(file.rawCreatedAt);
-  const modified = formatRelativeDate(file.rawUpdatedAt || file.rawCreatedAt);
+  const uploadedAt = file.rawCreatedAt;
+  const modifiedAt = getFileModifiedAt(file);
 
   return (
     <div className="w-64 rounded-2xl bg-white text-slate-800 shadow-[0_20px_60px_rgba(15,23,42,0.15)] border border-slate-200">
@@ -907,8 +950,8 @@ function FileInfoCard({ file, onPreview, onDownload, canEdit }) {
         {[
           { label: "TYPE", value: file.type },
           { label: "SIZE", value: file.size },
-          { label: "UPLOADED", value: uploaded.full },
-          { label: "MODIFIED", value: modified.full },
+          { label: "UPLOADED", value: formatFileDateTime(uploadedAt) },
+          { label: "MODIFIED", value: formatFileDateTime(modifiedAt) },
         ].map(({ label, value }) => (
           <div key={label} className="bg-slate-50 px-3 py-2.5">
             <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">
@@ -1769,11 +1812,12 @@ export default function RepositoryFolderDetailPage() {
     try {
       const isCurrentlyVerified = file.status === "Verified";
       const newStatus = isCurrentlyVerified ? "Unverified" : "Verified";
+      const now = new Date().toISOString();
 
-      const updatePayload = { status: newStatus };
+      const updatePayload = { status: newStatus, updated_at: now };
       if (newStatus === "Verified") {
         updatePayload.verified_by_name = userProfile?.full_name ?? null;
-        updatePayload.verified_at = new Date().toISOString();
+        updatePayload.verified_at = now;
       } else {
         updatePayload.verified_pdf_path = null;
         updatePayload.verified_by_name = null;
@@ -1830,6 +1874,7 @@ export default function RepositoryFolderDetailPage() {
             ? {
                 ...f,
                 status: newStatus,
+                rawUpdatedAt: now,
                 verifiedPdfPath:
                   newStatus === "Verified" ? verifiedPdfPath : null,
                 verifiedByName:
@@ -2421,9 +2466,7 @@ export default function RepositoryFolderDetailPage() {
                     const isSelected = selectedIds.has(file.id);
                     const isVerified = file.status === "Verified";
                     const uploaded = formatRelativeDate(file.rawCreatedAt);
-                    const modified = formatRelativeDate(
-                      file.rawUpdatedAt || file.rawCreatedAt,
-                    );
+                    const modified = formatRelativeDate(getFileModifiedAt(file));
                     const uploaderInfo = uploaderDetails[file.uploaderId];
                     const { bg: avatarBg } = getAvatarColor(file.uploader);
                     const isFileHovered = hoveredFileId === file.id;
@@ -2662,7 +2705,7 @@ export default function RepositoryFolderDetailPage() {
                               }`}
                             >
                               <LastModifiedInfoCard
-                                rawDate={file.rawUpdatedAt || file.rawCreatedAt}
+                                rawDate={getFileModifiedAt(file)}
                                 uploaderInfo={uploaderInfo}
                               />
                             </div>

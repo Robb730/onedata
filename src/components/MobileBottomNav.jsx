@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -60,17 +59,29 @@ function isPathActive(pathname, path) {
   return pathname === path || pathname.startsWith(`${path}/`);
 }
 
-function NavItem({ item, active, onClick, bounceKey }) {
+const ROUTE_PRELOADERS = {
+  "/dashboard": () => import("../pages/Dashboard/Dashboard.jsx"),
+  "/repository": () => import("../pages/Repository/Repository.jsx"),
+  "/upload-files": () => import("../pages/UploadFiles/UploadFilesPage.jsx"),
+  "/manage-user": () => import("../pages/ManageUsers/ManageUsers.jsx"),
+  "/audit-logs": () => import("../pages/AuditLogs/AuditLogs.jsx"),
+  "/school-year": () => import("../pages/SchoolYear/SchoolYearPage.jsx"),
+};
+
+function preloadRoute(path) {
+  ROUTE_PRELOADERS[path]?.();
+}
+
+function NavItem({ item, active, onClick }) {
   return (
     <NavLink
       to={item.path}
       onClick={onClick}
+      onPointerEnter={() => preloadRoute(item.path)}
+      onTouchStart={() => preloadRoute(item.path)}
       className="relative z-10 flex h-[52px] w-full flex-col items-center justify-center gap-0.5 rounded-full px-1 no-underline"
     >
-      <span
-        key={active ? bounceKey : undefined}
-        className={active ? "nav-icon-bounce inline-flex" : "inline-flex"}
-      >
+      <span className="inline-flex">
         <item.icon
           size={18}
           strokeWidth={active ? 2.45 : 1.7}
@@ -90,7 +101,7 @@ function NavItem({ item, active, onClick, bounceKey }) {
   );
 }
 
-export function MobileBottomNav() {
+export function MobileBottomNav({ visible = true }) {
   const location = useLocation();
   const { userProfile } = useUser();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -120,29 +131,25 @@ export function MobileBottomNav() {
     return idx >= 0 ? idx : 0;
   }, [location.pathname, moreHighlighted, visiblePrimaryItems]);
 
-  const [bounceKey, setBounceKey] = useState(0);
-
-  useEffect(() => {
-    setBounceKey((k) => k + 1);
-  }, [activeIndex]);
-
   useEffect(() => {
     setMoreOpen(false);
   }, [location.pathname]);
 
-  const nav = (
+  return (
     <>
       {moreOpen && (
         <div
-          className="lg:hidden more-scrim-in fixed inset-0 z-40 bg-slate-900/25"
+          className="lg:hidden more-scrim-in pointer-events-auto fixed inset-0 z-[70] bg-slate-900/25"
           onClick={() => setMoreOpen(false)}
           aria-hidden="true"
         />
       )}
 
       <nav
-        className="mobile-bottom-nav lg:hidden pointer-events-none fixed inset-x-0 bottom-0 z-50 bg-transparent px-4"
-        style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}
+        className={`mobile-bottom-nav lg:hidden pointer-events-none fixed inset-x-0 bottom-0 z-[80] bg-transparent px-4 ${
+          visible ? "" : "invisible"
+        }`}
+        aria-hidden={!visible}
       >
         <div className="pointer-events-auto relative mx-auto w-full max-w-md overflow-visible">
           {hasMore && moreOpen && (
@@ -167,6 +174,8 @@ export function MobileBottomNav() {
                         key={item.path}
                         to={item.path}
                         onClick={() => setMoreOpen(false)}
+                        onPointerEnter={() => preloadRoute(item.path)}
+                        onTouchStart={() => preloadRoute(item.path)}
                         className={`more-tile-in flex min-w-0 items-center gap-2 rounded-2xl border px-2.5 py-2.5 no-underline transition-colors ${
                           active
                             ? "border-blue-200/70 bg-blue-50/80"
@@ -195,20 +204,16 @@ export function MobileBottomNav() {
 
           {/* Liquid glass tab bar */}
           <div
-            className="liquid-glass-bar relative grid h-[64px] items-center rounded-full px-1"
+            className="liquid-glass-bar relative grid h-[64px] items-center rounded-full bg-white/10 px-1 backdrop-blur-xl backdrop-saturate-150"
             style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
           >
-            {/* Specular highlight */}
-            <div className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/50 via-white/10 to-transparent" />
-
-            {/* Sliding spring pill */}
+            {/* Sliding spring pill — `left`, not transform, so backdrop-filter stays valid */}
             <div
               aria-hidden
-              className="liquid-glass-pill pointer-events-none absolute top-1.5 bottom-1.5 z-0 rounded-full"
+              className="liquid-glass-pill pointer-events-none absolute top-1.5 bottom-1.5 z-[2] rounded-full bg-white/20"
               style={{
                 width: `calc((100% - 0.5rem) / ${colCount})`,
-                left: "0.25rem",
-                transform: `translateX(calc(${activeIndex} * 100%))`,
+                left: `calc(0.25rem + ${activeIndex} * ((100% - 0.5rem) / ${colCount}))`,
               }}
             />
 
@@ -220,7 +225,6 @@ export function MobileBottomNav() {
                     !moreHighlighted &&
                     isPathActive(location.pathname, item.path)
                   }
-                  bounceKey={bounceKey}
                   onClick={() => setMoreOpen(false)}
                 />
               </div>
@@ -236,13 +240,10 @@ export function MobileBottomNav() {
                   aria-label="More"
                 >
                   <MoreHorizontal
-                    key={moreHighlighted ? bounceKey : "more-idle"}
                     size={18}
                     strokeWidth={moreHighlighted ? 2.45 : 1.7}
                     className={`transition-colors duration-300 ${
-                      moreHighlighted
-                        ? "text-blue-600 nav-icon-bounce"
-                        : "text-slate-400"
+                      moreHighlighted ? "text-blue-600" : "text-slate-400"
                     }`}
                   />
                   <span
@@ -262,7 +263,4 @@ export function MobileBottomNav() {
       </nav>
     </>
   );
-
-  if (typeof document === "undefined") return null;
-  return createPortal(nav, document.body);
 }

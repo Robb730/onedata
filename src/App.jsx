@@ -1,5 +1,6 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
+import { MobileBottomNav } from "./components/MobileBottomNav";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { supabase } from "./lib/supabaseClient.js";
 import { useUser } from "./contexts/UserContext.jsx";
@@ -31,6 +32,31 @@ function PageFallback() {
   );
 }
 
+const APP_NAV_PREFIXES = [
+  "/dashboard",
+  "/repository",
+  "/upload-files",
+  "/manage-user",
+  "/audit-logs",
+  "/school-year",
+  "/settings",
+];
+
+function AppMobileNav({ session }) {
+  const location = useLocation();
+
+  useEffect(() => {
+    import("./pages/Dashboard/Dashboard.jsx");
+  }, []);
+
+  if (!session) return null;
+  const show = APP_NAV_PREFIXES.some(
+    (path) =>
+      location.pathname === path || location.pathname.startsWith(`${path}/`),
+  );
+  return <MobileBottomNav visible={show} />;
+}
+
 function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -58,130 +84,93 @@ function App() {
   if (loading) return null;
 
   return (
-    <Suspense fallback={<PageFallback />}>
+    <>
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/change-password" element={<ChangePasswordPage />} />
+      <Route
+        path="/change-password"
+        element={
+          <Suspense fallback={<PageFallback />}>
+            <ChangePasswordPage />
+          </Suspense>
+        }
+      />
       <Route path="/not-found" element={<NotFoundPage />} />
+      <Route
+        path="/test"
+        element={
+          <Suspense fallback={<PageFallback />}>
+            <BaliwagExtractor />
+          </Suspense>
+        }
+      />
 
-      <Route path="/test" element={<BaliwagExtractor />} />
       <Route
-        path="/dashboard"
         element={
           <ProtectedRoute session={session}>
-            <AppLayout>
-              <Dashboard />
-            </AppLayout>
+            <AppLayout />
           </ProtectedRoute>
         }
-      />
-      <Route
-        path="/manage-user"
-        element={
-          <RoleProtectedRoute session={session} roles={["administrator"]}>
-            <AppLayout>
+      >
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route
+          path="/upload-files"
+          element={
+            <UploadFilesPage
+              role={userProfile?.role}
+              userSection={userProfile?.section_name}
+            />
+          }
+        />
+        <Route path="/repository" element={<Repository />} />
+        <Route
+          path="/repository/folder/:folderName"
+          element={<RepositoryFolderDetailPage />}
+        />
+        <Route
+          path="/repository/divisions/:divisionSlug"
+          element={<RepositoryDivisionPage />}
+        />
+        <Route
+          path="/repository/sections/sgod"
+          element={<RepositoryDivisionPage />}
+        />
+        <Route
+          path="/repository/restricted/:folderName"
+          element={<AccessRestrictedPage />}
+        />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route
+          path="/manage-user"
+          element={
+            <RoleProtectedRoute session={session} roles={["administrator"]}>
               <ManageUsers />
-            </AppLayout>
-          </RoleProtectedRoute>
-        }
-      />
-      <Route
-        path="/upload-files"
-        element={
-          <ProtectedRoute session={session}>
-            <AppLayout>
-              <UploadFilesPage
-                role={userProfile?.role}
-                userSection={userProfile?.section_name}
-              />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/audit-logs"
-        element={
-          <RoleProtectedRoute session={session} roles={["administrator"]}>
-            <AppLayout>
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
+          path="/audit-logs"
+          element={
+            <RoleProtectedRoute session={session} roles={["administrator"]}>
               <AuditLogs />
-            </AppLayout>
-          </RoleProtectedRoute>
-        }
-      />
-      <Route
-        path="/repository"
-        element={
-          <ProtectedRoute session={session}>
-            <AppLayout>
-              <Repository />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/repository/folder/:folderName"
-        element={
-          <ProtectedRoute session={session}>
-            <AppLayout>
-              <RepositoryFolderDetailPage />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/repository/divisions/:divisionSlug"
-        element={
-          <ProtectedRoute session={session}>
-            <AppLayout>
-              <RepositoryDivisionPage />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/repository/sections/sgod"
-        element={
-          <ProtectedRoute session={session}>
-            <AppLayout>
-              <RepositoryDivisionPage />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/repository/restricted/:folderName"
-        element={
-          <ProtectedRoute session={session}>
-            <AppLayout>
-              <AccessRestrictedPage />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/school-year"
-        element={
-          <RoleProtectedRoute session={session} roles={["administrator"]}>
-            <AppLayout>
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
+          path="/school-year"
+          element={
+            <RoleProtectedRoute session={session} roles={["administrator"]}>
               <SchoolYearPage />
-            </AppLayout>
-          </RoleProtectedRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute session={session}>
-            <AppLayout>
-              <SettingsPage />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
+            </RoleProtectedRoute>
+          }
+        />
+      </Route>
+
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
-    </Suspense>
+    <AppMobileNav session={session} />
+    </>
   );
 }
 

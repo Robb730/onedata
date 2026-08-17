@@ -853,20 +853,7 @@ export default function Dashboard() {
   const isComparing = compareMode && !!compareYear;
 
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-slate-50/40 px-4 py-8">
-        <div className="mx-auto max-w-7xl space-y-4">
-          <div className="h-10 w-48 animate-pulse rounded-lg bg-slate-200/80" />
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-200/70" />
-            ))}
-          </div>
-          <ChartFallback />
-        </div>
-      </div>
-    }>
-    <div className="min-h-screen bg-slate-50/40">
+    <div className="min-h-full bg-slate-50/40">
       {/* ── Welcome toast (top-right) ─────────────────────── */}
       <div
         className={`fixed top-4 left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] sm:left-auto sm:right-8 sm:w-[380px] ${showWelcomeToast
@@ -1159,6 +1146,7 @@ export default function Dashboard() {
           compareData={compareOverviewData}
         />
 
+        <Suspense fallback={<div className="mt-8"><ChartFallback /></div>}>
         {/* ── Data Categories header ──────────────────────── */}
         <div className="flex items-baseline justify-between mt-8 mb-4">
           <div>
@@ -2094,9 +2082,9 @@ export default function Dashboard() {
 
         {/* Footer spacing */}
         <div className="h-8" />
+        </Suspense>
       </div>
     </div>
-    </Suspense>
   );
 }
 
