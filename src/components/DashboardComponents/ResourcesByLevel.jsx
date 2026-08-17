@@ -107,7 +107,8 @@ export function ResourcesByLevel({ resources, initialType = "Teachers", allowedT
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [search, setSearch] = useState("");
 
-  const config = colorOverride ? { ...RESOURCE_CONFIGS[activeType], ...colorOverride } : RESOURCE_CONFIGS[activeType];
+  const baseConfig = RESOURCE_CONFIGS[activeType];
+  const config = colorOverride ? { ...baseConfig, ...colorOverride, totalField: baseConfig.totalField, inventoryLabel: baseConfig.inventoryLabel } : baseConfig;
   const resourceData = resources[activeType.toLowerCase()];
 
   // Levels data (Elementary, JHS, SHS)
