@@ -298,6 +298,10 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { userProfile } = useUser();
 
+  const performanceSectionRef = useRef(null);
+  const resourcesSectionRef = useRef(null);
+  const navStateHandledRef = useRef(false);
+
   const [showWelcomeToast, setShowWelcomeToast] = useState(false);
   const welcomeToastShownRef = useRef(false);
 
@@ -307,6 +311,31 @@ export default function Dashboard() {
       setShowWelcomeToast(true);
       navigate(location.pathname, { replace: true, state: {} });
     }
+  }, [location.state, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (!location.state?.scrollToSection || navStateHandledRef.current) return;
+    navStateHandledRef.current = true;
+
+    const { scrollToSection, resourceView, resourceType } = location.state;
+
+    if (resourceView) setResourceView(resourceView);
+    if (resourceType) setResourceType(resourceType);
+
+    const targetRef =
+      scrollToSection === "performance"
+        ? performanceSectionRef
+        : scrollToSection === "resources"
+          ? resourcesSectionRef
+          : null;
+
+    const scrollTimer = setTimeout(() => {
+      targetRef?.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+
+    navigate(location.pathname, { replace: true, state: {} });
+
+    return () => clearTimeout(scrollTimer);
   }, [location.state, location.pathname, navigate]);
 
   useEffect(() => {
@@ -1145,19 +1174,20 @@ export default function Dashboard() {
           </span>
         </div>
 
-        {/* ── Performance Indicators ─────────────────────── */}
-        <DashboardAccordion
-          icon={
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50">
-              <TrendingUp size={16} className="text-indigo-500" />
-            </div>
-          }
-          title="Performance Indicators"
-          subtitle="Enrollment · Dropout · Promotion · Cohort Survival"
-          subtitleColor="#4f7df5"
-          accentBg="rgba(239,246,255,0.7)"
+          {/* ── Performance Indicators ─────────────────────── */}
+          <div ref={performanceSectionRef} className="scroll-mt-24">
+            <DashboardAccordion
+              icon={
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50">
+                  <TrendingUp size={16} className="text-indigo-500" />
+                </div>
+              }
+              title="Performance Indicators"
+              subtitle="Enrollment · Dropout · Promotion · Cohort Survival"
+              subtitleColor="#4f7df5"
+              accentBg="rgba(239,246,255,0.7)"
 
-        >
+            >
           {!loading &&
             enrollmentSummary.total === 0 &&
             !(isComparing && compareEnrollmentSummary.total > 0) ? (
@@ -1434,13 +1464,14 @@ export default function Dashboard() {
                   />
                 )}
               </div>
-            </>
-          )}
-        </DashboardAccordion>
+                </>
+              )}
+            </DashboardAccordion>
+          </div>
 
-        <div className="mt-3" />
+          <div className="mt-3" />
 
-        {/* ── CESPES (Single Accordion with Tabs) ────── */}
+          {/* ── CESPES (Single Accordion with Tabs) ────── */}
         <DashboardAccordion
           icon={
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50">
@@ -1749,18 +1780,19 @@ export default function Dashboard() {
 
         <div className="mt-3" />
 
-        {/* ── Crucial Resources ─────────────────────────── */}
-        <DashboardAccordion
-          icon={
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50">
-              <School size={16} className="text-amber-500" />
-            </div>
-          }
-          title="Crucial Resources"
-          subtitle="No. of Teachers · Classrooms · Seats · Textbooks"
-          subtitleColor="#d97706"
-          accentBg="rgba(255,251,235,0.7)"
-        >
+          {/* ── Crucial Resources ─────────────────────────── */}
+          <div ref={resourcesSectionRef} className="scroll-mt-24">
+            <DashboardAccordion
+              icon={
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50">
+                  <School size={16} className="text-amber-500" />
+                </div>
+              }
+              title="Crucial Resources"
+              subtitle="No. of Teachers · Classrooms · Seats · Textbooks"
+              subtitleColor="#d97706"
+              accentBg="rgba(255,251,235,0.7)"
+            >
           {!resources.teachers.loading &&
             resources.teachers.total === 0 &&
             resources.classrooms.total === 0 &&
@@ -2050,13 +2082,14 @@ export default function Dashboard() {
                   />
                 </div>
               )}
-            </>
-          )}
-        </DashboardAccordion>
+                </>
+              )}
+            </DashboardAccordion>
+          </div>
 
-        <div className="mt-3" />
+          <div className="mt-3" />
 
-        {/* ── Institutional Plans & Reports ──────────────── */}
+          {/* ── Institutional Plans & Reports ──────────────── */}
         <InstitutionalPlansCard selectedYear={selectedYear} />
 
         {/* Footer spacing */}
