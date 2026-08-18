@@ -606,7 +606,14 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                       <div className="space-y-2">
                         <DetailRow label="Public learners" value={learners.public} />
                         <DetailRow label="Private learners" value={learners.private} />
-                        <DetailRow label="Total learners" value={learners.total} />
+                        <div className="flex items-center justify-between rounded-[10px] bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 px-3.5 py-2.5">
+                          <span className="text-[0.74rem] font-black text-blue-700 uppercase tracking-wide">
+                            Total Learners
+                          </span>
+                          <span className="text-[0.88rem] font-black text-blue-700">
+                            {learners.total.toLocaleString()}
+                          </span>
+                        </div>
                         <div className="pt-1">
                           <p className="text-[0.62rem] font-bold uppercase tracking-wide text-slate-400 mb-1.5 px-0.5">
                             Top Schools by Enrollment
