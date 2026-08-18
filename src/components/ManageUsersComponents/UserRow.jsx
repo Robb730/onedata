@@ -8,6 +8,13 @@ import {
   Mail,
 } from "lucide-react";
 
+const ROLE_ACCENT = {
+  administrator: "from-blue-500 to-blue-600",
+  division_focal: "from-violet-500 to-purple-600",
+  section_focal: "from-emerald-500 to-teal-600",
+  section_personnel: "from-amber-500 to-orange-500",
+};
+
 export default function UserRow({
   user,
   getRoleDisplay,
@@ -21,6 +28,7 @@ export default function UserRow({
 }) {
   const roleLabel = getRoleDisplay(user.role);
   const isActive = user.status === "Active";
+  const accent = ROLE_ACCENT[user.role] || "from-indigo-500 to-blue-600";
   const orgPath = [
     user.division && user.division !== "Administrator" ? user.division : null,
     user.section && user.section !== "—" ? user.section : null,
@@ -32,15 +40,21 @@ export default function UserRow({
   return (
     <div
       onClick={() => onViewLogs(user)}
-      className="group flex items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-100 bg-white px-2.5 sm:px-3 py-2.5 transition-colors hover:bg-slate-50/80 cursor-pointer"
+      className={`group flex items-center gap-2.5 sm:gap-3 rounded-xl px-2.5 sm:px-3 py-2.5 transition-colors cursor-pointer ${
+        isActive
+          ? "border border-slate-100 bg-white hover:bg-slate-50/80"
+          : "border border-orange-100 bg-orange-50/70 hover:border-orange-400 hover:bg-orange-50"
+      }`}
     >
       <div className="relative shrink-0">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 text-[0.7rem] font-black text-white">
+        <div
+          className={`flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br ${accent} text-[0.7rem] font-black text-white`}
+        >
           {user.avatar}
         </div>
         <span
           className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${
-            isActive ? "bg-emerald-500" : "bg-slate-400"
+            isActive ? "bg-emerald-500" : "bg-orange-500"
           }`}
         />
       </div>
@@ -81,7 +95,7 @@ export default function UserRow({
       >
         <span
           className={`mr-1 hidden rounded-full px-2 py-0.5 text-[0.62rem] font-bold lg:inline-flex ${
-            isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+            isActive ? "bg-emerald-50 text-emerald-700" : "bg-orange-50 text-orange-600"
           }`}
         >
           {user.status}
@@ -90,7 +104,7 @@ export default function UserRow({
           type="button"
           onClick={() => onEdit(user)}
           title="Edit"
-          className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-blue-100 bg-blue-50 text-blue-600 hover:bg-blue-100"
+          className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-lg text-slate-400 hover:text-blue-600"
         >
           <Edit2 size={12} />
         </button>
@@ -99,7 +113,7 @@ export default function UserRow({
             type="button"
             onClick={() => onDeactivate(user)}
             title="Deactivate"
-            className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-amber-100 bg-amber-50 text-amber-600 hover:bg-amber-100"
+            className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-lg text-slate-400 hover:text-amber-600"
           >
             <UserX size={12} />
           </button>
@@ -108,7 +122,7 @@ export default function UserRow({
             type="button"
             onClick={() => onActivate(user)}
             title="Activate"
-            className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+            className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600"
           >
             <UserCheck size={12} />
           </button>
@@ -117,7 +131,7 @@ export default function UserRow({
           type="button"
           onClick={() => onDelete(user)}
           title="Delete"
-          className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-rose-100 bg-rose-50 text-rose-500 hover:bg-rose-100"
+          className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-lg text-slate-400 hover:text-rose-500"
         >
           <Trash2 size={12} />
         </button>

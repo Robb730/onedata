@@ -16,6 +16,8 @@
 html {
   /* Keep document as the scroll root on mobile so browser chrome can collapse. */
   height: auto;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -31,8 +33,12 @@ body {
 
 #root {
   min-height: 100%;
-  position: relative;
-  z-index: 0;
+}
+
+.app-shell,
+.app-shell-inner {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* Headings — slightly tighter line-height */
@@ -78,23 +84,28 @@ button {
 @keyframes pageIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
   }
 
   to {
     opacity: 1;
-    transform: none;
   }
 }
 
 .animate-page-in {
-  animation: pageIn 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: pageIn 280ms ease-out both;
 }
 
-/* ── Mobile nav: liquid glass + Apple-style spring pill ── */
 .liquid-glass-bar {
   position: relative;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow:
+    0 10px 32px rgba(15, 23, 42, 0.1),
+    0 1px 4px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .liquid-glass-bar::before {
@@ -104,54 +115,31 @@ button {
   z-index: 0;
   border-radius: inherit;
   pointer-events: none;
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.55) 0%,
-      rgba(255, 255, 255, 0.28) 45%,
-      rgba(255, 255, 255, 0.18) 100%
-    );
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  backdrop-filter: blur(28px) saturate(180%);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0) 48%
+  );
+}
+
+.liquid-glass-pill {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.62);
   box-shadow:
-    0 10px 40px rgba(15, 23, 42, 0.12),
-    0 2px 8px rgba(15, 23, 42, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.2);
+    0 2px 10px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.16);
+  transition: left 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .liquid-glass-panel {
   border: 1px solid rgba(255, 255, 255, 0.55);
-  background:
-    linear-gradient(
-      165deg,
-      rgba(255, 255, 255, 0.72) 0%,
-      rgba(255, 255, 255, 0.42) 100%
-    );
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  background: rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
   box-shadow:
     0 16px 54px rgba(15, 23, 42, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.7);
-}
-
-.liquid-glass-pill {
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.92) 0%,
-      rgba(241, 245, 249, 0.78) 55%,
-      rgba(226, 232, 240, 0.7) 100%
-    );
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow:
-    0 4px 14px rgba(15, 23, 42, 0.08),
-    0 1px 3px rgba(15, 23, 42, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 0 rgba(148, 163, 184, 0.12);
-  /* Apple-like spring: overshoot then settle */
-  transition: transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes navIconBounce {
@@ -278,23 +266,30 @@ button {
   animation: moreTileIn 520ms cubic-bezier(0.34, 1.5, 0.64, 1) both;
 }
 
-/* Hide floating mobile chrome while a bottom sheet (e.g. filters) is open */
+.mobile-bottom-nav {
+  padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+}
 body.hide-mobile-nav .mobile-bottom-nav,
 body.hide-mobile-nav .mobile-fab {
-  transform: translateY(120%);
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
 }
 
 .modal-overlay {
   background-color: rgb(15 23 42 / 0.4);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+}
+
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .modal-overlay {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .liquid-glass-pill {
-    transition: transform 180ms ease;
+    transition: left 180ms ease;
   }
 
   .nav-icon-bounce,

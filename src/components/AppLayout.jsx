@@ -1,14 +1,21 @@
 // eslint-disable-next-line no-unused-vars
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
-import { MobileBottomNav } from "./MobileBottomNav";
 import { supabase } from "../lib/supabaseClient";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import { ChangePasswordModal } from "./Modals/ChangePasswordModal";
 
-export function AppLayout({ children }) {
+function LayoutPageFallback() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center text-sm font-medium text-slate-400">
+      Loading…
+    </div>
+  );
+}
+
+export function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showPasswordToast, setShowPasswordToast] = useState(false);
   const navigate = useNavigate();
@@ -26,7 +33,7 @@ export function AppLayout({ children }) {
 
   useEffect(() => {
     setIsAnimating(true);
-    const timer = setTimeout(() => setIsAnimating(false), 400);
+    const timer = setTimeout(() => setIsAnimating(false), 280);
     return () => clearTimeout(timer);
   }, [location.pathname]);
 
@@ -72,14 +79,13 @@ export function AppLayout({ children }) {
           />
 
           <main
-            key={location.pathname}
-            className={`app-main flex-1 pb-[calc(6.25rem+env(safe-area-inset-bottom))] lg:min-h-0 lg:overflow-y-auto lg:pb-0 ${isAnimating ? "animate-page-in" : ""}`}
+            className={`app-main flex-1 pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] lg:min-h-0 lg:overflow-y-auto lg:pb-0 ${isAnimating ? "animate-page-in" : ""}`}
           >
-            {children}
+            <Suspense fallback={<LayoutPageFallback />}>
+              <Outlet />
+            </Suspense>
           </main>
         </div>
-
-        <MobileBottomNav />
 
         {showPasswordToast && (
           <div
