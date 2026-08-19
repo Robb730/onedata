@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useLandingStats } from "../../hooks/useLandingStats";
 import { SectionHeader } from "./SectionHeader";
+import { ResourcesByLevel } from "../DashboardComponents/ResourcesByLevel";
 
 function useMdUp() {
   const [md, setMd] = React.useState(() =>
@@ -525,7 +526,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                 subtitle="Demographic distribution and enrollment breakdown across schools"
               />
 
-              <div className="grid md:grid-cols-2 gap-3.5 md:gap-5">
+              <div className="grid md:grid-cols-2 gap-3.5 md:gap-5 items-start">
                 <ChartCard
                   title="Learners"
                   subtitle={`${learners.total.toLocaleString()} total enrolled`}
@@ -605,15 +606,27 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                       <div className="space-y-2">
                         <DetailRow label="Public learners" value={learners.public} />
                         <DetailRow label="Private learners" value={learners.private} />
-                        <DetailRow label="Total learners" value={learners.total} />
-                        {learners.byLevel?.map((lvl) => (
-                          <DetailRow
-                            key={lvl.level}
-                            label={lvl.level}
-                            value={(lvl.public || 0) + (lvl.private || 0)}
-                            sub={`Public: ${lvl.public?.toLocaleString() ?? 0} · Private: ${lvl.private?.toLocaleString() ?? 0}`}
-                          />
-                        ))}
+                        <div className="flex items-center justify-between rounded-[10px] bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 px-3.5 py-2.5">
+                          <span className="text-[0.74rem] font-black text-blue-700 uppercase tracking-wide">
+                            Total Learners
+                          </span>
+                          <span className="text-[0.88rem] font-black text-blue-700">
+                            {learners.total.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="pt-1">
+                          <p className="text-[0.62rem] font-bold uppercase tracking-wide text-slate-400 mb-1.5 px-0.5">
+                            Top Schools by Enrollment
+                          </p>
+                          {schools.schoolList?.slice(0, 5).map((s) => (
+                            <DetailRow
+                              key={s.name}
+                              label={s.name}
+                              value={s.enrollment}
+                              sub={s.category}
+                            />
+                          ))}
+                        </div>
                       </div>
                     )}
                   </DetailsPanel>
@@ -692,6 +705,14 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                             />
                           );
                         })}
+                        <div className="flex items-center justify-between rounded-[10px] bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 px-3.5 py-2.5 mt-1">
+                          <span className="text-[0.74rem] font-black text-blue-700 uppercase tracking-wide">
+                            All Levels Combined
+                          </span>
+                          <span className="text-[0.88rem] font-black text-blue-700">
+                            {learners.total.toLocaleString()}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </DetailsPanel>
@@ -748,18 +769,32 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                   )}
 
                   <DetailsPanel open={elemGradeDetailsOpen}>
-                    {!noLearners && (
-                      <div className="space-y-2">
-                        {learners.elemByGrade?.map((g) => (
-                          <DetailRow
-                            key={g.grade}
-                            label={g.grade}
-                            value={g.total}
-                            sub={`Male: ${g.male.toLocaleString()} · Female: ${g.female.toLocaleString()}`}
-                          />
-                        ))}
-                      </div>
-                    )}
+                    {!noLearners && (() => {
+                      const elemTotal = learners.elemByGrade?.reduce((acc, g) => acc + g.total, 0) || 0;
+                      return (
+                        <div className="space-y-2">
+                          {learners.elemByGrade?.map((g) => {
+                            const pct = elemTotal > 0 ? Math.round((g.total / elemTotal) * 100) : 0;
+                            return (
+                              <DetailRow
+                                key={g.grade}
+                                label={g.grade}
+                                value={g.total}
+                                sub={`Male: ${g.male.toLocaleString()} · Female: ${g.female.toLocaleString()} · ${pct}% of elementary`}
+                              />
+                            );
+                          })}
+                          <div className="flex items-center justify-between rounded-[10px] bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 px-3.5 py-2.5 mt-1">
+                            <span className="text-[0.74rem] font-black text-blue-700 uppercase tracking-wide">
+                              Elementary Total
+                            </span>
+                            <span className="text-[0.88rem] font-black text-blue-700">
+                              {elemTotal.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </DetailsPanel>
                 </ChartCard>
               </div>
@@ -845,20 +880,13 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
 
                 <DetailsPanel open={teachersDetailsOpen}>
                   {teachers.total + teachers.totalNeeds > 0 && (
-                    <div className="space-y-2">
-                      {teachers.byLevel?.map((lvl) => (
-                        <DetailRow
-                          key={lvl.level}
-                          label={lvl.level}
-                          value={lvl.excess > 0 ? `+${lvl.excess.toLocaleString()} surplus` : "No surplus"}
-                          sub={`Needed: ${lvl.needs.toLocaleString()} · Excess: ${(lvl.excess ?? 0).toLocaleString()}`}
-                        />
-                      ))}
-                      <DetailRow
-                        label="Net position (excess − needs)"
-                        value={teachers.byLevel?.reduce((a, l) => a + (l.excess ?? 0) - l.needs, 0) ?? 0}
-                      />
-                    </div>
+                    <ResourcesByLevel
+                      key="teachers-detail"
+                      resources={{ teachers, classrooms }}
+                      initialType="Teachers"
+                      allowedTypes={["Teachers"]}
+                      colorOverride={{ color: "#10b981", bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100" }}
+                    />
                   )}
                 </DetailsPanel>
               </ChartCard>
@@ -890,20 +918,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
 
                 <DetailsPanel open={classroomsDetailsOpen}>
                   {classrooms.total + classrooms.totalNeeds > 0 && (
-                    <div className="space-y-2">
-                      {classrooms.byLevel?.map((lvl) => (
-                        <DetailRow
-                          key={lvl.level}
-                          label={lvl.level}
-                          value={lvl.excess > 0 ? `+${lvl.excess.toLocaleString()} surplus` : "No surplus"}
-                          sub={`Needed: ${lvl.needs.toLocaleString()} · Excess: ${(lvl.excess ?? 0).toLocaleString()}`}
-                        />
-                      ))}
-                      <DetailRow
-                        label="Net position (excess − needs)"
-                        value={classrooms.byLevel?.reduce((a, l) => a + (l.excess ?? 0) - l.needs, 0) ?? 0}
-                      />
-                    </div>
+                    <ResourcesByLevel key="classrooms-detail" resources={{ teachers, classrooms }} initialType="Classrooms" allowedTypes={["Classrooms"]} />
                   )}
                 </DetailsPanel>
               </ChartCard>

@@ -41,7 +41,11 @@ export default function UserCard({
   return (
     <div
       onClick={() => onViewLogs(user)}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white cursor-pointer shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
+      className={`group flex h-full flex-col overflow-hidden rounded-2xl cursor-pointer shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] ${
+        isActive
+          ? "border border-slate-200/80 bg-white hover:border-slate-300"
+          : "border border-orange-100 bg-orange-50/70 hover:border-orange-400 hover:shadow-[0_10px_24px_rgba(234,88,12,0.12)]"
+      }`}
     >
 
 
@@ -55,14 +59,25 @@ export default function UserCard({
             </div>
             <span
               className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${
-                isActive ? "bg-emerald-500" : "bg-slate-400"
+                isActive ? "bg-emerald-500" : "bg-orange-500"
               }`}
             />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[0.84rem] font-bold text-slate-800 leading-tight">
-              {user.name}
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="truncate text-[0.84rem] font-bold text-slate-800 leading-tight">
+                {user.name}
+              </p>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[0.58rem] font-bold ${
+                  isActive
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-orange-50 text-orange-600"
+                }`}
+              >
+                {user.status}
+              </span>
+            </div>
             <span
               className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6rem] font-bold ${getRoleBadgeColor(
                 user.role,

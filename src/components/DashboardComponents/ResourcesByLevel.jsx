@@ -1,11 +1,59 @@
 import React, { useState } from "react";
-import { ChevronLeft, ChevronRight, School, Search, Filter, X, Users, BookOpen, GraduationCap } from "lucide-react";
 import { DashboardFilters } from "./DashboardFilters";
+
+// ── Inline icons (replaces lucide-react to avoid prod bundling bug) ──
+const ChevronLeft = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="m15 18-6-6 6-6" />
+  </svg>
+);
+const ChevronRight = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+);
+const School = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M14 22v-4a2 2 0 1 0-4 0v4" />
+    <path d="m18 10 3.447 1.724a1 1 0 0 1 .553.894V20a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-7.382a1 1 0 0 1 .553-.894L6 10" />
+    <path d="M18 5v17" />
+    <path d="m4 6 8-4 8 4" />
+    <path d="M6 5v17" />
+    <circle cx="12" cy="9" r="2" />
+  </svg>
+);
+const X = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M18 6 6 18" />
+    <path d="m6 6 12 12" />
+  </svg>
+);
+const Users = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+const GraduationCap = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z" />
+    <path d="M22 10v6" />
+    <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5" />
+  </svg>
+);
+const BookOpen = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M12 7v14" />
+    <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
+  </svg>
+);
 
 // ── Resource Configs ──────────────────────────────────────────
 const RESOURCE_CONFIGS = {
   Teachers: {
-    icon: <Users size={16} />,
+    icon: Users,
     color: "#4f7df5",
     bg: "bg-blue-50",
     text: "text-blue-600",
@@ -14,7 +62,7 @@ const RESOURCE_CONFIGS = {
     totalField: "prev_total_teachers_inventory",
   },
   Classrooms: {
-    icon: <School size={16} />,
+    icon: School,
     color: "#10b981",
     bg: "bg-emerald-50",
     text: "text-emerald-600",
@@ -23,7 +71,7 @@ const RESOURCE_CONFIGS = {
     totalField: (level) => (level === "Elementary" ? "prev_total_classroom_inventory" : "total_classroom"),
   },
   Seats: {
-    icon: <GraduationCap size={16} />,
+    icon: GraduationCap,
     color: "#f59e0b",
     bg: "bg-amber-50",
     text: "text-amber-600",
@@ -36,7 +84,7 @@ const RESOURCE_CONFIGS = {
     },
   },
   Textbooks: {
-    icon: <BookOpen size={16} />,
+    icon: BookOpen,
     color: "#ef4444",
     bg: "bg-rose-50",
     text: "text-rose-600",
@@ -91,7 +139,7 @@ function SchoolResourceRow({ school, resourceType, level, config, maxVal }) {
             {total.toLocaleString()}
           </span>
           <span className="text-[0.6rem] text-slate-400 w-16 text-right">
-             {resourceType === "Textbooks" ? "shortage" : `${needs.toLocaleString()} needs`}
+            {resourceType === "Textbooks" ? "shortage" : `${needs.toLocaleString()} needs`}
           </span>
         </div>
       </div>
@@ -102,20 +150,21 @@ function SchoolResourceRow({ school, resourceType, level, config, maxVal }) {
   );
 }
 
-export function ResourcesByLevel({ resources }) {
-  const [activeType, setActiveType] = useState("Teachers");
+export function ResourcesByLevel({ resources, initialType = "Teachers", allowedTypes = ["Teachers", "Classrooms", "Seats", "Textbooks"], colorOverride = null }) {
+  const [activeType, setActiveType] = useState(initialType);
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [search, setSearch] = useState("");
 
-  const config = RESOURCE_CONFIGS[activeType];
+  const baseConfig = RESOURCE_CONFIGS[activeType];
+  const config = colorOverride ? { ...baseConfig, ...colorOverride, totalField: baseConfig.totalField, inventoryLabel: baseConfig.inventoryLabel } : baseConfig;
   const resourceData = resources[activeType.toLowerCase()];
-  
+
   // Levels data (Elementary, JHS, SHS)
   const levels = ["Elementary", "JHS", "SHS"].map(lvl => {
     const records = resourceData.data?.[lvl] || [];
     const totalInventory = records.reduce((acc, r) => acc + getTotalValue(r, activeType, lvl), 0);
     const totalNeeds = records.reduce((acc, r) => acc + getNeeds(r, activeType, lvl), 0);
-    
+
     return {
       name: lvl,
       display: lvl === "Elementary" ? "Elementary" : lvl,
@@ -162,7 +211,7 @@ export function ResourcesByLevel({ resources }) {
               className="w-full text-[0.68rem] pl-2.5 pr-7 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 placeholder-slate-300 focus:outline-none focus:border-slate-400 focus:bg-white transition-all"
             />
             {search && (
-              <button 
+              <button
                 onClick={() => setSearch("")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"
               >
@@ -174,10 +223,10 @@ export function ResourcesByLevel({ resources }) {
 
         <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
           {filteredSchools.map((school, i) => (
-            <SchoolResourceRow 
-              key={school.school_id || i} 
-              school={school} 
-              resourceType={activeType} 
+            <SchoolResourceRow
+              key={school.school_id || i}
+              school={school}
+              resourceType={activeType}
               level={selectedLevel}
               config={config}
               maxVal={maxVal}
@@ -195,16 +244,18 @@ export function ResourcesByLevel({ resources }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h4 className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
-           Select Resource Type
-        </h4>
-        <DashboardFilters
-          options={["Teachers", "Classrooms", "Seats", "Textbooks"]}
-          active={activeType}
-          onChange={(t) => { setActiveType(t); setSelectedLevel(null); }}
-        />
-      </div>
+      {allowedTypes.length > 1 && (
+        <div className="flex items-center justify-between">
+          <h4 className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
+            Select Resource Type
+          </h4>
+          <DashboardFilters
+            options={allowedTypes}
+            active={activeType}
+            onChange={(t) => { setActiveType(t); setSelectedLevel(null); }}
+          />
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-3">
         {levels.map(lvl => (
@@ -224,21 +275,21 @@ export function ResourcesByLevel({ resources }) {
               {lvl.total.toLocaleString()}
             </p>
             <p className="text-[0.65rem] text-slate-400 mb-2">
-               {activeType === "Textbooks" ? "Units Shortage" : `Total Inventory`}
+              {activeType === "Textbooks" ? "Units Shortage" : `Total Inventory`}
             </p>
-            
+
             <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
-               <span className="text-[0.6rem] text-slate-400 font-medium italic">
-                 {lvl.needs.toLocaleString()} {activeType === "Textbooks" ? "total gap" : "needs"}
-               </span>
-               <span className={`text-[0.55rem] font-bold uppercase py-0.5 px-1.5 rounded-md ${config.bg} ${config.text}`}>
-                 Details →
-               </span>
+              <span className="text-[0.6rem] text-slate-400 font-medium italic">
+                {lvl.needs.toLocaleString()} {activeType === "Textbooks" ? "total gap" : "needs"}
+              </span>
+              <span className={`text-[0.55rem] font-bold uppercase py-0.5 px-1.5 rounded-md ${config.bg} ${config.text}`}>
+                Details →
+              </span>
             </div>
           </button>
         ))}
       </div>
-      
+
       <div className="mt-2 text-center text-[0.65rem] text-slate-400 flex items-center justify-center gap-1.5">
         <School size={12} /> Click on a level card to see the breakdown of individual schools.
       </div>
