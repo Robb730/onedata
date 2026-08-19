@@ -34,7 +34,8 @@ export function Footer() {
           backgroundImage:
             "radial-gradient(circle at 1px 1px, rgba(148,163,184,0.18) 1px, transparent 0)",
           backgroundSize: "28px 28px",
-          maskImage: "linear-gradient(180deg, transparent, black 18%, black 78%, transparent)",
+          maskImage:
+            "linear-gradient(180deg, transparent, black 18%, black 78%, transparent)",
         }}
       />
       <div
@@ -55,15 +56,19 @@ export function Footer() {
                 onClick={() => handleNav("#home")}
                 className="flex items-center gap-2.5 mb-5 bg-transparent border-none p-0 cursor-pointer"
               >
-                <img src={logo} alt="" className="w-8 h-8 object-contain shrink-0" />
+                <img
+                  src={logo}
+                  alt=""
+                  className="w-8 h-8 object-contain shrink-0"
+                />
                 <span className="text-[1.2rem] font-bold text-white tracking-tight">
                   One<span className="text-emerald-400">Data</span>
                 </span>
               </button>
 
               <p className="text-[0.84rem] text-slate-400 leading-relaxed mb-6 max-w-[340px]">
-                Centralized education data for SDO Baliwag — analytics, repository,
-                and institutional insights in one place.
+                Centralized education data for SDO Baliwag — analytics,
+                repository, and institutional insights in one place.
               </p>
 
               <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/40 px-3.5 py-3">

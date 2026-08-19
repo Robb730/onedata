@@ -117,6 +117,14 @@ const UPLOAD_OPTIONS = [
   },
 ];
 
+const MULTIPLE_UPLOAD_TYPES = [
+  "general",
+  "aip_school",
+  "aip_sdo",
+  "qbedp",
+  "accomplishment_report",
+];
+
 const fieldClass =
   "w-full pl-9 pr-3 py-2.5 min-h-[44px] border border-slate-200 rounded-xl text-sm bg-white hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-colors";
 const labelClass =
@@ -468,7 +476,7 @@ export default function FileUploadModal({
             {selectedFiles.length}{" "}
             {selectedFiles.length === 1 ? "file" : "files"} selected
           </p>
-          {uploadType !== "general" && selectedFiles.length > 1 && (
+          {!MULTIPLE_UPLOAD_TYPES.includes(uploadType) && selectedFiles.length > 1 && (
             <span className="text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md font-semibold border border-amber-100">
               Only first file parsed
             </span>
@@ -625,7 +633,7 @@ export default function FileUploadModal({
               </span>
               {selectedFiles.length === 1 ? "File" : "Files"} Staged
             </span>
-            {uploadType !== "general" && selectedFiles.length > 1 && (
+            {!MULTIPLE_UPLOAD_TYPES.includes(uploadType) && selectedFiles.length > 1 && (
               <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-semibold">
                 Only first file parsed
               </span>
@@ -1055,7 +1063,7 @@ export default function FileUploadModal({
                                       setUploadType(value);
                                       setIsUploadTypeOpen(false);
                                       if (
-                                        value !== "general" &&
+                                        !MULTIPLE_UPLOAD_TYPES.includes(value) &&
                                         selectedFiles.length > 1
                                       ) {
                                         setSelectedFiles([selectedFiles[0]]);
@@ -1138,7 +1146,7 @@ export default function FileUploadModal({
                             className={`truncate ${selectedFiles.length > 0 ? "text-slate-800 font-medium" : "text-slate-400"}`}
                           >
                             {selectedFiles.length === 0
-                              ? "Click to browse or drop a file"
+                              ? "Click to browse or drop files"
                               : selectedFiles.length === 1
                                 ? selectedFiles[0].name
                                 : `${selectedFiles.length} files selected`}
@@ -1156,7 +1164,7 @@ export default function FileUploadModal({
                           type="file"
                           onChange={handleFileChange}
                           className="hidden"
-                          multiple={uploadType === "general"}
+                          multiple={MULTIPLE_UPLOAD_TYPES.includes(uploadType)}
                           required={selectedFiles.length === 0}
                         />
                       </div>
