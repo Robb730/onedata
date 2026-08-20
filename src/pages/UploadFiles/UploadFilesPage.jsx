@@ -79,6 +79,12 @@ const getBucketForType = (uploadType) =>
 // ── Mock file requests ────────────────────────────────────────────────────────
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+const ALLOWED_EXTENSIONS = [
+  ".xlsx", ".xls", ".pdf", ".doc", ".docx", ".ppt", ".pptx",
+  ".jpg", ".jpeg", ".png", ".csv", ".txt", ".zip", ".rar"
+];
+const MAX_FILE_SIZE_MB = 50;
+
 function getStatusColor(status) {
   switch (status) {
     case "Completed":
@@ -370,7 +376,6 @@ export default function UploadFilesPage() {
   };
 
   // ── Core upload + Supabase insert ─────────────────────────────────────────
-  // ── Core upload + Supabase insert ─────────────────────────────────────────
   const addToUploads = async (
   fileName,
   schoolYear,
@@ -378,6 +383,18 @@ export default function UploadFilesPage() {
   file,
   { upsert = false } = {},
 ) => {
+  if (!file || !file.name) throw new Error("Invalid file object.");
+  
+  const ext = "." + file.name.split(".").pop().toLowerCase();
+  if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    throw new Error(`File type not allowed. Allowed types: ${ALLOWED_EXTENSIONS.join(", ")}`);
+  }
+  if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+    throw new Error(`File exceeds ${MAX_FILE_SIZE_MB}MB limit.`);
+  }
+
+  fileName = fileName.replace(/[^a-zA-Z0-9._\-]/g, "_");
+
   const folder = selectedFolder;
   const sectionId = typeof folder === "object" ? folder?.id : null;
   const sectionName = typeof folder === "object" ? folder?.name : folder;
@@ -916,7 +933,9 @@ export default function UploadFilesPage() {
 
     setUploadToastStatus("success");
   } catch (e) {
-    setUploadErrorMessage(e.message || "An error occurred during upload.");
+    console.error("Upload error:", e);
+    const isCustomError = e.message?.includes("File type not allowed") || e.message?.includes("File exceeds");
+    setUploadErrorMessage(isCustomError ? e.message : "An error occurred during upload. Please try again.");
     setUploadToastStatus("error");
   }
 
@@ -993,7 +1012,8 @@ export default function UploadFilesPage() {
     setUploadToastStatus("success");
   } catch (err) {
     console.error("Failed to update file request status or upload:", err);
-    setUploadErrorMessage(err.message || "An error occurred during upload.");
+    const isCustomError = err.message?.includes("File type not allowed") || err.message?.includes("File exceeds");
+    setUploadErrorMessage(isCustomError ? err.message : "An error occurred during upload. Please try again.");
     setUploadToastStatus("error");
   }
 
