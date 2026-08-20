@@ -33,9 +33,10 @@
 **"Pero yung kanyang sariling section folder? Bukasan natin — dito siya may buong access. Makikita niya lahat ng files na na-upload sa kanyang section."**
 
 **"Maaari siyang:**
+
 - **Mag-view** ng files — basta section niya, makita niya.
 - **Mag-download** — kailangan niya ng kopya? Download lang.
-- **Mag-request ng access** sa ibang section, kung kailangan niya ng dokumento mula doon — may approval process, hindi basta-basta."**
+- **Mag-request ng access** sa ibang section, kung kailangan niya ng dokumento mula doon — may approval process, hindi basta-basta."\*\*
 
 ---
 
@@ -58,10 +59,11 @@
 **"Ito yung napaka-importante — yung **File Requests** panel."**
 
 **"Pag may hinihingi ang Administrator o yung Division Focal Person na dokumento mula sa kanyang section, lalabas ito dito. Makikita niya yung:**
+
 - Anong file ang hinihingi
 - Sino ang humiling
 - Kailan ang deadline
-- Status — Pending, Overdue, or Completed"**
+- Status — Pending, Overdue, or Completed"\*\*
 
 **"Kung may 'Overdue' na request? May pula itong badge — agad na makikita para hindi makalimutan."**
 
@@ -81,13 +83,13 @@
 
 **"So kung i-summarize natin ang Section Officer:"**
 
-| Kaya Niya | Hindi Kaya |
-| --- | --- |
-| Mag-upload ng files sa kanyang section | Mag-manage ng users |
+| Kaya Niya                                          | Hindi Kaya                                       |
+| -------------------------------------------------- | ------------------------------------------------ |
+| Mag-upload ng files sa kanyang section             | Mag-manage ng users                              |
 | Mag-view at mag-download ng sariling section files | Makita ang ibang sections nang walang pahintulot |
-| Tumugon sa file requests ng admin/division | Mag-access ng audit logs |
-| Mag-request ng access sa ibang section | Mag-delete ng files nang direkta |
-| Makita ang kanyang dashboard at overview | — |
+| Tumugon sa file requests ng admin/division         | Mag-access ng audit logs                         |
+| Mag-request ng access sa ibang section             | Mag-delete ng files nang direkta                 |
+| Makita ang kanyang dashboard at overview           | —                                                |
 
 **"Yung design nito ay simple — lahat ng trabaho niya nasa iisang lugar, at ang system mismo yung bahala sa routing ng file sa tamang section. Wala nang manual na pag-aayos-ayos. Efficient, organized, at accountable."**
 
