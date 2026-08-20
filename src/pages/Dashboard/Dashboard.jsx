@@ -3005,18 +3005,27 @@ function InstitutionalPlansCard({ selectedYear }) {
     </svg>
   );
 
-  const getPublicUrl = (path) => {
+  // Must stay in sync with STRUCTURED_UPLOAD_TYPES in UploadFilesPage.jsx.
+  const EXCEL_BUCKET_TYPES = new Set([
+    "enrollment", "classrooms", "seats", "teachers_inventory",
+    "textbook_inventory", "cespes", "performance_indicators",
+    "aip_school", "aip_sdo", "qbedp", "accomplishment_report",
+  ]);
+  const getDashboardBucket = (category) =>
+    EXCEL_BUCKET_TYPES.has(category) ? "excel-files" : "repository-files";
+
+  const getPublicUrl = (path, category) => {
     if (!path) return "#";
     const { data } = supabase.storage
-      .from("repository-files")
+      .from(getDashboardBucket(category))
       .getPublicUrl(path);
     return data.publicUrl;
   };
 
-  const downloadFile = async (path, filename) => {
+  const downloadFile = async (path, filename, category) => {
     if (!path) return;
     const { data, error } = await supabase.storage
-      .from("repository-files")
+      .from(getDashboardBucket(category))
       .download(path);
     if (error) {
       console.error("Error downloading file:", error);
@@ -3031,6 +3040,7 @@ function InstitutionalPlansCard({ selectedYear }) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
 
   const renderSection = (id, title, categoryType) => {
     const isOpen = expandedSection === id;
@@ -3086,7 +3096,7 @@ function InstitutionalPlansCard({ selectedYear }) {
                     >
                       <td className="px-4 py-3">
                         <a
-                          href={getPublicUrl(file.file_path)}
+                          href={getPublicUrl(file.file_path, file.data_category)}
                           target="_blank"
                           rel="noreferrer"
                           className="flex items-center gap-2 cursor-pointer group"
