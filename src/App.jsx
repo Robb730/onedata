@@ -103,8 +103,8 @@ function App() {
     }
   }, [setUserProfile]);
 
-  useIdleTimeout(handleWarning, 10 * 1000); // warn after 10 seconds
-  useIdleTimeout(handleIdle, 20 * 1000);    // logout after 20 seconds
+  useIdleTimeout(handleWarning, 25 * 60 * 1000); // warn after 25 minutes
+  useIdleTimeout(handleIdle, 30 * 60 * 1000);    // logout after 30 minutes
 
   if (loading) return null;
 
