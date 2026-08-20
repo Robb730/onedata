@@ -73,6 +73,11 @@ const STRUCTURED_UPLOAD_TYPES = [
   "textbook_inventory",
   "cespes",
   "performance_indicators",
+  // Dashboard file categories — stored in excel-files
+  "aip_school",
+  "aip_sdo",
+  "qbedp",
+  "accomplishment_report",
 ];
 const getBucketForType = (uploadType) =>
   STRUCTURED_UPLOAD_TYPES.includes(uploadType) ? "excel-files" : "repository-files";
