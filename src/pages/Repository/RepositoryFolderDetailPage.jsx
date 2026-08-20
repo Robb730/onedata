@@ -63,10 +63,26 @@ const roleDisplayMap = {
 };
 const getRoleDisplay = (role) => roleDisplayMap[role] ?? role;
 
+// Must stay in sync with STRUCTURED_UPLOAD_TYPES in UploadFilesPage.jsx.
+// Only these categories are stored in "excel-files"; everything else
+// (including general) goes to "repository-files".
+const EXCEL_BUCKET_TYPES = new Set([
+  "enrollment",
+  "classrooms",
+  "seats",
+  "teachers_inventory",
+  "textbook_inventory",
+  "cespes",
+  "performance_indicators",
+  // Dashboard file categories — stored in excel-files
+  "aip_school",
+  "aip_sdo",
+  "qbedp",
+  "accomplishment_report",
+]);
+
 function getBucket(category) {
-  return category === "general" || !category
-    ? "repository-files"
-    : "excel-files";
+  return EXCEL_BUCKET_TYPES.has(category) ? "excel-files" : "repository-files";
 }
 
 const ALL_FILE_BUCKETS = ["repository-files", "excel-files"];
