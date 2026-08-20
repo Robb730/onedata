@@ -174,6 +174,8 @@ export default function UploadFilesPage() {
   const [fileRequests, setFileRequests] = useState([]);
   const [pendingRequestUpload, setPendingRequestUpload] = useState(null);
   const [uploadToastStatus, setUploadToastStatus] = useState(null); // 'uploading', 'success', 'error'
+  const [uploadTotalFiles, setUploadTotalFiles] = useState(0);
+  const [uploadCompletedFiles, setUploadCompletedFiles] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadsPage, setUploadsPage] = useState(1);
   const uploadsPerPage = 5;
@@ -874,6 +876,10 @@ export default function UploadFilesPage() {
   setShowUploadModal(false);
   setPendingFile(null);
   if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+  
+  const isMultiple = Array.isArray(fileOrFiles) && fileOrFiles.length > 1;
+  setUploadTotalFiles(isMultiple ? fileOrFiles.length : 1);
+  setUploadCompletedFiles(0);
   setUploadToastStatus("uploading");
 
   try {
@@ -888,12 +894,14 @@ export default function UploadFilesPage() {
           upsert: isReplace,
         });
         if (result?.storagePath) newWrittenPaths.push(result.storagePath);
+        setUploadCompletedFiles((prev) => prev + 1);
       }
     } else {
       const result = await addToUploads(fileName, schoolYear, uploadType, fileOrFiles, {
         upsert: isReplace,
       });
       if (result?.storagePath) newWrittenPaths.push(result.storagePath);
+      setUploadCompletedFiles(1);
     }
 
     // 2. Only now, with the replacement confirmed on disk and in the DB,
@@ -965,6 +973,10 @@ export default function UploadFilesPage() {
   setPendingRequestUpload(null);
 
   if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+  
+  const isMultiple = Array.isArray(fileOrFiles) && fileOrFiles.length > 1;
+  setUploadTotalFiles(isMultiple ? fileOrFiles.length : 1);
+  setUploadCompletedFiles(0);
   setUploadToastStatus("uploading");
 
   try {
@@ -977,12 +989,14 @@ export default function UploadFilesPage() {
           upsert: isReplace,
         });
         if (result?.storagePath) newWrittenPaths.push(result.storagePath);
+        setUploadCompletedFiles((prev) => prev + 1);
       }
     } else {
       const result = await addToUploads(fileName, schoolYear, uploadType, fileOrFiles, {
         upsert: isReplace,
       });
       if (result?.storagePath) newWrittenPaths.push(result.storagePath);
+      setUploadCompletedFiles(1);
     }
 
     if (isReplace) {
@@ -1596,7 +1610,7 @@ export default function UploadFilesPage() {
                 }}
               >
                 {uploadToastStatus === "uploading"
-                  ? "Uploading File"
+                  ? (uploadTotalFiles > 1 ? "Uploading Files" : "Uploading File")
                   : uploadToastStatus === "error"
                     ? "Upload Failed"
                     : "Success"}
@@ -1612,10 +1626,14 @@ export default function UploadFilesPage() {
                 }}
               >
                 {uploadToastStatus === "uploading"
-                  ? "Please wait, your file is uploading..."
+                  ? (uploadTotalFiles > 1 
+                       ? `Please wait, ${uploadCompletedFiles}/${uploadTotalFiles} files uploaded...` 
+                       : "Please wait, your file is uploading...")
                   : uploadToastStatus === "error"
                     ? uploadErrorMessage || "An error occurred during upload."
-                    : "File uploaded successfully."}
+                    : (uploadTotalFiles > 1 
+                       ? `${uploadTotalFiles}/${uploadTotalFiles} files uploaded successfully.` 
+                       : "File uploaded successfully.")}
               </p>
             </div>
 
