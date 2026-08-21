@@ -431,6 +431,15 @@ export default function UploadFilesPage() {
   try {
     const isStructured = STRUCTURED_UPLOAD_TYPES.includes(uploadType);
 
+    if (isStructured) {
+      try {
+        await runImport(file, uploadType);
+      } catch (err) {
+        const prettyType = uploadType.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        throw new Error(`Invalid ${prettyType} template!`);
+      }
+    }
+
     const { error: storageError } = await supabase.storage
       .from(bucket)
       .upload(storagePath, file, { cacheControl: "3600", upsert });
@@ -506,6 +515,14 @@ export default function UploadFilesPage() {
           console.error("Failed to clean up orphaned storage object:", cleanupError);
         }
       }
+
+      // Clean up the DB row if it was inserted before the failure
+      try {
+        await supabase.from("files").delete().eq("file_path", storagePath);
+      } catch (e) {
+        console.error("Failed to clean up orphaned db row:", e);
+      }
+
       throw innerErr;
     }
   } catch (err) {
@@ -954,7 +971,7 @@ export default function UploadFilesPage() {
     queryClient.invalidateQueries({ queryKey: ["kpiData"] });
   } catch (e) {
     console.error("Upload error:", e);
-    const isCustomError = e.message?.includes("File type not allowed") || e.message?.includes("File exceeds");
+    const isCustomError = e.message?.includes("File type not allowed") || e.message?.includes("File exceeds") || e.message?.includes("template!");
     setUploadErrorMessage(isCustomError ? e.message : "An error occurred during upload. Please try again.");
     setUploadToastStatus("error");
   }
@@ -1044,7 +1061,7 @@ export default function UploadFilesPage() {
     queryClient.invalidateQueries({ queryKey: ["kpiData"] });
   } catch (err) {
     console.error("Failed to update file request status or upload:", err);
-    const isCustomError = err.message?.includes("File type not allowed") || err.message?.includes("File exceeds");
+    const isCustomError = err.message?.includes("File type not allowed") || err.message?.includes("File exceeds") || err.message?.includes("template!");
     setUploadErrorMessage(isCustomError ? err.message : "An error occurred during upload. Please try again.");
     setUploadToastStatus("error");
   }

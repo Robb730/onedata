@@ -224,7 +224,27 @@ function parseRow(row, sheet, rowIndex) {
  * @param {string}   sheet    - Sheet name ("PUBLIC" or "PRIVATE").
  * @returns {{ records: Object[], errors: Object[] }}
  */
+function checkEnrollmentLayout(allRows, sheet) {
+  const row2 = allRows[2] || [];
+  
+  const kinder = String(row2[3] || "").trim().toLowerCase();
+  const grade1 = String(row2[5] || "").trim().toLowerCase();
+  const grade7 = String(row2[25] || "").trim().toLowerCase();
+  const grade11 = String(row2[39] || "").trim().toLowerCase();
+
+  if (
+    !kinder.includes("kinder") || 
+    !grade1.includes("grade 1") || 
+    !grade7.includes("grade 7") ||
+    !grade11.includes("grade 11")
+  ) {
+    throw new Error(`Invalid layout in sheet "${sheet}". Columns appear to be missing or shifted.`);
+  }
+}
+
 function parseSheet(allRows, sheet) {
+  checkEnrollmentLayout(allRows, sheet);
+
   const dataRows = allRows.slice(HEADER_ROW_COUNT);
   const records  = [];
   const errors   = [];
