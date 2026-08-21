@@ -452,10 +452,6 @@ export default function RepositoryDivisionPage() {
                     <FolderOpen size={13} className="text-indigo-500" />
                     {loading ? "—" : `${sections.length} ${sections.length === 1 ? "folder" : "folders"}`}
                   </span>
-                  <span className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-lg text-[0.75rem] font-bold text-emerald-700 border border-emerald-200/60 shadow-sm">
-                    <Activity size={13} className="text-emerald-500" />
-                    {loading ? "Loading…" : error ? "Needs attention" : "Accessible"}
-                  </span>
                 </div>
               </div>
             </div>
