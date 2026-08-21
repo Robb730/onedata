@@ -398,12 +398,27 @@ export async function parseClassroomsFile(file) {
 
         const result = { db: null, kes: null, jhs: null, shs: null, status: null, sheetSummary: [] };
 
+        function checkMasterlistLayout(allRows, sheetName) {
+          let foundDivision = false;
+          for (let i = 0; i < Math.min(allRows.length, 15); i++) {
+            const row = allRows[i] || [];
+            if (String(row[3] || "").trim().toLowerCase() === "division") {
+              foundDivision = true;
+              break;
+            }
+          }
+          if (!foundDivision) {
+            throw new Error(`Invalid layout in sheet "${sheetName}". Columns appear to be missing or shifted.`);
+          }
+        }
+
         // ── DB sheet (filter for Baliwag) ──
         if (available.includes(CLASSROOMS_SHEETS.DB)) {
           const rows = XLSX.utils.sheet_to_json(
             workbook.Sheets[CLASSROOMS_SHEETS.DB],
             { header: 1, defval: "" }
           );
+          checkMasterlistLayout(rows, "DB");
           result.db = parseDBSheet(rows);
           result.sheetSummary.push({ sheet: "DB", count: result.db.records.length });
         }
@@ -414,6 +429,7 @@ export async function parseClassroomsFile(file) {
             workbook.Sheets[CLASSROOMS_SHEETS.KES],
             { header: 1, defval: "" }
           );
+          checkMasterlistLayout(rows, "KES");
           result.kes = parseKESSheet(rows);
           result.sheetSummary.push({ sheet: "KES", count: result.kes.records.length });
         }
@@ -424,6 +440,7 @@ export async function parseClassroomsFile(file) {
             workbook.Sheets[CLASSROOMS_SHEETS.JHS],
             { header: 1, defval: "" }
           );
+          checkMasterlistLayout(rows, "JHS");
           result.jhs = parseJHSSheet(rows);
           result.sheetSummary.push({ sheet: "JHS", count: result.jhs.records.length });
         }
@@ -434,6 +451,7 @@ export async function parseClassroomsFile(file) {
             workbook.Sheets[CLASSROOMS_SHEETS.SHS],
             { header: 1, defval: "" }
           );
+          checkMasterlistLayout(rows, "SHS");
           result.shs = parseSHSSheet(rows);
           result.sheetSummary.push({ sheet: "SHS", count: result.shs.records.length });
         }

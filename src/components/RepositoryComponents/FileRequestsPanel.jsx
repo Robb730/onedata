@@ -67,14 +67,21 @@ export default function FileRequestsPanel({ isOpen, onClose, requests = [], isLo
     <div className="fixed inset-0 z-[100]">
       <button
         type="button"
-        className="modal-overlay absolute inset-0 border-0 p-0"
+        className={`modal-overlay absolute inset-0 border-0 p-0 transition-opacity duration-300 ${
+          animateIn ? "opacity-100" : "opacity-0"
+        }`}
         aria-label="Close"
         onClick={onClose}
       />
       <div
-        className="absolute z-10 bg-white flex flex-col shadow-[0_0_60px_rgba(15,23,42,0.18)]
+        className={`absolute z-10 bg-white flex flex-col shadow-[0_0_60px_rgba(15,23,42,0.18)]
           left-0 right-0 bottom-0 max-h-[92dvh] rounded-t-2xl
-          lg:left-auto lg:top-0 lg:right-0 lg:h-dvh lg:max-h-none lg:w-full lg:max-w-md lg:rounded-none"
+          lg:left-auto lg:top-0 lg:right-0 lg:h-dvh lg:max-h-none lg:w-full lg:max-w-md lg:rounded-none
+          transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            animateIn
+              ? "translate-y-0 lg:translate-x-0"
+              : "translate-y-full lg:translate-y-0 lg:translate-x-full"
+          }`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="lg:hidden flex justify-center pt-2.5 pb-1 shrink-0">

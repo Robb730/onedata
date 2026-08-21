@@ -14,6 +14,8 @@ export default function AuditLogs() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterAction, setFilterAction] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
 
@@ -296,7 +298,7 @@ export default function AuditLogs() {
   // Reset to page 1 whenever filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterAction, filterStatus]);
+  }, [searchQuery, filterAction, filterStatus, dateFrom, dateTo]);
 
   const queryClient = useQueryClient();
   const { data: auditLogsData } = useQuery({
@@ -438,7 +440,23 @@ async function handleDeactivateFromAlert(log) {
       log.details.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesAction = filterAction === "All" || log.action === filterAction;
     const matchesStatus = filterStatus === "All" || log.status === filterStatus;
-    return matchesSearch && matchesAction && matchesStatus;
+
+    let matchesDate = true;
+    if (dateFrom || dateTo) {
+      const logDate = new Date(log.performedOn);
+      if (dateFrom) {
+        const from = new Date(dateFrom);
+        from.setHours(0, 0, 0, 0);
+        if (logDate < from) matchesDate = false;
+      }
+      if (dateTo && matchesDate) {
+        const to = new Date(dateTo);
+        to.setHours(23, 59, 59, 999);
+        if (logDate > to) matchesDate = false;
+      }
+    }
+
+    return matchesSearch && matchesAction && matchesStatus && matchesDate;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredLogs.length / rowsPerPage));
@@ -472,6 +490,12 @@ async function handleDeactivateFromAlert(log) {
           onFilterStatusChange={setFilterStatus}
           actions={actions}
           statuses={statuses}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateRangeChange={(range) => {
+            setDateFrom(range.startDate);
+            setDateTo(range.endDate);
+          }}
         />
 
         <AuditLogsTable
