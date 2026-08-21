@@ -352,8 +352,16 @@ export default function FileUploadModal({
     replaceFileIds = null,
   ) => {
     setIsUploading(true);
-    const finalName = modifiedName || fileName;
-    const filesToUpload = modifiedFiles || selectedFiles;
+const finalName = modifiedName || fileName;
+// If the user edited the File Name field for a single-file upload, the
+// underlying File object still has its original filename. Rename it here
+// so downstream code (which reads file.name for array-based uploads)
+// actually reflects the edited name.
+const filesToUpload =
+  modifiedFiles ||
+  (selectedFiles.length === 1
+    ? [renameFile(selectedFiles[0], finalName)]
+    : selectedFiles);
 
     try {
       await onUpload(
