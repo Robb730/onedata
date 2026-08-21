@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Upload,
   FileText,
@@ -131,6 +131,7 @@ function getRequestStatusStyle(status) {
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function UploadFilesPage() {
   const { userProfile } = useUser();
+  const queryClient = useQueryClient();
 
   const role = userProfile?.role; // "administrator" | "division_focal" | "section_focal" | "section_personnel"
   const isAdmin = role === "administrator";
@@ -945,6 +946,12 @@ export default function UploadFilesPage() {
     }
 
     setUploadToastStatus("success");
+    // Invalidate dashboard caches so the charts reflect the new data immediately
+    queryClient.invalidateQueries({ queryKey: ["enrollment"] });
+    queryClient.invalidateQueries({ queryKey: ["resources"] });
+    queryClient.invalidateQueries({ queryKey: ["cespes"] });
+    queryClient.invalidateQueries({ queryKey: ["schoolYears"] });
+    queryClient.invalidateQueries({ queryKey: ["kpiData"] });
   } catch (e) {
     console.error("Upload error:", e);
     const isCustomError = e.message?.includes("File type not allowed") || e.message?.includes("File exceeds");
@@ -1029,6 +1036,12 @@ export default function UploadFilesPage() {
 
     await fetchFileRequests();
     setUploadToastStatus("success");
+    // Invalidate dashboard caches so the charts reflect the new data immediately
+    queryClient.invalidateQueries({ queryKey: ["enrollment"] });
+    queryClient.invalidateQueries({ queryKey: ["resources"] });
+    queryClient.invalidateQueries({ queryKey: ["cespes"] });
+    queryClient.invalidateQueries({ queryKey: ["schoolYears"] });
+    queryClient.invalidateQueries({ queryKey: ["kpiData"] });
   } catch (err) {
     console.error("Failed to update file request status or upload:", err);
     const isCustomError = err.message?.includes("File type not allowed") || err.message?.includes("File exceeds");
