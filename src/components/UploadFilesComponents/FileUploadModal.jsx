@@ -104,11 +104,11 @@ const UPLOAD_OPTIONS = [
   },
   {
     value: "aip_school",
-    label: "Approved School AIP 2026 (Store file for Dashboard)",
+    label: "Approved School AIP (Store file for Dashboard)",
   },
   {
     value: "aip_sdo",
-    label: "Approved SDO AIP 2026 (Store file for Dashboard)",
+    label: "Approved SDO AIP (Store file for Dashboard)",
   },
   { value: "qbedp", label: "QBEDP (Store file for Dashboard)" },
   {
@@ -124,6 +124,55 @@ const MULTIPLE_UPLOAD_TYPES = [
   "qbedp",
   "accomplishment_report",
 ];
+
+// Upload types that only accept Excel files (.xlsx / .xls)
+const EXCEL_ONLY_TYPES = [
+  "enrollment",
+  "classrooms",
+  "seats",
+  "teachers_inventory",
+  "textbook_inventory",
+  "cespes",
+  "performance_indicators",
+];
+
+// Upload types that only accept PDF files
+const PDF_ONLY_TYPES = [
+  "aip_school",
+  "aip_sdo",
+  "qbedp",
+  "accomplishment_report",
+];
+
+/**
+ * Returns an error string if any of the selected files violate the
+ * format restriction for the given uploadType, otherwise returns null.
+ */
+function getFileTypeError(files, uploadType) {
+  if (!files || files.length === 0) return null;
+
+  if (EXCEL_ONLY_TYPES.includes(uploadType)) {
+    const invalid = files.filter((f) => {
+      const ext = f.name.split(".").pop().toLowerCase();
+      return ext !== "xlsx" && ext !== "xls";
+    });
+    if (invalid.length > 0) {
+      return `Only Excel files (.xlsx, .xls) are allowed for this upload type. Please remove: ${invalid.map((f) => f.name).join(", ")}`;
+    }
+  }
+
+  if (PDF_ONLY_TYPES.includes(uploadType)) {
+    const invalid = files.filter((f) => {
+      const ext = f.name.split(".").pop().toLowerCase();
+      return ext !== "pdf";
+    });
+    if (invalid.length > 0) {
+      return `Only PDF files are allowed for this upload type. Please remove: ${invalid.map((f) => f.name).join(", ")}`;
+    }
+  }
+
+  return null;
+}
 
 const fieldClass =
   "w-full pl-9 pr-3 py-2.5 min-h-[44px] border border-slate-200 rounded-xl text-sm bg-white hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-colors";
@@ -352,8 +401,16 @@ export default function FileUploadModal({
     replaceFileIds = null,
   ) => {
     setIsUploading(true);
-    const finalName = modifiedName || fileName;
-    const filesToUpload = modifiedFiles || selectedFiles;
+const finalName = modifiedName || fileName;
+// If the user edited the File Name field for a single-file upload, the
+// underlying File object still has its original filename. Rename it here
+// so downstream code (which reads file.name for array-based uploads)
+// actually reflects the edited name.
+const filesToUpload =
+  modifiedFiles ||
+  (selectedFiles.length === 1
+    ? [renameFile(selectedFiles[0], finalName)]
+    : selectedFiles);
 
     try {
       await onUpload(
@@ -460,11 +517,14 @@ export default function FileUploadModal({
     else await submitUpload();
   };
 
+  const fileTypeError = getFileTypeError(selectedFiles, uploadType);
+
   const canSubmitDetails =
     selectedFiles.length > 0 &&
     !!schoolYear &&
     !yearsLoading &&
     !yearsError &&
+    !fileTypeError &&
     (selectedFiles.length > 1 || !!fileName);
 
   const renderSelectedFiles = () => {
@@ -1170,6 +1230,16 @@ export default function FileUploadModal({
                       </div>
 
                       <div className="lg:hidden">{renderSelectedFiles()}</div>
+
+                        {/* File type validation error */}
+                        {fileTypeError && selectedFiles.length > 0 && (
+                          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-50 border border-red-200">
+                            <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
+                            <p className="text-[12px] text-red-600 font-medium leading-snug">
+                              {fileTypeError}
+                            </p>
+                          </div>
+                        )}
 
                       {selectedFiles.length === 1 && (
                         <div>
