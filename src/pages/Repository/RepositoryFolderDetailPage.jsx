@@ -21,6 +21,8 @@ import {
   MoreHorizontal,
   ChevronRight,
   ChevronLeft,
+  ChevronUp,
+  ChevronDown,
   Upload,
   FileUp,
   Tag,
@@ -1268,6 +1270,7 @@ export default function RepositoryFolderDetailPage() {
   const [feedbackTarget, setFeedbackTarget] = useState(null); // file
   const [feedbackCounts, setFeedbackCounts] = useState({}); // { [fileId]: totalCount }
   const [feedbackUnread, setFeedbackUnread] = useState({}); // { [fileId]: true }
+  const [isSearchOpen, setIsSearchOpen] = useState(true);
   const queryClient = useQueryClient();
 
   // Mirrors the query keys Dashboard.jsx uses for useQuery. Keep in sync
@@ -2398,8 +2401,23 @@ export default function RepositoryFolderDetailPage() {
 
 
         {/* ── Search / Sort / View Toggle ────────────────── */}
-        <div className="mt-3 mb-2 rounded-2xl sm:rounded-[24px] border border-white/70 bg-white/85 p-3 sm:p-4 shadow-[0_8px_30px_rgba(15,23,42,0.04)] backdrop-blur-xl">
-          <RepositorySearchBar
+        <div className="mt-3 mb-2 rounded-2xl sm:rounded-[24px] border border-white/70 bg-white/85 p-3 sm:p-4 shadow-[0_8px_30px_rgba(15,23,42,0.04)] backdrop-blur-xl transition-all duration-300">
+          {/* Header Toggle */}
+          <div
+            className="flex items-center justify-between mb-1 cursor-pointer group"
+            onClick={() => setIsSearchOpen((prev) => !prev)}
+          >
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest group-hover:text-blue-500 transition-colors select-none">
+              Search & Filters
+            </span>
+            <button className="p-1 rounded-md text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-all">
+              {isSearchOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+          </div>
+
+          {isSearchOpen && (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+              <RepositorySearchBar
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             viewMode={viewMode}
@@ -2450,7 +2468,7 @@ export default function RepositoryFolderDetailPage() {
               })}
             </div>
             {allFiles.length > 0 && (
-              <div className="flex items-center gap-3 shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={toggleSelectAll}
@@ -2462,73 +2480,64 @@ export default function RepositoryFolderDetailPage() {
                   </svg>
                   {allFilteredSelected ? "Deselect All" : "Select All"}
                 </button>
-                <p className="text-[11px] text-slate-400 hidden lg:block">
-                  <span className="hidden sm:inline">Ctrl+Click to select · </span>○ All actions are audit-logged
-                </p>
+
+                {someSelected && canEdit && (
+                  <>
+                    <div className="w-px h-3.5 bg-slate-200 mx-1"></div>
+                    <span className="text-[11px] font-semibold text-blue-600 mr-1">
+                      {selectedIds.size} selected
+                    </span>
+                    <button
+                      onClick={handleBulkDownload}
+                      disabled={bulkDownloading}
+                      className="p-1.5 rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50 transition-colors"
+                      title="Download Selected"
+                    >
+                      <Download size={14} />
+                    </button>
+                    <button
+                      onClick={() => setBulkDeletePending(true)}
+                      disabled={isBulkDeleting}
+                      className="p-1.5 rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 transition-colors"
+                      title="Delete Selected"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </>
+                )}
+
+                {someSelected && !canEdit && (
+                  <>
+                    <div className="w-px h-3.5 bg-slate-200 mx-1"></div>
+                    <span className="text-[11px] font-semibold text-blue-600 mr-1">
+                      {selectedIds.size} selected
+                    </span>
+                    <button
+                      onClick={() => {
+                        const files = filtered.filter(
+                          (f) =>
+                            selectedIds.has(f.id) &&
+                            !hasFileAccess(f) &&
+                            fileRequestStatus(f) !== "pending",
+                        );
+                        if (files.length > 0) openRequestModal(files);
+                        else
+                          alert(
+                            "The selected files are already granted or have a pending request.",
+                          );
+                      }}
+                      className="p-1.5 rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                      title="Request Access"
+                    >
+                      <Lock size={14} />
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
 
-          {/* ── Bulk Action Bars (Sticky) ───────────────────────────────── */}
-          {someSelected && canEdit && (
-            <div className="mt-4 mb-1 flex flex-wrap items-center gap-3 px-4 py-3 rounded-2xl border border-blue-200 bg-blue-50 transition-all">
-              <span className="text-[13px] font-semibold text-blue-700">
-                {selectedIds.size} file{selectedIds.size > 1 ? "s" : ""} selected
-              </span>
-              <button
-                onClick={handleBulkDownload}
-                disabled={bulkDownloading}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-[11px] font-semibold transition-colors"
-              >
-                <Download size={12} />
-                {bulkDownloading ? "Downloading…" : "Download Selected"}
-              </button>
-              <button
-                onClick={() => setBulkDeletePending(true)}
-                disabled={isBulkDeleting}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-[11px] font-semibold transition-colors"
-              >
-                <Trash2 size={12} />
-                Delete Selected
-              </button>
-              <button
-                onClick={clearSelection}
-                className="ml-auto p-1.5 rounded-lg hover:bg-blue-100 text-blue-400 hover:text-blue-600 transition-colors"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          )}
 
-          {someSelected && !canEdit && (
-            <div className="mt-4 mb-1 flex items-center gap-3 px-4 py-3 rounded-2xl border border-blue-200 bg-blue-50 transition-all">
-              <span className="text-[13px] font-semibold text-blue-700">
-                {selectedIds.size} file{selectedIds.size > 1 ? "s" : ""} selected
-              </span>
-              <button
-                onClick={() => {
-                  const files = filtered.filter(
-                    (f) =>
-                      selectedIds.has(f.id) &&
-                      !hasFileAccess(f) &&
-                      fileRequestStatus(f) !== "pending",
-                  );
-                  if (files.length > 0) openRequestModal(files);
-                  else
-                    alert(
-                      "The selected files are already granted or have a pending request.",
-                    );
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold transition-colors"
-              >
-                <Lock size={12} /> Request Access
-              </button>
-              <button
-                onClick={clearSelection}
-                className="ml-auto p-1.5 rounded-lg hover:bg-blue-100 text-blue-400 hover:text-blue-600 transition-colors"
-              >
-                <X size={16} />
-              </button>
             </div>
           )}
         </div>
@@ -2542,24 +2551,6 @@ export default function RepositoryFolderDetailPage() {
 
 
 
-        {/* ── Pagination (Moved to Top) ─────────────────────── */}
-        {!loading && filtered.length > 0 && (
-          <PaginationBar
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={filtered.length}
-            pageSize={viewMode === "list" ? pageSizeList : pageSizeGrid}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-            pageSizeOptions={
-              viewMode === "list"
-                ? PAGE_SIZE_OPTIONS_LIST
-                : PAGE_SIZE_OPTIONS_GRID
-            }
-            rangeStart={rangeStart}
-            rangeEnd={rangeEnd}
-          />
-        )}
 
         {/* ── File list / grid ──────────────────────────────── */}
         {loading ? (
@@ -2683,8 +2674,6 @@ export default function RepositoryFolderDetailPage() {
                           if (e.ctrlKey || e.metaKey) {
                             e.preventDefault();
                             toggleSelect(file.id);
-                          } else {
-                            setEditingFile(file);
                           }
                         }}
                         className={`group relative transition-colors cursor-pointer select-none ${
@@ -3056,6 +3045,27 @@ export default function RepositoryFolderDetailPage() {
                 />
               ))}
             </div>
+          </div>
+        )}
+
+        {/* ── Pagination (Bottom) ─────────────────────── */}
+        {!loading && filtered.length > 0 && (
+          <div className="mt-6">
+            <PaginationBar
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filtered.length}
+              pageSize={viewMode === "list" ? pageSizeList : pageSizeGrid}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+              pageSizeOptions={
+                viewMode === "list"
+                  ? PAGE_SIZE_OPTIONS_LIST
+                  : PAGE_SIZE_OPTIONS_GRID
+              }
+              rangeStart={rangeStart}
+              rangeEnd={rangeEnd}
+            />
           </div>
         )}
       </div>

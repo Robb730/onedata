@@ -491,9 +491,11 @@ async function handleDeactivateFromAlert(log) {
           actions={actions}
           statuses={statuses}
           dateFrom={dateFrom}
-          onDateFromChange={setDateFrom}
           dateTo={dateTo}
-          onDateToChange={setDateTo}
+          onDateRangeChange={(range) => {
+            setDateFrom(range.startDate);
+            setDateTo(range.endDate);
+          }}
         />
 
         <AuditLogsTable
