@@ -2,7 +2,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
-  RepositorySectionHeader,
   SectionFolderGrid,
   RepositorySearchBar,
   RepositoryTabs,
@@ -23,7 +22,7 @@ import {
 } from "../../utils/sectionDeletion";
 import DeleteSectionWarningModal from "../../components/RepositoryComponents/DeleteSectionWarningModal";
 import PasswordConfirmModal from "../../components/RepositoryComponents/PasswordConfirmModal";
-import { CheckCircle, XCircle, X as CloseIcon } from "lucide-react";
+import { CheckCircle, XCircle, X as CloseIcon, ChevronRight, User, FolderOpen, Activity } from "lucide-react";
 
 export default function RepositoryDivisionPage() {
   const navigate = useNavigate();
@@ -417,64 +416,63 @@ export default function RepositoryDivisionPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/40 pb-10">
-      <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 py-5 sm:py-8">
-        <RepositorySectionHeader
-          title={loading ? "Loading…" : (division?.name ?? "Division")}
-          subtitle={
-            division
-              ? `Browse the section folders inside ${division.name}.`
-              : ""
-          }
-          onBack={() => navigate("/repository")}
-          backLabel="Repository"
-        />
-
-        {/* ── Stats row ─────────────────────────────────────────── */}
-        <div className="mb-5 sm:mb-6 grid grid-cols-3 gap-2 sm:gap-4">
-          <div className="rounded-2xl sm:rounded-[24px] border border-white/70 bg-white/85 p-3 sm:p-4 shadow-[0_14px_44px_rgba(15,23,42,0.07)] backdrop-blur-xl min-w-0">
-            <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.18em] text-slate-400">
-              Sections
-            </p>
-            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-semibold text-slate-900 truncate">
-              {loading
-                ? "—"
-                : `${sections.length} ${sections.length === 1 ? "folder" : "folders"}`}
-            </p>
-          </div>
-          <div className="rounded-2xl sm:rounded-[24px] border border-white/70 bg-white/85 p-3 sm:p-4 shadow-[0_14px_44px_rgba(15,23,42,0.07)] backdrop-blur-xl min-w-0">
-            <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.18em] text-slate-400">
-              Managed by
-            </p>
-            <p
-              className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-semibold text-slate-900 truncate"
-              title={divisionManagers.join(", ")}
+      <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 pb-5 sm:pb-8">
+        {/* ── Sticky Header Area ─────────────────────────────── */}
+        <div className="sticky top-0 z-20 bg-slate-50/90 backdrop-blur-xl pt-5 sm:pt-8 pb-3 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 mb-5 sm:mb-6">
+          {/* ── Breadcrumb ─────────────────────────────────────── */}
+          <nav className="flex items-center gap-1.5 text-[12px] text-slate-400 mb-4 sm:mb-5 font-medium overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <button
+              onClick={() => navigate("/repository")}
+              className="hover:text-slate-600 transition-colors"
             >
-              {loading
-                ? "—"
-                : divisionManagers.length
-                  ? divisionManagers.join(", ")
-                  : "—"}
-            </p>
-          </div>
-          <div className="rounded-2xl sm:rounded-[24px] border border-white/70 bg-white/85 p-3 sm:p-4 shadow-[0_14px_44px_rgba(15,23,42,0.07)] backdrop-blur-xl min-w-0">
-            <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.18em] text-slate-400">
-              Status
-            </p>
-            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-semibold text-slate-900 truncate">
-              {loading ? "Loading…" : error ? "Needs attention" : "Accessible"}
-            </p>
-          </div>
-        </div>
+              Repository
+            </button>
+            <ChevronRight size={12} />
+            <span className="text-slate-700 font-semibold truncate max-w-55">
+              {loading ? "Loading…" : (division?.name ?? "Division")}
+            </span>
+          </nav>
 
-        {/* ── Search / Sort / View Toggle ────────────────── */}
-        <div className="mb-5 sm:mb-6 rounded-2xl sm:rounded-[28px] border border-white/70 bg-white/85 p-3 sm:p-5 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-          <RepositorySearchBar
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            viewMode={viewMode}
-            onViewModeChange={handleViewModeChange}
-          />
+          {/* ── Page Header ────────────────────────────────────── */}
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
+            <div className="min-w-0">
+              <h1 className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em] leading-tight">
+                {loading ? "Loading…" : (division?.name ?? "Division")}
+              </h1>
+              <div className="flex flex-col gap-1.5 mt-1.5">
+                <p className="text-[0.8rem] text-slate-400 font-medium">
+                  {division ? `Browse the section folders inside ${division.name}.` : ""}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex items-center gap-1.5 bg-blue-50 px-2.5 py-1 rounded-lg text-[0.75rem] font-bold text-blue-700 border border-blue-200/60 shadow-sm">
+                    <User size={13} className="text-blue-500" />
+                    {loading ? "Loading..." : divisionManagers.length ? divisionManagers.join(", ") : "—"}
+                  </span>
+                  <span className="flex items-center gap-1.5 bg-indigo-50 px-2.5 py-1 rounded-lg text-[0.75rem] font-bold text-indigo-700 border border-indigo-200/60 shadow-sm">
+                    <FolderOpen size={13} className="text-indigo-500" />
+                    {loading ? "—" : `${sections.length} ${sections.length === 1 ? "folder" : "folders"}`}
+                  </span>
+                  <span className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-lg text-[0.75rem] font-bold text-emerald-700 border border-emerald-200/60 shadow-sm">
+                    <Activity size={13} className="text-emerald-500" />
+                    {loading ? "Loading…" : error ? "Needs attention" : "Accessible"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
 
+          {/* ── Search / Sort / View Toggle ────────────────── */}
+          <div className="mt-3 mb-2 rounded-2xl sm:rounded-[24px] border border-white/70 bg-white/85 p-3 sm:p-4 shadow-[0_8px_30px_rgba(15,23,42,0.04)] backdrop-blur-xl">
+            <RepositorySearchBar
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              viewMode={viewMode}
+              onViewModeChange={handleViewModeChange}
+            />
+          </div>
+
+          {/* ── Fade Effect ───────────────────────────────────── */}
+          <div className="absolute left-0 right-0 top-full h-10 bg-gradient-to-b from-slate-50/90 to-transparent pointer-events-none" />
         </div>
 
         {/* ── States: loading / error / grid ────────────────────── */}

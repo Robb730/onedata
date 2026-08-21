@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, parseISO, isValid } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, parseISO, isValid, isBefore, startOfDay } from "date-fns";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 
-export function CustomDatePicker({ value, onChange, placeholder = "dd/mm/yyyy" }) {
+export function CustomDatePicker({ value, onChange, placeholder = "dd/mm/yyyy", minDate }) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(value ? parseISO(value) : new Date());
   const containerRef = useRef(null);
@@ -86,17 +86,22 @@ export function CustomDatePicker({ value, onChange, placeholder = "dd/mm/yyyy" }
             {days.map(day => {
               const isSelected = selectedDate && isSameDay(day, selectedDate);
               const isCurrentMonth = isSameMonth(day, monthStart);
+              const isPast = minDate && isBefore(day, startOfDay(parseISO(minDate)));
+              
               return (
                 <button
                   key={day.toString()}
                   type="button"
                   onClick={() => handleDateClick(day)}
+                  disabled={isPast}
                   className={`h-[24px] w-full rounded-full flex items-center justify-center text-[0.7rem] transition-colors ${
-                    isSelected
-                      ? "bg-blue-600 text-white shadow-sm font-bold"
-                      : isCurrentMonth
-                        ? "text-slate-700 font-medium hover:bg-slate-100"
-                        : "text-slate-300 font-medium hover:bg-slate-50"
+                    isPast
+                      ? "text-slate-300 cursor-not-allowed opacity-50"
+                      : isSelected
+                        ? "bg-blue-600 text-white shadow-sm font-bold"
+                        : isCurrentMonth
+                          ? "text-slate-700 font-medium hover:bg-slate-100"
+                          : "text-slate-300 font-medium hover:bg-slate-50"
                   }`}
                 >
                   {format(day, "d")}
