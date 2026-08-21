@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, Grid3x3, List, CalendarDays, ChevronDown } from "lucide-react";
+import { Search, Grid3x3, List, CalendarDays, ChevronDown, ArrowUpDown } from "lucide-react";
 
 const STATUS_STYLES = {
   active: { dot: "bg-emerald-500", badge: "bg-emerald-50 text-emerald-600 border-emerald-200", label: "Active" },
@@ -31,11 +31,21 @@ export function RepositorySearchBar({
   const [isYearOpen, setIsYearOpen] = useState(false);
   const yearRef = useRef(null);
 
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const sortRef = useRef(null);
+
+  const SORT_OPTIONS = [
+    { value: "date",     label: "Newest First" },
+    { value: "date_asc", label: "Oldest First" },
+    { value: "name",     label: "Name A→Z" },
+    { value: "size",     label: "Largest First" },
+  ];
+  const currentSortLabel = SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? "Newest First";
+
   useEffect(() => {
     function handleClickOutside(e) {
-      if (yearRef.current && !yearRef.current.contains(e.target)) {
-        setIsYearOpen(false);
-      }
+      if (yearRef.current && !yearRef.current.contains(e.target)) setIsYearOpen(false);
+      if (sortRef.current && !sortRef.current.contains(e.target)) setIsSortOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -76,6 +86,43 @@ export function RepositorySearchBar({
           >
             <List size={16} />
           </button>
+        </div>
+      )}
+
+      {/* Sort dropdown */}
+      {onSortChange && (
+        <div ref={sortRef} className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsSortOpen((v) => !v)}
+            className="flex items-center gap-2 rounded-xl sm:rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 transition-colors hover:border-slate-300 whitespace-nowrap"
+          >
+            <ArrowUpDown size={15} className="text-blue-500 shrink-0" />
+            <span className="text-sm font-semibold text-slate-700 hidden sm:inline">{currentSortLabel}</span>
+            <ChevronDown
+              size={13}
+              strokeWidth={2.5}
+              className={`text-slate-400 shrink-0 transition-transform duration-200 ${isSortOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          {isSortOpen && (
+            <div className="absolute top-[calc(100%+6px)] right-0 w-44 bg-white border border-slate-200 rounded-xl shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50">
+              {SORT_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => { onSortChange(value); setIsSortOpen(false); }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2 text-sm transition-colors ${
+                    sortBy === value ? "bg-blue-50" : "hover:bg-slate-50"
+                  }`}
+                >
+                  <span className={`font-semibold ${sortBy === value ? "text-blue-700" : "text-slate-700"}`}>{label}</span>
+                  {sortBy === value && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
