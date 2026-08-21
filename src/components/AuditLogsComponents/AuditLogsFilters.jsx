@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, ChevronDown } from "lucide-react";
+import { Search, ChevronDown, CalendarDays, X } from "lucide-react";
 
 function CustomDropdown({ value, options, onChange, ariaLabel, placeholderPrefix = "" }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -79,6 +79,10 @@ export default function AuditLogsFilters({
   onFilterStatusChange,
   actions = [],
   statuses = [],
+  dateFrom = "",
+  onDateFromChange,
+  dateTo = "",
+  onDateToChange,
 }) {
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-3.5 mb-5 sm:mb-8 flex flex-col gap-3 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
@@ -97,7 +101,7 @@ export default function AuditLogsFilters({
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:flex lg:items-center">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:flex lg:items-center lg:flex-wrap">
         <div className="flex items-center gap-2 min-w-0 z-20">
           <span className="hidden sm:inline text-[0.78rem] font-semibold text-slate-500 shrink-0">
             Action:
@@ -122,6 +126,40 @@ export default function AuditLogsFilters({
             ariaLabel="Filter by status"
             placeholderPrefix="All Statuses"
           />
+        </div>
+
+        {/* Date-range — same flex row as Action & Status on lg+ */}
+        <div className="flex items-center gap-2 col-span-full lg:col-span-1">
+          <CalendarDays size={14} className="shrink-0 text-slate-400" />
+          <span className="text-[0.78rem] font-semibold text-slate-500 shrink-0">From:</span>
+          <input
+            type="date"
+            value={dateFrom}
+            max={dateTo || undefined}
+            onChange={(e) => onDateFromChange(e.target.value)}
+            aria-label="Filter from date"
+            className="rounded-[10px] border border-slate-200/80 bg-slate-50/50 px-3 py-2 text-[0.8rem] font-medium text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition-all min-h-[44px]"
+          />
+          <span className="text-[0.78rem] font-semibold text-slate-500 shrink-0">To:</span>
+          <input
+            type="date"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={(e) => onDateToChange(e.target.value)}
+            aria-label="Filter to date"
+            className="rounded-[10px] border border-slate-200/80 bg-slate-50/50 px-3 py-2 text-[0.8rem] font-medium text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition-all min-h-[44px]"
+          />
+          {(dateFrom || dateTo) && (
+            <button
+              type="button"
+              onClick={() => { onDateFromChange(""); onDateToChange(""); }}
+              className="flex items-center gap-1 text-[0.78rem] font-bold text-slate-400 hover:text-rose-500 transition-colors"
+              aria-label="Clear date filter"
+            >
+              <X size={13} strokeWidth={2.5} />
+              Clear
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -18,10 +18,23 @@ import { supabase } from "../../lib/supabaseClient";
 import { parseAndSyncStructuredData } from "../../utils/structuredDataSync";
 import ModalPortal from "../Modals/ModalPortal";
 
+// Must stay in sync with STRUCTURED_UPLOAD_TYPES in UploadFilesPage.jsx.
+const EXCEL_BUCKET_TYPES = new Set([
+  "enrollment",
+  "classrooms",
+  "seats",
+  "teachers_inventory",
+  "textbook_inventory",
+  "cespes",
+  "performance_indicators",
+  // Dashboard file categories — stored in excel-files
+  "aip_school",
+  "aip_sdo",
+  "qbedp",
+  "accomplishment_report",
+]);
 function getBucket(category) {
-  return category === "general" || !category
-    ? "repository-files"
-    : "excel-files";
+  return EXCEL_BUCKET_TYPES.has(category) ? "excel-files" : "repository-files";
 }
 
 // Which cells in a sheet hold formulas, keyed as "A1"-style refs. Split out

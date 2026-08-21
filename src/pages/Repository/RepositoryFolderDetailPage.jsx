@@ -53,6 +53,7 @@ import FileActionsMenu from "../../components/RepositoryComponents/FileActionsMe
 import FileFeedbackModal from "../../components/RepositoryComponents/FileFeedbackModal";
 
 import DownloadOptionsMenu from "../../components/RepositoryComponents/DownloadOptionsMenu";
+import { useQueryClient } from "@tanstack/react-query";
 
 // ── Role map ────────────────────────────────────────────────────
 const roleDisplayMap = {
@@ -63,10 +64,26 @@ const roleDisplayMap = {
 };
 const getRoleDisplay = (role) => roleDisplayMap[role] ?? role;
 
+// Must stay in sync with STRUCTURED_UPLOAD_TYPES in UploadFilesPage.jsx.
+// Only these categories are stored in "excel-files"; everything else
+// (including general) goes to "repository-files".
+const EXCEL_BUCKET_TYPES = new Set([
+  "enrollment",
+  "classrooms",
+  "seats",
+  "teachers_inventory",
+  "textbook_inventory",
+  "cespes",
+  "performance_indicators",
+  // Dashboard file categories — stored in excel-files
+  "aip_school",
+  "aip_sdo",
+  "qbedp",
+  "accomplishment_report",
+]);
+
 function getBucket(category) {
-  return category === "general" || !category
-    ? "repository-files"
-    : "excel-files";
+  return EXCEL_BUCKET_TYPES.has(category) ? "excel-files" : "repository-files";
 }
 
 const ALL_FILE_BUCKETS = ["repository-files", "excel-files"];
@@ -346,9 +363,24 @@ function MobileFileListCard({
 
 /** Compact enterprise tile for mobile/desktop grid */
 function MobileFileGridCard({
-  file, canEdit, canVerify, isVerifying, isSelected, downloadingId, deletingId,
-  hasAccess, requestStatus, canViewFeedback, hasUnreadFeedback,
-  onSelectOrVerify, onVerify, onPreview, onDownload, onDelete, onRequestAccess, onOpenFeedback,
+  file,
+  canEdit,
+  canVerify,
+  isVerifying,
+  isSelected,
+  downloadingId,
+  deletingId,
+  hasAccess,
+  requestStatus,
+  canViewFeedback,
+  hasUnreadFeedback,
+  onSelectOrVerify,
+  onVerify,
+  onPreview,
+  onDownload,
+  onDelete,
+  onRequestAccess,
+  onOpenFeedback,
 }) {
   const { Icon, color, bg } = getFileIcon(file.type);
   const uploaded = formatRelativeDate(file.rawCreatedAt);
@@ -598,9 +630,11 @@ function formatFileDateTime(dateStr) {
 /** Latest touch timestamp — edits, verification, or record updates. */
 function getFileModifiedAt(file) {
   if (!file) return null;
-  const candidates = [file.rawUpdatedAt, file.verifiedAt, file.rawCreatedAt].filter(
-    Boolean,
-  );
+  const candidates = [
+    file.rawUpdatedAt,
+    file.verifiedAt,
+    file.rawCreatedAt,
+  ].filter(Boolean);
   if (candidates.length === 0) return null;
   return candidates.reduce((latest, ts) =>
     new Date(ts) > new Date(latest) ? ts : latest,
@@ -1234,6 +1268,19 @@ export default function RepositoryFolderDetailPage() {
   const [feedbackTarget, setFeedbackTarget] = useState(null); // file
   const [feedbackCounts, setFeedbackCounts] = useState({}); // { [fileId]: totalCount }
   const [feedbackUnread, setFeedbackUnread] = useState({}); // { [fileId]: true }
+  const queryClient = useQueryClient();
+
+  // Mirrors the query keys Dashboard.jsx uses for useQuery. Keep in sync
+  // if new dashboard-backed upload types are added.
+  const CATEGORY_TO_QUERY_KEYS = {
+    enrollment: ["enrollment"],
+    performance_indicators: ["kpiData"],
+    cespes: ["cespes"],
+    classrooms: ["resources"],
+    seats: ["resources"],
+    teachers_inventory: ["resources"],
+    textbook_inventory: ["resources"],
+  };
 
   function hasFileAccess(file) {
     return canEdit || fileAccessMap[file.id] === "approved";
@@ -1804,6 +1851,15 @@ export default function RepositoryFolderDetailPage() {
         .delete()
         .eq("id", file.id);
       if (dbErr) throw new Error(dbErr.message);
+
+      const keysToInvalidate = CATEGORY_TO_QUERY_KEYS[file.data_category];
+      if (keysToInvalidate) {
+        keysToInvalidate.forEach((key) =>
+          queryClient.invalidateQueries({ queryKey: [key] }),
+        );
+        // schoolYears/kpiData can shift if this was the last file for a year
+        queryClient.invalidateQueries({ queryKey: ["schoolYears"] });
+      }
 
       setAllFiles((prev) => prev.filter((f) => f.id !== file.id));
       setSelectedIds((prev) => {
@@ -2548,7 +2604,14 @@ export default function RepositoryFolderDetailPage() {
                   requestStatus={fileRequestStatus(file)}
                   canViewFeedback={canViewFeedback(file)}
                   hasUnreadFeedback={!!feedbackUnread[file.id]}
-                  onSelectOrVerify={() => toggleSelect(file.id)}
+                  onSelectOrVerify={() => {
+                    if (canVerify) {
+                      if (isVerifying) return;
+                      setVerifyTarget(file);
+                    } else {
+                      toggleSelect(file.id);
+                    }
+                  }}
                   onVerify={() => setVerifyTarget(file)}
                   onPreview={() => setEditingFile(file)}
                   onDownload={(e) => handleDownloadClick(e, file)}
@@ -2604,7 +2667,9 @@ export default function RepositoryFolderDetailPage() {
                     const isSelected = selectedIds.has(file.id);
                     const isVerified = file.status === "Verified";
                     const uploaded = formatRelativeDate(file.rawCreatedAt);
-                    const modified = formatRelativeDate(getFileModifiedAt(file));
+                    const modified = formatRelativeDate(
+                      getFileModifiedAt(file),
+                    );
                     const uploaderInfo = uploaderDetails[file.uploaderId];
                     const { bg: avatarBg } = getAvatarColor(file.uploader);
                     const isFileHovered = hoveredFileId === file.id;
@@ -2923,21 +2988,24 @@ export default function RepositoryFolderDetailPage() {
                             )}
 
                             {canViewFeedback(file) && (
-  <button
-    onClick={(e) => {
-      e.stopPropagation();
-      setFeedbackTarget(file);
-      setFeedbackUnread((prev) => ({ ...prev, [file.id]: false }));
-    }}
-    className="relative p-1.5 rounded-lg hover:bg-blue-50 text-slate-300 hover:text-blue-600 transition-colors"
-    title="Feedback"
-  >
-    <MessageSquare size={14} />
-    {feedbackUnread[file.id] && (
-      <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-blue-500" />
-    )}
-  </button>
-)}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFeedbackTarget(file);
+                                  setFeedbackUnread((prev) => ({
+                                    ...prev,
+                                    [file.id]: false,
+                                  }));
+                                }}
+                                className="relative p-1.5 rounded-lg hover:bg-blue-50 text-slate-300 hover:text-blue-600 transition-colors"
+                                title="Feedback"
+                              >
+                                <MessageSquare size={14} />
+                                {feedbackUnread[file.id] && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-blue-500" />
+                                )}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -2953,28 +3021,38 @@ export default function RepositoryFolderDetailPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-3 p-2.5 sm:p-4">
               {paginated.map((file) => (
                 <MobileFileGridCard
-                 key={file.id}
-  file={file}
-  canEdit={canEdit}
-  canVerify={canVerify}
-  isVerifying={isVerifying}
-  isSelected={selectedIds.has(file.id)}
-  downloadingId={downloadingId}
-  deletingId={deletingId}
-  hasAccess={hasFileAccess(file)}
-  requestStatus={fileRequestStatus(file)}
-  canViewFeedback={canViewFeedback(file)}
-  hasUnreadFeedback={!!feedbackUnread[file.id]}
-  onSelectOrVerify={() => toggleSelect(file.id)}
-  onVerify={() => setVerifyTarget(file)}
-  onPreview={() => setEditingFile(file)}
-  onDownload={(e) => handleDownloadClick(e, file)}
-  onDelete={() => handleDeleteFile(file)}
-  onRequestAccess={() => openRequestModal(file)}
-  onOpenFeedback={() => {
-    setFeedbackTarget(file);
-    setFeedbackUnread((prev) => ({ ...prev, [file.id]: false }));
-  }}
+                  key={file.id}
+                  file={file}
+                  canEdit={canEdit}
+                  canVerify={canVerify}
+                  isVerifying={isVerifying}
+                  isSelected={selectedIds.has(file.id)}
+                  downloadingId={downloadingId}
+                  deletingId={deletingId}
+                  hasAccess={hasFileAccess(file)}
+                  requestStatus={fileRequestStatus(file)}
+                  canViewFeedback={canViewFeedback(file)}
+                  hasUnreadFeedback={!!feedbackUnread[file.id]}
+                  onSelectOrVerify={() => {
+                    if (canVerify) {
+                      if (isVerifying) return;
+                      setVerifyTarget(file);
+                    } else {
+                      toggleSelect(file.id);
+                    }
+                  }}
+                  onVerify={() => setVerifyTarget(file)}
+                  onPreview={() => setEditingFile(file)}
+                  onDownload={(e) => handleDownloadClick(e, file)}
+                  onDelete={() => handleDeleteFile(file)}
+                  onRequestAccess={() => openRequestModal(file)}
+                  onOpenFeedback={() => {
+                    setFeedbackTarget(file);
+                    setFeedbackUnread((prev) => ({
+                      ...prev,
+                      [file.id]: false,
+                    }));
+                  }}
                 />
               ))}
             </div>

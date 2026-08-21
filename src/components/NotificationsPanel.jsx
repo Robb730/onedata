@@ -4,7 +4,7 @@ import { CheckCheck, X, Trash2 } from "lucide-react";
 import { useNotifications } from "../hooks/useNotifications.js";
 
 export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) {
-  const { notificationsList, markAsRead, removeNotification, clearAll } = useNotifications();
+  const { notificationsList, markAsRead, markAllAsRead, removeNotification, clearAll } = useNotifications();
   const [removingId, setRemovingId] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
 
@@ -79,6 +79,7 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
             <Trash2 size={14} strokeWidth={2.5} />
             Clear all
           </button>
+
           <button
             type="button"
             onClick={onClose}
@@ -121,9 +122,21 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
 
                 return (
                   <div key={group}>
-                    <p className="px-2 text-[0.68rem] font-bold tracking-widest text-slate-400 uppercase mb-2 mt-1">
-                      {group}
-                    </p>
+                    <div className="flex items-center justify-between px-2 mb-2 mt-1">
+                      <p className="text-[0.68rem] font-bold tracking-widest text-slate-400 uppercase">
+                        {group}
+                      </p>
+                      {group === "Today" && unreadCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={markAllAsRead}
+                          className="flex items-center gap-1 text-[0.68rem] font-bold text-blue-500 hover:text-blue-600 transition-colors"
+                        >
+                          <CheckCheck size={11} strokeWidth={2.5} />
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
                     <div className="flex flex-col gap-1">
                       {groupNotifs.map((notif) => {
                         const isRemoving = removingId === notif.id;

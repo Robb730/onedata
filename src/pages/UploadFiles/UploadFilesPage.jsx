@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Upload,
   FileText,
@@ -73,12 +73,23 @@ const STRUCTURED_UPLOAD_TYPES = [
   "textbook_inventory",
   "cespes",
   "performance_indicators",
+  // Dashboard file categories — stored in excel-files
+  "aip_school",
+  "aip_sdo",
+  "qbedp",
+  "accomplishment_report",
 ];
 const getBucketForType = (uploadType) =>
   STRUCTURED_UPLOAD_TYPES.includes(uploadType) ? "excel-files" : "repository-files";
 // ── Mock file requests ────────────────────────────────────────────────────────
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+const ALLOWED_EXTENSIONS = [
+  ".xlsx", ".xls", ".pdf", ".doc", ".docx", ".ppt", ".pptx",
+  ".jpg", ".jpeg", ".png", ".csv", ".txt", ".zip", ".rar"
+];
+const MAX_FILE_SIZE_MB = 50;
+
 function getStatusColor(status) {
   switch (status) {
     case "Completed":
@@ -120,6 +131,7 @@ function getRequestStatusStyle(status) {
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function UploadFilesPage() {
   const { userProfile } = useUser();
+  const queryClient = useQueryClient();
 
   const role = userProfile?.role; // "administrator" | "division_focal" | "section_focal" | "section_personnel"
   const isAdmin = role === "administrator";
@@ -168,6 +180,8 @@ export default function UploadFilesPage() {
   const [fileRequests, setFileRequests] = useState([]);
   const [pendingRequestUpload, setPendingRequestUpload] = useState(null);
   const [uploadToastStatus, setUploadToastStatus] = useState(null); // 'uploading', 'success', 'error'
+  const [uploadTotalFiles, setUploadTotalFiles] = useState(0);
+  const [uploadCompletedFiles, setUploadCompletedFiles] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadsPage, setUploadsPage] = useState(1);
   const uploadsPerPage = 5;
@@ -370,7 +384,6 @@ export default function UploadFilesPage() {
   };
 
   // ── Core upload + Supabase insert ─────────────────────────────────────────
-  // ── Core upload + Supabase insert ─────────────────────────────────────────
   const addToUploads = async (
   fileName,
   schoolYear,
@@ -378,6 +391,18 @@ export default function UploadFilesPage() {
   file,
   { upsert = false } = {},
 ) => {
+  if (!file || !file.name) throw new Error("Invalid file object.");
+  
+  const ext = "." + file.name.split(".").pop().toLowerCase();
+  if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    throw new Error(`File type not allowed. Allowed types: ${ALLOWED_EXTENSIONS.join(", ")}`);
+  }
+  if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+    throw new Error(`File exceeds ${MAX_FILE_SIZE_MB}MB limit.`);
+  }
+
+  fileName = fileName.replace(/[^a-zA-Z0-9._\-]/g, "_");
+
   const folder = selectedFolder;
   const sectionId = typeof folder === "object" ? folder?.id : null;
   const sectionName = typeof folder === "object" ? folder?.name : folder;
@@ -857,6 +882,10 @@ export default function UploadFilesPage() {
   setShowUploadModal(false);
   setPendingFile(null);
   if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+  
+  const isMultiple = Array.isArray(fileOrFiles) && fileOrFiles.length > 1;
+  setUploadTotalFiles(isMultiple ? fileOrFiles.length : 1);
+  setUploadCompletedFiles(0);
   setUploadToastStatus("uploading");
 
   try {
@@ -871,12 +900,14 @@ export default function UploadFilesPage() {
           upsert: isReplace,
         });
         if (result?.storagePath) newWrittenPaths.push(result.storagePath);
+        setUploadCompletedFiles((prev) => prev + 1);
       }
     } else {
       const result = await addToUploads(fileName, schoolYear, uploadType, fileOrFiles, {
         upsert: isReplace,
       });
       if (result?.storagePath) newWrittenPaths.push(result.storagePath);
+      setUploadCompletedFiles(1);
     }
 
     // 2. Only now, with the replacement confirmed on disk and in the DB,
@@ -915,8 +946,16 @@ export default function UploadFilesPage() {
     }
 
     setUploadToastStatus("success");
+    // Invalidate dashboard caches so the charts reflect the new data immediately
+    queryClient.invalidateQueries({ queryKey: ["enrollment"] });
+    queryClient.invalidateQueries({ queryKey: ["resources"] });
+    queryClient.invalidateQueries({ queryKey: ["cespes"] });
+    queryClient.invalidateQueries({ queryKey: ["schoolYears"] });
+    queryClient.invalidateQueries({ queryKey: ["kpiData"] });
   } catch (e) {
-    setUploadErrorMessage(e.message || "An error occurred during upload.");
+    console.error("Upload error:", e);
+    const isCustomError = e.message?.includes("File type not allowed") || e.message?.includes("File exceeds");
+    setUploadErrorMessage(isCustomError ? e.message : "An error occurred during upload. Please try again.");
     setUploadToastStatus("error");
   }
 
@@ -946,6 +985,10 @@ export default function UploadFilesPage() {
   setPendingRequestUpload(null);
 
   if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+  
+  const isMultiple = Array.isArray(fileOrFiles) && fileOrFiles.length > 1;
+  setUploadTotalFiles(isMultiple ? fileOrFiles.length : 1);
+  setUploadCompletedFiles(0);
   setUploadToastStatus("uploading");
 
   try {
@@ -958,12 +1001,14 @@ export default function UploadFilesPage() {
           upsert: isReplace,
         });
         if (result?.storagePath) newWrittenPaths.push(result.storagePath);
+        setUploadCompletedFiles((prev) => prev + 1);
       }
     } else {
       const result = await addToUploads(fileName, schoolYear, uploadType, fileOrFiles, {
         upsert: isReplace,
       });
       if (result?.storagePath) newWrittenPaths.push(result.storagePath);
+      setUploadCompletedFiles(1);
     }
 
     if (isReplace) {
@@ -991,9 +1036,16 @@ export default function UploadFilesPage() {
 
     await fetchFileRequests();
     setUploadToastStatus("success");
+    // Invalidate dashboard caches so the charts reflect the new data immediately
+    queryClient.invalidateQueries({ queryKey: ["enrollment"] });
+    queryClient.invalidateQueries({ queryKey: ["resources"] });
+    queryClient.invalidateQueries({ queryKey: ["cespes"] });
+    queryClient.invalidateQueries({ queryKey: ["schoolYears"] });
+    queryClient.invalidateQueries({ queryKey: ["kpiData"] });
   } catch (err) {
     console.error("Failed to update file request status or upload:", err);
-    setUploadErrorMessage(err.message || "An error occurred during upload.");
+    const isCustomError = err.message?.includes("File type not allowed") || err.message?.includes("File exceeds");
+    setUploadErrorMessage(isCustomError ? err.message : "An error occurred during upload. Please try again.");
     setUploadToastStatus("error");
   }
 
@@ -1576,7 +1628,7 @@ export default function UploadFilesPage() {
                 }}
               >
                 {uploadToastStatus === "uploading"
-                  ? "Uploading File"
+                  ? (uploadTotalFiles > 1 ? "Uploading Files" : "Uploading File")
                   : uploadToastStatus === "error"
                     ? "Upload Failed"
                     : "Success"}
@@ -1592,10 +1644,14 @@ export default function UploadFilesPage() {
                 }}
               >
                 {uploadToastStatus === "uploading"
-                  ? "Please wait, your file is uploading..."
+                  ? (uploadTotalFiles > 1 
+                       ? `Please wait, ${uploadCompletedFiles}/${uploadTotalFiles} files uploaded...` 
+                       : "Please wait, your file is uploading...")
                   : uploadToastStatus === "error"
                     ? uploadErrorMessage || "An error occurred during upload."
-                    : "File uploaded successfully."}
+                    : (uploadTotalFiles > 1 
+                       ? `${uploadTotalFiles}/${uploadTotalFiles} files uploaded successfully.` 
+                       : "File uploaded successfully.")}
               </p>
             </div>
 
