@@ -213,10 +213,25 @@ export async function parseTextbooksInventoryFile(file) {
         const available = workbook.SheetNames;
         const result = { db: null, kes: null, jhs: null, shs: null, status: null, sheetSummary: [] };
 
+        function checkMasterlistLayout(allRows, sheetName) {
+          let foundDivision = false;
+          for (let i = 0; i < Math.min(allRows.length, 15); i++) {
+            const row = allRows[i] || [];
+            if (String(row[3] || "").trim().toLowerCase() === "division") {
+              foundDivision = true;
+              break;
+            }
+          }
+          if (!foundDivision) {
+            throw new Error(`Invalid layout in sheet "${sheetName}". Columns appear to be missing or shifted.`);
+          }
+        }
+
         console.log("Parsing Textbooks Inventory File. Sheets available:", available);
 
         if (available.includes(TEXTBOOKS_SHEETS.DB)) {
           const rows = XLSX.utils.sheet_to_json(workbook.Sheets[TEXTBOOKS_SHEETS.DB], { header: 1, defval: "" });
+          checkMasterlistLayout(rows, "DB");
           result.db = parseDBSheet(rows);
           console.log(`DB Sheet: found ${result.db.records.length} Baliwag records`);
           result.sheetSummary.push({ sheet: "DB", count: result.db.records.length });
@@ -224,6 +239,7 @@ export async function parseTextbooksInventoryFile(file) {
 
         if (available.includes(TEXTBOOKS_SHEETS.KES)) {
           const rows = XLSX.utils.sheet_to_json(workbook.Sheets[TEXTBOOKS_SHEETS.KES], { header: 1, defval: "" });
+          checkMasterlistLayout(rows, "KES");
           result.kes = parseKESSheet(rows);
           console.log(`KES Sheet: found ${result.kes.records.length} Baliwag records`);
           result.sheetSummary.push({ sheet: "KES", count: result.kes.records.length });
@@ -231,6 +247,7 @@ export async function parseTextbooksInventoryFile(file) {
 
         if (available.includes(TEXTBOOKS_SHEETS.JHS)) {
           const rows = XLSX.utils.sheet_to_json(workbook.Sheets[TEXTBOOKS_SHEETS.JHS], { header: 1, defval: "" });
+          checkMasterlistLayout(rows, "JHS");
           result.jhs = parseJHSSheet(rows);
           console.log(`JHS Sheet: found ${result.jhs.records.length} Baliwag records`);
           result.sheetSummary.push({ sheet: "JHS", count: result.jhs.records.length });
@@ -238,6 +255,7 @@ export async function parseTextbooksInventoryFile(file) {
 
         if (available.includes(TEXTBOOKS_SHEETS.SHS)) {
           const rows = XLSX.utils.sheet_to_json(workbook.Sheets[TEXTBOOKS_SHEETS.SHS], { header: 1, defval: "" });
+          checkMasterlistLayout(rows, "SHS");
           result.shs = parseSHSSheet(rows);
           console.log(`SHS Sheet: found ${result.shs.records.length} Baliwag records`);
           result.sheetSummary.push({ sheet: "SHS", count: result.shs.records.length });
@@ -250,6 +268,13 @@ export async function parseTextbooksInventoryFile(file) {
             console.log("Status Sheet: found Baliwag summary");
             result.sheetSummary.push({ sheet: "Status", count: 1 });
           }
+        }
+
+        if (!result.db && !result.kes && !result.jhs && !result.shs) {
+          return reject(new Error(
+            `Invalid Textbooks Inventory file. Expected sheets: DB, KES, JHS, SHS, Status. ` +
+            `Found: ${available.join(", ")}`
+          ));
         }
 
         resolve(result);
