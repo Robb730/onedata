@@ -24,6 +24,7 @@ const SchoolYearPage = lazy(() => import("./pages/SchoolYear/SchoolYearPage.jsx"
 const SettingsPage = lazy(() => import("./pages/Settings/SettingsPage.jsx"));
 const ChangePasswordPage = lazy(() => import("./pages/Settings/ChangePasswordPage.jsx"));
 const BaliwagExtractor = lazy(() => import("./utils/ExcelParsers/BaliwagExtractor.jsx"));
+const TemplatesPage = lazy(() => import("./pages/Templates/TemplatesPage.jsx"));
 
 function PageFallback() {
   return (
@@ -41,6 +42,7 @@ const APP_NAV_PREFIXES = [
   "/audit-logs",
   "/school-year",
   "/settings",
+  "/templates",
 ];
 
 function AppMobileNav({ session }) {
@@ -187,6 +189,16 @@ function App() {
             element={
               <RoleProtectedRoute session={session} roles={["administrator"]}>
                 <SchoolYearPage />
+              </RoleProtectedRoute>
+            }
+          />
+          <Route
+            path="/templates"
+            element={
+              <RoleProtectedRoute session={session} roles={["administrator"]}>
+                <Suspense fallback={<PageFallback />}>
+                  <TemplatesPage />
+                </Suspense>
               </RoleProtectedRoute>
             }
           />

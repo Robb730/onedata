@@ -9,6 +9,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   CalendarRange,
+  LayoutTemplate,
 } from "lucide-react";
 import iconSvg from "../assets/one_data-icon-v3.svg";
 import { useUser } from "../contexts/UserContext"; // adjust path as needed
@@ -56,6 +57,12 @@ const navItems = [
     label: "School Year",
     path: "/school-year",
     icon: CalendarRange,
+    roles: [ROLES.ADMIN],
+  },
+  {
+    label: "Templates",
+    path: "/templates",
+    icon: LayoutTemplate,
     roles: [ROLES.ADMIN],
   },
 ];

@@ -45,6 +45,8 @@ import { notifyScope, pushNotification } from "../../utils/notifications";
 import FileAccessRequestModal from "../../components/RepositoryComponents/FileAccessRequestModal";
 import AccessRequestsSidebar from "../../components/RepositoryComponents/AccessRequestsSidebar";
 import FloatingAccessRequestsButton from "../../components/RepositoryComponents/FloatingAccessRequestsButton";
+import FloatingTemplatesButton from "../../components/RepositoryComponents/FloatingTemplatesButton";
+import TemplatesModal from "../../components/RepositoryComponents/TemplatesModal";
 import { RepositorySearchBar } from "../../components/RepositoryComponents";
 import FileRequestModal from "../../components/RepositoryComponents/FileRequestModal";
 import FileRequestsPanel from "../../components/RepositoryComponents/FileRequestsPanel";
@@ -1252,6 +1254,7 @@ export default function RepositoryFolderDetailPage() {
 
   const [isAccessSidebarOpen, setIsAccessSidebarOpen] = useState(false);
   const [accessRefreshKey, setAccessRefreshKey] = useState(0);
+  const [showTemplatesModal, setShowTemplatesModal] = useState(false);
 
   const [schoolYears, setSchoolYears] = useState([]);
   const [selectedSchoolYear, setSelectedSchoolYear] = useState("");
@@ -3179,6 +3182,17 @@ export default function RepositoryFolderDetailPage() {
           />
         </>
       )}
+
+      {/* ── Templates floating button + modal (non-admin only) ─── */}
+      <FloatingTemplatesButton
+        userProfile={userProfile}
+        onClick={() => setShowTemplatesModal(true)}
+      />
+      <TemplatesModal
+        isOpen={showTemplatesModal}
+        onClose={() => setShowTemplatesModal(false)}
+        userProfile={userProfile}
+      />
 
       {/* ── Success toast ──────────────────────────────────── */}
       <div
