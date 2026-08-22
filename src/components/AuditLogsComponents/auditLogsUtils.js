@@ -86,6 +86,11 @@ export function getActionMeta(action) {
       className: "bg-rose-50 text-rose-700 border-rose-100",
       iconClass: "text-rose-600",
     },
+    "Login Success": {
+      icon: CheckCircle,
+      className: "bg-emerald-50 text-emerald-700 border-emerald-100",
+      iconClass: "text-emerald-600",
+    },
     "Login Failed": {
       icon: XCircle,
       className: "bg-rose-50 text-rose-700 border-rose-100",
@@ -130,6 +135,10 @@ export function getActionMeta(action) {
 export function getStatusMeta(status) {
   const map = {
     Success: {
+      icon: CheckCircle,
+      className: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    },
+    "Login Success": {
       icon: CheckCircle,
       className: "bg-emerald-50 text-emerald-700 border-emerald-100",
     },
