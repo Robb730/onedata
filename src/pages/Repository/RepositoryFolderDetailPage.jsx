@@ -11,7 +11,6 @@ import {
   File,
   FileSpreadsheet,
   MessageSquare,
-  Image,
   FileType,
   SlidersHorizontal,
   Trash2,
@@ -46,6 +45,8 @@ import { notifyScope, pushNotification } from "../../utils/notifications";
 import FileAccessRequestModal from "../../components/RepositoryComponents/FileAccessRequestModal";
 import AccessRequestsSidebar from "../../components/RepositoryComponents/AccessRequestsSidebar";
 import FloatingAccessRequestsButton from "../../components/RepositoryComponents/FloatingAccessRequestsButton";
+import FloatingTemplatesButton from "../../components/RepositoryComponents/FloatingTemplatesButton";
+import TemplatesModal from "../../components/RepositoryComponents/TemplatesModal";
 import { RepositorySearchBar } from "../../components/RepositoryComponents";
 import FileRequestModal from "../../components/RepositoryComponents/FileRequestModal";
 import FileRequestsPanel from "../../components/RepositoryComponents/FileRequestsPanel";
@@ -105,8 +106,6 @@ function getFileIcon(type) {
     case "Word":
     case "Document":
       return { Icon: FileText, color: "text-blue-500", bg: "bg-blue-50" };
-    case "Image":
-      return { Icon: Image, color: "text-violet-500", bg: "bg-violet-50" };
     default:
       return { Icon: File, color: "text-slate-400", bg: "bg-slate-50" };
   }
@@ -530,7 +529,7 @@ function MobileFileGridCard({
   );
 }
 
-const FILE_TYPE_TABS = ["All", "PDF", "Excel", "Word", "Image"];
+const FILE_TYPE_TABS = ["All", "PDF", "Excel", "Word"];
 
 // ── Pagination options ─────────────────────────────────────────
 const PAGE_SIZE_OPTIONS_LIST = [10, 25, 50, 100];
@@ -544,11 +543,6 @@ function inferType(mimeType, fileName) {
     return "Excel";
   if (mimeType?.includes("word") || ["docx", "doc"].includes(ext))
     return "Word";
-  if (
-    mimeType?.includes("image") ||
-    ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)
-  )
-    return "Image";
   return "Other";
 }
 
@@ -1260,6 +1254,7 @@ export default function RepositoryFolderDetailPage() {
 
   const [isAccessSidebarOpen, setIsAccessSidebarOpen] = useState(false);
   const [accessRefreshKey, setAccessRefreshKey] = useState(0);
+  const [showTemplatesModal, setShowTemplatesModal] = useState(false);
 
   const [schoolYears, setSchoolYears] = useState([]);
   const [selectedSchoolYear, setSelectedSchoolYear] = useState("");
@@ -3187,6 +3182,17 @@ export default function RepositoryFolderDetailPage() {
           />
         </>
       )}
+
+      {/* ── Templates floating button + modal (non-admin only) ─── */}
+      <FloatingTemplatesButton
+        userProfile={userProfile}
+        onClick={() => setShowTemplatesModal(true)}
+      />
+      <TemplatesModal
+        isOpen={showTemplatesModal}
+        onClose={() => setShowTemplatesModal(false)}
+        userProfile={userProfile}
+      />
 
       {/* ── Success toast ──────────────────────────────────── */}
       <div

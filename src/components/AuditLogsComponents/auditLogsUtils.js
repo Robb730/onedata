@@ -86,6 +86,16 @@ export function getActionMeta(action) {
       className: "bg-rose-50 text-rose-700 border-rose-100",
       iconClass: "text-rose-600",
     },
+    "Login Failed": {
+      icon: XCircle,
+      className: "bg-rose-50 text-rose-700 border-rose-100",
+      iconClass: "text-rose-600",
+    },
+    "Security Alert": {
+      icon: AlertTriangle,
+      className: "bg-rose-50 text-rose-700 border-rose-100",
+      iconClass: "text-rose-600",
+    },
     Edit: {
       icon: Edit,
       className: "bg-amber-50 text-amber-700 border-amber-100",

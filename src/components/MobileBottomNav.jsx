@@ -9,6 +9,7 @@ import {
   CalendarRange,
   MoreHorizontal,
   X,
+  LayoutTemplate,
 } from "lucide-react";
 import { useUser } from "../contexts/UserContext"; // adjust path as needed
 import { ROLES } from "../utils/accessControl"; // adjust path to wherever ROLES lives
@@ -53,6 +54,12 @@ const moreItems = [
     icon: CalendarRange,
     roles: [ROLES.ADMIN],
   },
+  {
+    label: "Templates",
+    path: "/templates",
+    icon: LayoutTemplate,
+    roles: [ROLES.ADMIN],
+  },
 ];
 
 function isPathActive(pathname, path) {
@@ -66,6 +73,7 @@ const ROUTE_PRELOADERS = {
   "/manage-user": () => import("../pages/ManageUsers/ManageUsers.jsx"),
   "/audit-logs": () => import("../pages/AuditLogs/AuditLogs.jsx"),
   "/school-year": () => import("../pages/SchoolYear/SchoolYearPage.jsx"),
+  "/templates": () => import("../pages/Templates/TemplatesPage.jsx"),
 };
 
 function preloadRoute(path) {
