@@ -95,18 +95,16 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
         <button
           type="button"
           onClick={() => setActiveTab("all")}
-          className={`px-3.5 py-1.5 rounded-full text-[0.82rem] font-bold transition-colors ${
-            activeTab === "all" ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-50"
-          }`}
+          className={`px-3.5 py-1.5 rounded-full text-[0.82rem] font-bold transition-colors ${activeTab === "all" ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-50"
+            }`}
         >
           All
         </button>
         <button
           type="button"
           onClick={() => setActiveTab("unread")}
-          className={`px-3.5 py-1.5 rounded-full text-[0.82rem] font-bold transition-colors ${
-            activeTab === "unread" ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-50"
-          }`}
+          className={`px-3.5 py-1.5 rounded-full text-[0.82rem] font-bold transition-colors ${activeTab === "unread" ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-50"
+            }`}
         >
           Unread ({unreadCount})
         </button>
@@ -144,11 +142,10 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
                           <div
                             key={notif.id}
                             onClick={() => markAsRead(notif.id)}
-                            className={`group relative flex items-start gap-3.5 p-3 hover:bg-slate-50 rounded-xl cursor-pointer transition-all duration-300 ease-out overflow-hidden ${
-                              isRemoving
+                            className={`group relative flex items-start gap-3.5 p-3 hover:bg-slate-50 rounded-xl cursor-pointer transition-all duration-300 ease-out overflow-hidden ${isRemoving
                                 ? "opacity-0 -translate-x-8 max-h-0 !p-0 !m-0"
                                 : "opacity-100 max-h-[150px]"
-                            }`}
+                              }`}
                           >
                             <div
                               className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${notif.iconBg} ${notif.iconColor}`}
@@ -213,13 +210,12 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
   return (
     <>
       <div
-        className={`hidden lg:block absolute right-0 top-[calc(100%+8px)] w-[420px] rounded-2xl bg-white z-50 overflow-hidden origin-top-right ${
-          phase === "in"
+        className={`hidden lg:block absolute right-0 top-[calc(100%+8px)] w-[420px] rounded-2xl bg-white z-50 overflow-hidden origin-top-right ${phase === "in"
             ? "notif-panel-in pointer-events-auto"
             : phase === "out"
               ? "notif-panel-out pointer-events-none"
               : "invisible pointer-events-none opacity-0"
-        }`}
+          }`}
         style={panelStyle}
       >
         {mounted && panelInner}
@@ -231,16 +227,14 @@ export default function NotificationsPanel({ isOpen, onClose, onUnreadChange }) 
           <div className="lg:hidden">
             <button
               type="button"
-              className={`fixed inset-0 z-[70] border-0 p-0 bg-slate-900/30 ${
-                phase === "in" ? "notif-scrim-in" : "notif-scrim-out"
-              }`}
+              className={`fixed inset-0 z-[70] border-0 p-0 bg-slate-900/30 ${phase === "in" ? "notif-scrim-in" : "notif-scrim-out"
+                }`}
               aria-label="Close notifications"
               onClick={onClose}
             />
             <div
-              className={`fixed left-3 right-3 z-[71] flex max-h-[min(72dvh,520px)] flex-col overflow-hidden rounded-2xl bg-white ${
-                phase === "in" ? "notif-panel-in" : "notif-panel-out"
-              }`}
+              className={`fixed left-3 right-3 z-[71] flex max-h-[min(72dvh,520px)] flex-col overflow-hidden rounded-2xl bg-white ${phase === "in" ? "notif-panel-in" : "notif-panel-out"
+                }`}
               style={{
                 ...panelStyle,
                 top: "calc(3.75rem + env(safe-area-inset-top))",
