@@ -12,7 +12,7 @@ const UserContext = createContext(null);
 // section-scoped roles), which TopHeader's getScopeLabel already accounts
 // for by picking the right one based on role.
 const PROFILE_SELECT =
-  "id, email, full_name, id_number, role, division_id, section_id, must_change_password, division:divisions(name), section:sections(name)";
+  "id, email, full_name, id_number, role, division_id, section_id, must_change_password, division:divisions(id, name), section:sections(name)";
 
 export function UserProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null);
