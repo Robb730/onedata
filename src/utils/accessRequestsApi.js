@@ -8,13 +8,16 @@
 //
 // Scope rules (per product decision):
 //   - section_focal   -> sees requests for files in their own section only
-//   - division_focal  -> sees requests for files in every section under
-//                         their division
-//   - admin           -> sees everything, system-wide
+//   - division_focal  -> sees requests scoped to the section folder they're
+//                         currently viewing, as long as it belongs to their
+//                         division (falls back to their whole division if
+//                         no folder context is given)
+//   - admin           -> sees requests scoped to the section folder they're
+//                         currently viewing (not every request system-wide)
 
 import { supabase } from "../lib/supabaseClient";
 
-export const APPROVER_ROLES = ["section_focal", "division_focal", "admin"];
+export const APPROVER_ROLES = ["section_focal", "division_focal", "administrator"];
 
 export function canApproveAccessRequests(userProfile) {
   return APPROVER_ROLES.includes(userProfile?.role);
@@ -49,8 +52,16 @@ const REQUEST_SELECT = `
  * Returns every file_access_request row this user is allowed to see,
  * newest first. Caller filters/derives tabs (pending/all/granted) client
  * side from this single fetch to avoid re-querying per tab.
+ *
+ * @param {object} userProfile
+ * @param {string|null} [currentSectionId] - the section folder currently
+ *   being viewed (e.g. Repository folder detail page). Admins are scoped
+ *   down to just this section when it's provided, so the floating button
+ *   badge and sidebar reflect "requests for this folder" rather than every
+ *   request in the system. section_focal/division_focal scoping is
+ *   unaffected — they're already limited to their own section/division.
  */
-export async function fetchScopedRequests(userProfile) {
+export async function fetchScopedRequests(userProfile, currentSectionId) {
   if (!canApproveAccessRequests(userProfile)) return [];
 
   let query = supabase
@@ -61,17 +72,44 @@ export async function fetchScopedRequests(userProfile) {
   if (userProfile.role === "section_focal") {
     query = query.eq("section_id", userProfile.section_id);
   } else if (userProfile.role === "division_focal") {
-    const { data: divSections, error: sectionsErr } = await supabase
-      .from("sections")
-      .select("id")
-      .eq("division_id", userProfile.division_id);
-    if (sectionsErr) throw new Error(sectionsErr.message);
-    const ids = (divSections || []).map((s) => s.id);
-    // No sections under this division yet — short-circuit to empty result.
-    if (ids.length === 0) return [];
-    query = query.in("section_id", ids);
+    if (currentSectionId) {
+      // Narrow to just the folder being viewed — but first confirm that
+      // section actually belongs to this focal's division. Without this
+      // check, an arbitrary/forged currentSectionId could scope a
+      // division_focal into a section outside their own division.
+      const { data: sectionRow, error: sectionErr } = await supabase
+        .from("sections")
+        .select("id, division_id")
+        .eq("id", currentSectionId)
+        .single();
+      if (sectionErr) throw new Error(sectionErr.message);
+      if (!sectionRow || sectionRow.division_id !== userProfile.division_id) {
+        return [];
+      }
+      query = query.eq("section_id", currentSectionId);
+    } else {
+      // No section context (e.g. a future division-wide view) — fall back
+      // to every section under their division.
+      const { data: divSections, error: sectionsErr } = await supabase
+        .from("sections")
+        .select("id")
+        .eq("division_id", userProfile.division_id);
+      if (sectionsErr) throw new Error(sectionsErr.message);
+      const ids = (divSections || []).map((s) => s.id);
+      // No sections under this division yet — short-circuit to empty result.
+      if (ids.length === 0) return [];
+      query = query.in("section_id", ids);
+    }
+  } else if (userProfile.role === "administrator") {
+    // Admins can technically see everything, but within a specific folder
+    // page they should only see requests for *that* folder — not every
+    // pending request across every division. Only apply this narrowing
+    // when a section context was actually passed in, so any future
+    // system-wide admin view (no section context) still sees everything.
+    if (currentSectionId) {
+      query = query.eq("section_id", currentSectionId);
+    }
   }
-  // admin: no additional filter — sees all sections/divisions.
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);

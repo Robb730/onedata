@@ -242,7 +242,7 @@ function RequestCard({ request, onApprove, onDeny, onRevoke }) {
 
 const SIDEBAR_TRANSITION_MS = 280;
 
-export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userProfile }) {
+export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userProfile, divisionId }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("pending");
@@ -290,19 +290,19 @@ export default function DivisionAccessRequestsSidebar({ isOpen, onClose, userPro
   async function load() {
     setLoading(true);
     try {
-      const data = await fetchScopedDivisionRequests(userProfile);
+      const data = await fetchScopedDivisionRequests(userProfile, divisionId);
       setRequests(sortRequests(data));
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
   useEffect(() => {
     if (isOpen) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, divisionId]);
 
   const pending = useMemo(() => requests.filter((r) => r.status === "pending"), [requests]);
   const granted = useMemo(() => requests.filter((r) => r.status === "approved"), [requests]);

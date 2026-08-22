@@ -286,16 +286,6 @@ export default function RepositoryDivisionPage() {
           return;
         }
 
-        if (!canAccessDivision(userProfile, divisionSlug, resolvedDivisionId)) {
-          navigate(
-            `/repository/restricted/${encodeURIComponent(divisionSlug)}`,
-            {
-              replace: true,
-            },
-          );
-          return;
-        }
-
         const [divisionRes, sectionsRes] = await Promise.all([
           supabase
             .from("divisions")
@@ -499,10 +489,11 @@ export default function RepositoryDivisionPage() {
         )}
       </div>
 
-      {isOwnDivisionFocal && (
+      {(isOwnDivisionFocal || isAdmin) && (
         <>
           <FloatingDivisionAccessRequestsButton
             userProfile={userProfile}
+            divisionId={divisionSlug}
             refreshKey={refreshKey}
             onClick={() => setSidebarOpen(true)}
           />
@@ -513,6 +504,7 @@ export default function RepositoryDivisionPage() {
               setRefreshKey((k) => k + 1); // re-poll the badge after closing
             }}
             userProfile={userProfile}
+            divisionId={divisionSlug}
           />
         </>
       )}

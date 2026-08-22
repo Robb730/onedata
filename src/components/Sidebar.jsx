@@ -63,16 +63,17 @@ const navItems = [
     label: "Templates",
     path: "/templates",
     icon: LayoutTemplate,
-    roles: [ROLES.ADMIN],
+    roles: [ROLES.ADMIN, ROLES.DIVISION_FOCAL],
   },
 ];
 
 /**
  * Sidebar — Desktop collapsible navigation. Hidden on mobile
  * in favor of MobileBottomNav. Items are filtered by the
- * logged-in user's role: admins see everything, everyone else
- * (division focal, section focal, section personnel) only sees
- * Dashboard, Repository, and Upload Files.
+ * logged-in user's role: admins see everything, division focal
+ * persons additionally see Templates, and everyone else (section
+ * focal, section personnel) only sees Dashboard, Repository, and
+ * Upload Files.
  */
 export function Sidebar({ collapsed = false, onToggle }) {
   const location = useLocation();
