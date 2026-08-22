@@ -11,7 +11,6 @@ import {
   File,
   FileSpreadsheet,
   MessageSquare,
-  Image,
   FileType,
   SlidersHorizontal,
   Trash2,
@@ -105,8 +104,6 @@ function getFileIcon(type) {
     case "Word":
     case "Document":
       return { Icon: FileText, color: "text-blue-500", bg: "bg-blue-50" };
-    case "Image":
-      return { Icon: Image, color: "text-violet-500", bg: "bg-violet-50" };
     default:
       return { Icon: File, color: "text-slate-400", bg: "bg-slate-50" };
   }
@@ -530,7 +527,7 @@ function MobileFileGridCard({
   );
 }
 
-const FILE_TYPE_TABS = ["All", "PDF", "Excel", "Word", "Image"];
+const FILE_TYPE_TABS = ["All", "PDF", "Excel", "Word"];
 
 // ── Pagination options ─────────────────────────────────────────
 const PAGE_SIZE_OPTIONS_LIST = [10, 25, 50, 100];
@@ -544,11 +541,6 @@ function inferType(mimeType, fileName) {
     return "Excel";
   if (mimeType?.includes("word") || ["docx", "doc"].includes(ext))
     return "Word";
-  if (
-    mimeType?.includes("image") ||
-    ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)
-  )
-    return "Image";
   return "Other";
 }
 
