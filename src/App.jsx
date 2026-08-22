@@ -1,7 +1,14 @@
 import { Routes, Route, useLocation } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { MobileBottomNav } from "./components/MobileBottomNav";
-import { lazy, Suspense, useEffect, useState, useCallback, useRef } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import { supabase } from "./lib/supabaseClient.js";
 import { useUser } from "./contexts/UserContext.jsx";
 import { useIdleTimeout } from "./hooks/useIdleTimeout";
@@ -10,20 +17,35 @@ import LandingPage from "./pages/LandingPage/LandingPage.jsx";
 import LoginPage from "./pages/Login/LoginPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import RoleProtectedRoute from "./components/RoleProtectedRoute.jsx";
-import NotFoundPage from './pages/NotFound/NotFoundPage.jsx'
+import NotFoundPage from "./pages/NotFound/NotFoundPage.jsx";
+import { ROLES } from "./utils/accessControl";
 
 const Dashboard = lazy(() => import("./pages/Dashboard/Dashboard.jsx"));
 const ManageUsers = lazy(() => import("./pages/ManageUsers/ManageUsers.jsx"));
-const UploadFilesPage = lazy(() => import("./pages/UploadFiles/UploadFilesPage.jsx"));
+const UploadFilesPage = lazy(
+  () => import("./pages/UploadFiles/UploadFilesPage.jsx"),
+);
 const AuditLogs = lazy(() => import("./pages/AuditLogs/AuditLogs.jsx"));
 const Repository = lazy(() => import("./pages/Repository/Repository.jsx"));
-const RepositoryFolderDetailPage = lazy(() => import("./pages/Repository/RepositoryFolderDetailPage.jsx"));
-const RepositoryDivisionPage = lazy(() => import("./pages/Repository/RepositoryDivisionPage.jsx"));
-const AccessRestrictedPage = lazy(() => import("./pages/Repository/AccessRestrictedPage.jsx"));
-const SchoolYearPage = lazy(() => import("./pages/SchoolYear/SchoolYearPage.jsx"));
+const RepositoryFolderDetailPage = lazy(
+  () => import("./pages/Repository/RepositoryFolderDetailPage.jsx"),
+);
+const RepositoryDivisionPage = lazy(
+  () => import("./pages/Repository/RepositoryDivisionPage.jsx"),
+);
+const AccessRestrictedPage = lazy(
+  () => import("./pages/Repository/AccessRestrictedPage.jsx"),
+);
+const SchoolYearPage = lazy(
+  () => import("./pages/SchoolYear/SchoolYearPage.jsx"),
+);
 const SettingsPage = lazy(() => import("./pages/Settings/SettingsPage.jsx"));
-const ChangePasswordPage = lazy(() => import("./pages/Settings/ChangePasswordPage.jsx"));
-const BaliwagExtractor = lazy(() => import("./utils/ExcelParsers/BaliwagExtractor.jsx"));
+const ChangePasswordPage = lazy(
+  () => import("./pages/Settings/ChangePasswordPage.jsx"),
+);
+const BaliwagExtractor = lazy(
+  () => import("./utils/ExcelParsers/BaliwagExtractor.jsx"),
+);
 const TemplatesPage = lazy(() => import("./pages/Templates/TemplatesPage.jsx"));
 
 function PageFallback() {
@@ -106,7 +128,7 @@ function App() {
   }, [setUserProfile]);
 
   useIdleTimeout(handleWarning, 25 * 60 * 1000); // warn after 25 minutes
-  useIdleTimeout(handleIdle, 30 * 60 * 1000);    // logout after 30 minutes
+  useIdleTimeout(handleIdle, 30 * 60 * 1000); // logout after 30 minutes
 
   if (loading) return null;
 
@@ -193,15 +215,15 @@ function App() {
             }
           />
           <Route
-            path="/templates"
-            element={
-              <RoleProtectedRoute session={session} roles={["administrator"]}>
-                <Suspense fallback={<PageFallback />}>
-                  <TemplatesPage />
-                </Suspense>
-              </RoleProtectedRoute>
-            }
-          />
+  path="/templates"
+  element={
+    <RoleProtectedRoute session={session} roles={[ROLES.ADMIN, ROLES.DIVISION_FOCAL]}>
+      <Suspense fallback={<PageFallback />}>
+        <TemplatesPage />
+      </Suspense>
+    </RoleProtectedRoute>
+  }
+/>
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />
@@ -230,14 +252,16 @@ function App() {
               Session about to expire
             </h3>
             <p className="mt-2 text-sm text-slate-500">
-              You've been inactive for a while. You'll be logged out automatically
-              in a few seconds unless you stay active.
+              You've been inactive for a while. You'll be logged out
+              automatically in a few seconds unless you stay active.
             </p>
 
             <div className="mt-6 flex justify-center gap-3">
               <button
                 onClick={() => setShowIdleWarning(false)}
-                style={{ background: "linear-gradient(135deg, #3b82f6, #6366f1)" }}
+                style={{
+                  background: "linear-gradient(135deg, #3b82f6, #6366f1)",
+                }}
                 className="px-5 py-2.5 text-sm font-bold text-white rounded-full shadow-sm hover:opacity-90 transition-opacity"
               >
                 Stay logged in

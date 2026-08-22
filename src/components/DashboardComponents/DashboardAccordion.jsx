@@ -26,16 +26,34 @@ export function DashboardAccordion({
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
+  function toggle() {
+    setOpen((v) => !v);
+  }
+
   return (
     <div
       className="rounded-[14px] border border-slate-100/80 bg-white overflow-hidden transition-all duration-300 hover:shadow-[0_4px_20px_rgba(15,23,42,0.07)]"
       style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
     >
       {/* ── Header — always visible ──────────────────────── */}
-      <button
+      {/* Was a <button>, but `badge` (e.g. an Export button rendered by
+          the parent) can contain its own interactive <button>, and
+          <button> cannot legally contain <button> — causes a hydration
+          error and unreliable click bubbling. Using role="button" here
+          keeps it fully keyboard/AT-accessible without that restriction. */}
+      <div
         id={`accordion-${title?.replace(/\s+/g, "-").toLowerCase()}`}
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 px-4 sm:px-5 py-3.5 sm:py-4 text-left transition-colors hover:bg-slate-50/40 cursor-pointer"
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={toggle}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            toggle();
+          }
+        }}
+        className="flex w-full items-center gap-3 px-4 sm:px-5 py-3.5 sm:py-4 text-left transition-colors hover:bg-slate-50/40 cursor-pointer select-none"
       >
         {/* Icon */}
         {icon && <div className="shrink-0">{icon}</div>}
@@ -65,7 +83,7 @@ export function DashboardAccordion({
         >
           <ChevronDown size={13} strokeWidth={2.5} className="text-slate-500" />
         </div>
-      </button>
+      </div>
 
       {/* ── Expandable body ──────────────────────────────── */}
       <div

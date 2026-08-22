@@ -58,7 +58,7 @@ const moreItems = [
     label: "Templates",
     path: "/templates",
     icon: LayoutTemplate,
-    roles: [ROLES.ADMIN],
+    roles: [ROLES.ADMIN, ROLES.DIVISION_FOCAL],
   },
 ];
 

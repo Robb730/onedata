@@ -460,7 +460,7 @@ export default function UploadFilesPage() {
           school_year: schoolYear,
           section_id: sectionId,
           division_id: divisionId,
-          uploaded_by: userProfile?.uuid ?? null,
+          uploaded_by: userProfile?.id ?? null,
           uploaded_by_name: userProfile?.full_name ?? null,
           status: "Unverified",
           is_dashboard_source: uploadType !== "general",
@@ -477,7 +477,7 @@ export default function UploadFilesPage() {
           schoolYear,
           userProfile?.full_name,
           fileRow.id,
-          { uploaderId: userProfile?.uuid ?? userProfile?.id },
+          { uploaderId: userProfile?.id },
         );
       }
 
@@ -495,7 +495,7 @@ export default function UploadFilesPage() {
       await notifyScope({
         sectionId,
         divisionId,
-        excludeUserId: userProfile?.uuid ?? userProfile?.id,
+        excludeUserId: userProfile?.id,
         type: "file_uploaded",
         title: "New files uploaded",
         content: `${userProfile?.full_name ?? "Someone"} uploaded ${fileName} to ${sectionName || "General"}`,
@@ -503,7 +503,7 @@ export default function UploadFilesPage() {
           related_file_id: fileRow.id,
           section_id: sectionId,
           division_id: divisionId,
-          uploaded_by: userProfile?.uuid ?? null,
+          uploaded_by: userProfile?.id ?? null,
         },
       });
 

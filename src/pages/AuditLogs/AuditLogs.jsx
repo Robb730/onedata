@@ -30,6 +30,7 @@ export default function AuditLogs() {
     "Role Change",
     "Access Request",
     "Access Grant",
+    "Login Success",
     "Login Failed",
     "Security Alert",
   ];
@@ -40,11 +41,11 @@ export default function AuditLogs() {
     const rows = auditLogs.map((log) => {
       const { date, time } = formatPerformedOn(log.performedOn);
       const statusColor =
-        log.status === "Success" ? "#059669" :
+        log.status === "Success" || log.status === "Login Success" ? "#059669" :
           log.status === "Failed" ? "#dc2626" :
             "#d97706";
       const statusBg =
-        log.status === "Success" ? "#ecfdf5" :
+        log.status === "Success" || log.status === "Login Success" ? "#ecfdf5" :
           log.status === "Failed" ? "#fef2f2" :
             "#fffbeb";
       return `
@@ -58,7 +59,7 @@ export default function AuditLogs() {
       </tr>`;
     }).join("");
 
-    const successCount = auditLogs.filter((l) => l.status === "Success").length;
+    const successCount = auditLogs.filter((l) => l.status === "Success" || l.status === "Login Success").length;
     const failedCount = auditLogs.filter((l) => l.status === "Failed").length;
     const pendingCount = auditLogs.filter((l) => l.status === "Pending").length;
 

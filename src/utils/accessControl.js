@@ -5,6 +5,8 @@ export async function resolveUserDivisionId(userProfile) {
   if (!userProfile) return null;
   if (userProfile.division_id != null) return userProfile.division_id;
 
+  if (userProfile.division?.id != null) return userProfile.division.id;
+
   if (userProfile.section_id != null) {
     const { data, error } = await supabase
       .from("sections")
@@ -87,4 +89,27 @@ export async function getSectionAccessLevel(userProfile, section) {
   }
 
   return "blocked";
+}
+
+/**
+ * Can this user see/open the Templates button + modal for this specific
+ * section? Deliberately stricter than getSectionAccessLevel: a granted
+ * ("locked") division-access request gets you into a section's files, but
+ * it should NOT surface that section's (or division's) Templates button.
+ *
+ *   admin              → any section
+ *   division_focal     → only sections within their own division
+ *   section_focal /
+ *   section_personnel  → only their own assigned section
+ */
+export function canViewSectionTemplates(userProfile, section) {
+  if (!userProfile || !section) return false;
+  const { role, division_id, section_id } = userProfile;
+
+  if (role === ROLES.ADMIN) return true;
+  if (role === ROLES.DIVISION_FOCAL) return sameId(division_id, section.division_id);
+  if (role === ROLES.SECTION_FOCAL || role === ROLES.PERSONNEL) {
+    return sameId(section_id, section.id);
+  }
+  return false;
 }

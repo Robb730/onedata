@@ -28,7 +28,7 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { setUserProfile } = useUser();
+    const { setUserProfile, refreshProfile } = useUser();
 
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const navigate = useNavigate();
@@ -247,8 +247,7 @@ export function LoginForm() {
       .eq("action", "Security Alert")
       .eq("status", "Pending");
 
-    localStorage.setItem("userProfile", JSON.stringify(userData));
-    setUserProfile(userData);
+    await refreshProfile();
 
     navigate("/dashboard", { state: { justLoggedIn: true } });
     setLoading(false);

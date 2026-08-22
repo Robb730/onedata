@@ -206,6 +206,7 @@ function MobileFileActionBtn({
 function MobileFileListCard({
   file,
   canEdit,
+  canDelete,
   canVerify,
   isVerifying,
   isSelected,
@@ -239,14 +240,16 @@ function MobileFileListCard({
       >
         <Download size={15} />
       </MobileFileActionBtn>
-      <MobileFileActionBtn
-        title="Delete"
-        onClick={onDelete}
-        disabled={deletingId === file.id}
-        danger
-      >
-        <Trash2 size={15} />
-      </MobileFileActionBtn>
+      {canDelete && (
+        <MobileFileActionBtn
+          title="Delete"
+          onClick={onDelete}
+          disabled={deletingId === file.id}
+          danger
+        >
+          <Trash2 size={15} />
+        </MobileFileActionBtn>
+      )}
     </>
   ) : hasAccess ? (
     <>
@@ -366,6 +369,7 @@ function MobileFileListCard({
 function MobileFileGridCard({
   file,
   canEdit,
+  canDelete,
   canVerify,
   isVerifying,
   isSelected,
@@ -474,14 +478,16 @@ function MobileFileGridCard({
             >
               <Download size={14} />
             </MobileFileActionBtn>
-            <MobileFileActionBtn
-              title="Delete"
-              onClick={onDelete}
-              disabled={deletingId === file.id}
-              danger
-            >
-              <Trash2 size={14} />
-            </MobileFileActionBtn>
+            {canDelete && (
+              <MobileFileActionBtn
+                title="Delete"
+                onClick={onDelete}
+                disabled={deletingId === file.id}
+                danger
+              >
+                <Trash2 size={14} />
+              </MobileFileActionBtn>
+            )}
           </>
         ) : hasAccess ? (
           <>
@@ -1452,6 +1458,18 @@ export default function RepositoryFolderDetailPage() {
       !!section &&
       userProfile?.section_id === section.id);
 
+    // Section personnel get "full" edit access to their own section like
+  // everyone else with canEdit — but unlike section_focal/division_focal/
+  // admin, they may only delete files they personally uploaded, not
+  // teammates' files in the same section. Preview/download stay unrestricted.
+  function canDeleteFile(file) {
+    if (!canEdit || !file) return false;
+    if (userProfile?.role === "section_personnel") {
+      return file.uploaderId === userProfile?.id;
+    }
+    return true;
+  }
+
   function canViewFeedback(file) {
     if (!userProfile || !file || !section) return false;
     if (userProfile.role === "administrator") return true;
@@ -1799,8 +1817,8 @@ export default function RepositoryFolderDetailPage() {
     if (error) console.error("Audit log failed:", error);
   };
 
-  function handleDeleteFile(file) {
-    if (!canEdit) return;
+    function handleDeleteFile(file) {
+    if (!canDeleteFile(file)) return;
     setFileToDelete(file);
   }
 
@@ -2143,7 +2161,7 @@ export default function RepositoryFolderDetailPage() {
   // ── Bulk delete ────────────────────────────────────────────────
   async function confirmBulkDelete() {
     if (!canEdit) return;
-    const filesToDelete = filtered.filter((f) => selectedIds.has(f.id));
+    const filesToDelete = deletableSelectedFiles;
     setIsBulkDeleting(true);
     for (const file of filesToDelete) {
       try {
@@ -2204,6 +2222,13 @@ export default function RepositoryFolderDetailPage() {
     sortBy,
     selectedSchoolYear,
   ]);
+
+    // Files selected AND deletable by this user — used to gate/scope bulk
+  // delete for section_personnel, who may only delete their own uploads.
+  const deletableSelectedFiles = useMemo(
+    () => filtered.filter((f) => selectedIds.has(f.id) && canDeleteFile(f)),
+    [filtered, selectedIds, canEdit, userProfile?.id, userProfile?.role],
+  );
 
   const yearFilteredFiles = selectedSchoolYear
     ? allFiles.filter((f) => f.school_year === selectedSchoolYear)
@@ -2476,7 +2501,7 @@ export default function RepositoryFolderDetailPage() {
                   {allFilteredSelected ? "Deselect All" : "Select All"}
                 </button>
 
-                {someSelected && canEdit && (
+                                {someSelected && canEdit && (
                   <>
                     <div className="w-px h-3.5 bg-slate-200 mx-1"></div>
                     <span className="text-[11px] font-semibold text-blue-600 mr-1">
@@ -2490,14 +2515,16 @@ export default function RepositoryFolderDetailPage() {
                     >
                       <Download size={14} />
                     </button>
-                    <button
-                      onClick={() => setBulkDeletePending(true)}
-                      disabled={isBulkDeleting}
-                      className="p-1.5 rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 transition-colors"
-                      title="Delete Selected"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    {deletableSelectedFiles.length > 0 && (
+                      <button
+                        onClick={() => setBulkDeletePending(true)}
+                        disabled={isBulkDeleting}
+                        className="p-1.5 rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 transition-colors"
+                        title={`Delete ${deletableSelectedFiles.length} selected`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </>
                 )}
 
@@ -2581,6 +2608,7 @@ export default function RepositoryFolderDetailPage() {
                   key={file.id}
                   file={file}
                   canEdit={canEdit}
+                  canDelete={canDeleteFile(file)}
                   canVerify={canVerify}
                   isVerifying={isVerifying}
                   isSelected={selectedIds.has(file.id)}
@@ -2908,7 +2936,7 @@ export default function RepositoryFolderDetailPage() {
                         {/* Actions */}
                         <td className="px-3 py-3.5 pr-4 w-40">
                           <div className="flex items-center gap-0.5 transition-all duration-150">
-                            {canEdit ? (
+                                                        {canEdit ? (
                               <>
                                 <button
                                   onClick={() => setEditingFile(file)}
@@ -2925,14 +2953,16 @@ export default function RepositoryFolderDetailPage() {
                                 >
                                   <Download size={14} />
                                 </button>
-                                <button
-                                  onClick={() => handleDeleteFile(file)}
-                                  disabled={deletingId === file.id}
-                                  className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors disabled:opacity-40"
-                                  title="Delete"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
+                                {canDeleteFile(file) && (
+                                  <button
+                                    onClick={() => handleDeleteFile(file)}
+                                    disabled={deletingId === file.id}
+                                    className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors disabled:opacity-40"
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
                               </>
                             ) : hasFileAccess(file) ? (
                               <>
@@ -3009,6 +3039,7 @@ export default function RepositoryFolderDetailPage() {
                   file={file}
                   canEdit={canEdit}
                   canVerify={canVerify}
+                  canDelete={canDeleteFile(file)}
                   isVerifying={isVerifying}
                   isSelected={selectedIds.has(file.id)}
                   downloadingId={downloadingId}
@@ -3169,6 +3200,7 @@ export default function RepositoryFolderDetailPage() {
           <FloatingAccessRequestsButton
             userProfile={userProfile}
             refreshKey={accessRefreshKey}
+            sectionId={section?.id}
             onClick={() => setIsAccessSidebarOpen(true)}
           />
 
@@ -3179,19 +3211,23 @@ export default function RepositoryFolderDetailPage() {
               setAccessRefreshKey((k) => k + 1);
             }}
             userProfile={userProfile}
+            sectionId={section?.id}
           />
         </>
       )}
 
       {/* ── Templates floating button + modal (non-admin only) ─── */}
+            {/* ── Templates floating button + modal, scoped to this section ─── */}
       <FloatingTemplatesButton
         userProfile={userProfile}
+        section={section}
         onClick={() => setShowTemplatesModal(true)}
       />
       <TemplatesModal
         isOpen={showTemplatesModal}
         onClose={() => setShowTemplatesModal(false)}
         userProfile={userProfile}
+        section={section}
       />
 
       {/* ── Success toast ──────────────────────────────────── */}
@@ -3317,11 +3353,11 @@ export default function RepositoryFolderDetailPage() {
         </div>
       </div>
       {/* ── Bulk Delete Confirm Modal ───────────────────────── */}
-      <BulkDeleteConfirmModal
+            <BulkDeleteConfirmModal
         isOpen={bulkDeletePending}
         onClose={() => setBulkDeletePending(false)}
         onConfirm={confirmBulkDelete}
-        count={selectedIds.size}
+        count={deletableSelectedFiles.length}
         isDeleting={isBulkDeleting}
       />
     </div>
