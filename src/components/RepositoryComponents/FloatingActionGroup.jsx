@@ -27,6 +27,14 @@ export default function FloatingActionGroup({ actions = [], triggerColor }) {
 
   const baseButton = triggerColor || "bg-blue-600 hover:bg-blue-700 shadow-[0_12px_30px_rgba(37,99,235,0.40)]";
 
+  // Sum badge counts across all child actions (e.g. pending access requests)
+  // so the trigger itself can surface a notification while collapsed —
+  // otherwise a badge on a hidden child action is invisible to the user.
+  const totalBadge = actions.reduce(
+    (sum, action) => sum + (Number(action.badge) > 0 ? Number(action.badge) : 0),
+    0,
+  );
+
   return (
     <div
       ref={groupRef}
@@ -82,6 +90,14 @@ export default function FloatingActionGroup({ actions = [], triggerColor }) {
           className="text-white transition-transform duration-300"
           style={{ transform: open ? "rotate(45deg)" : "rotate(0deg)" }}
         />
+        {totalBadge > 0 && (
+          <span
+            className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full border-2 border-white bg-amber-500 px-1 text-[10px] font-bold text-white transition-opacity duration-200"
+            style={{ opacity: open ? 0 : 1, pointerEvents: "none" }}
+          >
+            {totalBadge > 9 ? "9+" : totalBadge}
+          </span>
+        )}
       </button>
     </div>
   );
