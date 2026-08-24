@@ -1,6 +1,6 @@
 // PINAPAKITA DITO YUNG MGA SECTION FOLDERS; ETO YUNG LOOB NG DIVISION FOLDER
 import { useNavigate, useParams } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   SectionFolderGrid,
   RepositorySearchBar,
@@ -51,6 +51,75 @@ export default function RepositoryDivisionPage() {
 
   const [showCreateSectionModal, setShowCreateSectionModal] = useState(false);
   const [sectionToast, setSectionToast] = useState(null); // { type: 'success'|'error', message }
+
+
+  // ─────────────────────────────────────────────────────────────────
+  // SCROLL-SNAP MORPHING HEADER (desktop only)
+  // The header no longer tracks scroll position 1:1 (that's what caused
+  // slow-scroll bugs / half-morphed states). Instead it snaps fully
+  // collapsed the moment the user scrolls past a small threshold, and the
+  // CSS transition below animates that snap quickly — it doesn't need to
+  // reach the bottom of the page, just a few px of scroll.
+  const REPOSITORY_HEADER_SNAP_THRESHOLD = 60; // px scrolled down to trigger collapse
+  const REPOSITORY_HEADER_UNSNAP_THRESHOLD = 15; // px to trigger expand back (hysteresis, prevents flicker)
+
+  const headerRef = useRef(null); // the sticky <div>
+  const scrollAnimationFrameRef = useRef(null); // rAF handle
+  const morphStateRef = useRef(0); // 0 = expanded, 1 = collapsed
+
+  useEffect(() => {
+    const isDesktop = () => window.innerWidth >= 1024;
+    const getScrollContainer = () => isDesktop() ? (document.querySelector('.app-main') || window) : window;
+
+    function applyMorphedState(morphed) {
+      if (headerRef.current) {
+        if (morphed) {
+          headerRef.current.classList.add("is-morphed");
+        } else {
+          headerRef.current.classList.remove("is-morphed");
+        }
+      }
+    }
+
+    function handleScroll() {
+      if (scrollAnimationFrameRef.current) return;
+      scrollAnimationFrameRef.current = requestAnimationFrame(() => {
+        scrollAnimationFrameRef.current = null;
+        const scrollContainer = getScrollContainer();
+        const scrollY = scrollContainer === window ? window.scrollY : scrollContainer.scrollTop;
+
+        if (morphStateRef.current === 0 && scrollY > REPOSITORY_HEADER_SNAP_THRESHOLD) {
+          morphStateRef.current = 1;
+          applyMorphedState(true);
+        } else if (morphStateRef.current === 1 && scrollY <= REPOSITORY_HEADER_UNSNAP_THRESHOLD) {
+          morphStateRef.current = 0;
+          applyMorphedState(false);
+        }
+      });
+    }
+
+    if (headerRef.current) {
+      const scrollContainer = getScrollContainer();
+      const currentScroll = scrollContainer === window ? window.scrollY : scrollContainer.scrollTop;
+      const initialState = currentScroll > REPOSITORY_HEADER_SNAP_THRESHOLD ? 1 : 0;
+      morphStateRef.current = initialState;
+      applyMorphedState(initialState === 1);
+    }
+
+    const scrollContainer = getScrollContainer();
+    scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll, { passive: true });
+
+    return () => {
+      scrollContainer.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+      if (scrollAnimationFrameRef.current) {
+        cancelAnimationFrame(scrollAnimationFrameRef.current);
+      }
+    };
+  }, []);
 
   const logAudit = async ({ action, fileName, details, status }) => {
     try {
@@ -407,10 +476,242 @@ export default function RepositoryDivisionPage() {
   return (
     <div className="min-h-screen bg-slate-50/40 pb-10">
       <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 pb-5 sm:pb-8">
+        <style>{`
+        
+          .repo-morph-header {
+            transform: translateZ(0);
+            will-change: transform;
+            contain: layout style paint;
+            overflow-anchor: none !important;
+            transition: padding 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+          }
+          .repo-morph-breadcrumb {
+            transition: opacity 0.15s ease-out, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), margin-bottom 0.2s cubic-bezier(0.22, 1, 0.36, 1), font-size 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: opacity, transform, margin-bottom, font-size;
+          }
+          .repo-morph-title {
+            transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), margin-bottom 0.2s cubic-bezier(0.22, 1, 0.36, 1), font-size 0.2s cubic-bezier(0.22, 1, 0.36, 1), line-height 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: transform, margin-bottom, font-size, line-height;
+            transform-origin: left top;
+          }
+          .repo-morph-meta,
+          .repo-morph-actions,
+          .repo-morph-banner,
+          .repo-morph-search {
+             will-change: padding, margin, font-size, opacity, transform, max-height, max-width, line-height;
+             transition: padding 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+                         margin 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+                         font-size 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+                         line-height 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+                         max-height 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+                         transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+                         opacity 0.15s ease-out;
+          }
+          
+          .repo-morph-inline-pills {
+             opacity: 0;
+             max-width: 0;
+             overflow: hidden;
+             transform: translateY(10px);
+             will-change: opacity, max-width, transform;
+             transition: opacity 0.15s ease-out, max-width 0.2s cubic-bezier(0.22, 1, 0.36, 1), transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+          }
+          .repo-morph-header.is-morphed .repo-morph-inline-pills {
+             opacity: 1;
+             max-width: 100vw;
+             transform: translateY(0);
+          }
+
+          /* Mobile (<1024px) */
+          @media (max-width: 1023px) {
+            .repo-morph-header {
+              padding-top: 20px !important;
+              padding-bottom: 12px !important;
+            }
+            .repo-morph-header.is-morphed {
+              padding-top: 8px !important;
+              padding-bottom: 4px !important;
+            }
+
+            .repo-morph-breadcrumb {
+              margin-bottom: 16px !important;
+              opacity: 1;
+              font-size: 12px !important;
+              transform: translateY(0);
+            }
+            .repo-morph-header.is-morphed .repo-morph-breadcrumb {
+              margin-bottom: 4px !important;
+              opacity: 0.4;
+              font-size: 10.5px !important;
+              transform: translateY(-2px);
+            }
+
+            .repo-morph-title {
+              font-size: 21.6px !important;
+              line-height: 1.2 !important;
+              margin-bottom: 6px;
+              transform: translateY(0);
+            }
+            .repo-morph-header.is-morphed .repo-morph-title {
+              font-size: 14.6px !important;
+              line-height: 1.3 !important;
+              margin-bottom: 0px;
+              transform: translateY(-2px);
+            }
+
+            .repo-morph-meta {
+              max-height: 150px !important;
+              margin-top: 6px !important;
+              opacity: 1 !important;
+              overflow: hidden;
+              transform: translateY(0);
+            }
+            .repo-morph-header.is-morphed .repo-morph-meta {
+              max-height: 0px !important;
+              margin-top: 0px !important;
+              opacity: 0 !important;
+              transform: translateY(-4px);
+            }
+
+            .repo-morph-actions {
+              opacity: 1;
+              transform: scale(1) translateY(0);
+              transform-origin: top right;
+            }
+            .repo-morph-header.is-morphed .repo-morph-actions {
+              opacity: 0.55;
+              transform: scale(0.93) translateY(-2px);
+            }
+
+            .repo-morph-banner {
+              margin-bottom: 16px !important;
+              margin-top: 12px !important;
+              padding-top: 12px !important;
+              padding-bottom: 12px !important;
+              transform: translateY(0);
+            }
+            .repo-morph-header.is-morphed .repo-morph-banner {
+              margin-bottom: 4px !important;
+              margin-top: 4px !important;
+              padding-top: 6px !important;
+              padding-bottom: 6px !important;
+              transform: translateY(-2px);
+            }
+
+            .repo-morph-search {
+              margin-top: 12px !important;
+              margin-bottom: 8px !important;
+              padding-top: 12px !important;
+              padding-bottom: 12px !important;
+              padding-left: 12px !important;
+              padding-right: 12px !important;
+            }
+            .repo-morph-header.is-morphed .repo-morph-search {
+              margin-top: 4px !important;
+              margin-bottom: 0px !important;
+              padding-top: 6px !important;
+              padding-bottom: 6px !important;
+              padding-left: 8px !important;
+              padding-right: 8px !important;
+            }
+          }
+
+          /* Desktop (>=1024px) */
+          @media (min-width: 1024px) {
+            .repo-morph-header {
+              padding-top: 32px !important;
+              padding-bottom: 12px !important;
+            }
+            .repo-morph-header.is-morphed {
+              padding-top: 8px !important;
+              padding-bottom: 4px !important;
+            }
+
+            .repo-morph-breadcrumb {
+              margin-bottom: 20px !important;
+              opacity: 1;
+              font-size: 12px !important;
+              transform: translateY(0);
+            }
+            .repo-morph-header.is-morphed .repo-morph-breadcrumb {
+              margin-bottom: 4px !important;
+              opacity: 0.55;
+              font-size: 10.5px !important;
+              transform: translateY(-2px);
+            }
+
+            .repo-morph-title {
+              font-size: 26.4px !important;
+              line-height: 1.15 !important;
+              margin-bottom: 6px;
+              transform: translateY(0);
+            }
+            .repo-morph-header.is-morphed .repo-morph-title {
+              font-size: 15.4px !important;
+              line-height: 1.3 !important;
+              margin-bottom: 0px;
+              transform: translateY(-2px);
+            }
+
+            .repo-morph-meta {
+              max-height: 120px !important;
+              margin-top: 6px !important;
+              opacity: 1 !important;
+              overflow: hidden;
+              transform: translateY(0);
+            }
+            .repo-morph-header.is-morphed .repo-morph-meta {
+              max-height: 0px !important;
+              margin-top: 0px !important;
+              opacity: 0 !important;
+              transform: translateY(-4px);
+            }
+
+            .repo-morph-actions {
+              transform: scale(1) translateY(0);
+              transform-origin: top right;
+            }
+            .repo-morph-header.is-morphed .repo-morph-actions {
+              transform: scale(0.93) translateY(-2px);
+            }
+
+            .repo-morph-banner {
+              margin-bottom: 20px !important;
+              margin-top: 12px !important;
+              padding-top: 12px !important;
+              padding-bottom: 12px !important;
+              transform: translateY(0);
+            }
+            .repo-morph-header.is-morphed .repo-morph-banner {
+              margin-bottom: 4px !important;
+              margin-top: 4px !important;
+              padding-top: 6px !important;
+              padding-bottom: 6px !important;
+              transform: translateY(-2px);
+            }
+
+            .repo-morph-search {
+              margin-top: 12px !important;
+              margin-bottom: 8px !important;
+              padding-top: 16px !important;
+              padding-bottom: 16px !important;
+              padding-left: 16px !important;
+              padding-right: 16px !important;
+            }
+            .repo-morph-header.is-morphed .repo-morph-search {
+              margin-top: 4px !important;
+              margin-bottom: 4px !important;
+              padding-top: 8px !important;
+              padding-bottom: 8px !important;
+              padding-left: 12px !important;
+              padding-right: 12px !important;
+            }
+          }
+        `}</style>
         {/* ── Sticky Header Area ─────────────────────────────── */}
-        <div className="sticky top-0 z-20 bg-slate-50/90 backdrop-blur-xl pt-5 sm:pt-8 pb-3 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 mb-5 sm:mb-6">
+        <div ref={headerRef} className="sticky top-[56px] lg:top-0 z-20 bg-slate-50/95 pt-5 sm:pt-8 pb-3 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 mb-5 sm:mb-6 repo-morph-header">
           {/* ── Breadcrumb ─────────────────────────────────────── */}
-          <nav className="flex items-center gap-1.5 text-[12px] text-slate-400 mb-4 sm:mb-5 font-medium overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <nav className="flex items-center gap-1.5 text-[12px] text-slate-400 mb-4 sm:mb-5 font-medium overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden repo-morph-breadcrumb">
             <button
               onClick={() => navigate("/repository")}
               className="hover:text-slate-600 transition-colors"
@@ -426,21 +727,36 @@ export default function RepositoryDivisionPage() {
           {/* ── Page Header ────────────────────────────────────── */}
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
             <div className="min-w-0">
-              <h1 className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em] leading-tight">
-                {loading ? "Loading…" : (division?.name ?? "Division")}
-              </h1>
-              <div className="flex flex-col gap-1.5 mt-1.5">
-                <p className="text-[0.8rem] text-slate-400 font-medium">
-                  {division ? `Browse the section folders inside ${division.name}.` : ""}
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="flex items-center gap-1.5 bg-blue-50 px-2.5 py-1 rounded-lg text-[0.75rem] font-bold text-blue-700 border border-blue-200/60 shadow-sm">
-                    <User size={13} className="text-blue-500" />
-                    {loading ? "Loading..." : divisionManagers.length ? divisionManagers.join(", ") : "—"}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h1 className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em] leading-tight repo-morph-title min-w-0 max-w-full">
+                  {loading ? "Loading…" : (division?.name ?? "Division")}
+                </h1>
+                <div className="flex items-center gap-1.5 sm:gap-2 repo-morph-inline-pills">
+                  <span className="flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-md sm:rounded-lg text-[9px] sm:text-[10px] font-bold text-blue-700 border border-blue-200/60 shadow-sm">
+                    <User size={11} className="text-blue-500 shrink-0" />
+                    <span className="truncate max-w-[80px] sm:max-w-[150px]">{loading ? "Loading…" : (divisionManagers.length ? divisionManagers.join(", ") : "—")}</span>
                   </span>
-                  <span className="flex items-center gap-1.5 bg-indigo-50 px-2.5 py-1 rounded-lg text-[0.75rem] font-bold text-indigo-700 border border-indigo-200/60 shadow-sm">
-                    <FolderOpen size={13} className="text-indigo-500" />
-                    {loading ? "—" : `${sections.length} ${sections.length === 1 ? "folder" : "folders"}`}
+                  <span className="flex items-center gap-1 bg-indigo-50 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-md sm:rounded-lg text-[9px] sm:text-[10px] font-bold text-indigo-700 border border-indigo-200/60 shadow-sm">
+                    <FolderOpen size={11} className="text-indigo-500 shrink-0" />
+                    <span className="truncate max-w-[100px] sm:max-w-[150px]">{loading ? "—" : `${sections.length} ${sections.length === 1 ? "folder" : "folders"}`}</span>
+                  </span>
+                </div>
+              </div>
+              
+              <div className="flex flex-col gap-1.5 mt-1.5 repo-morph-meta">
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex items-center gap-1.5 bg-blue-50 px-2.5 py-1 rounded-lg text-[0.75rem] font-bold text-blue-700 border border-blue-200/60 shadow-sm min-w-0">
+                    <User size={13} className="text-blue-500 shrink-0" />
+                    <span className="truncate max-w-[200px]">
+                      {loading ? "Loading…" : divisionManagers.length ? divisionManagers.join(", ") : "—"}
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-1.5 bg-indigo-50 px-2.5 py-1 rounded-lg text-[0.75rem] font-bold text-indigo-700 border border-indigo-200/60 shadow-sm min-w-0">
+                    <FolderOpen size={13} className="text-indigo-500 shrink-0" />
+                    <span className="truncate max-w-[200px]">
+                      {loading ? "—" : `${sections.length} ${sections.length === 1 ? "folder" : "folders"}`}
+                    </span>
                   </span>
                 </div>
               </div>
@@ -448,7 +764,7 @@ export default function RepositoryDivisionPage() {
           </div>
 
           {/* ── Search / Sort / View Toggle ────────────────── */}
-          <div className="mt-3 mb-2 rounded-2xl sm:rounded-[24px] border border-white/70 bg-white/85 p-3 sm:p-4 shadow-[0_8px_30px_rgba(15,23,42,0.04)] backdrop-blur-xl">
+          <div className="mt-3 mb-2 rounded-2xl sm:rounded-[24px] border border-white/70 bg-white/85 p-3 sm:p-4 shadow-[0_8px_30px_rgba(15,23,42,0.04)] backdrop-blur-xl repo-morph-search">
             <RepositorySearchBar
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
@@ -457,8 +773,7 @@ export default function RepositoryDivisionPage() {
             />
           </div>
 
-          {/* ── Fade Effect ───────────────────────────────────── */}
-          <div className="absolute left-0 right-0 top-full h-10 bg-gradient-to-b from-slate-50/90 to-transparent pointer-events-none" />
+
         </div>
 
         {/* ── States: loading / error / grid ────────────────────── */}
@@ -540,8 +855,8 @@ export default function RepositoryDivisionPage() {
       {/* Success / Error Toast */}
       <div
         className={`fixed bottom-8 right-8 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${sectionToast
-            ? "translate-x-0 opacity-100 pointer-events-auto"
-            : "translate-x-[120%] opacity-0 pointer-events-none"
+          ? "translate-x-0 opacity-100 pointer-events-auto"
+          : "translate-x-[120%] opacity-0 pointer-events-none"
           }`}
         style={{
           width: "380px",
@@ -558,8 +873,8 @@ export default function RepositoryDivisionPage() {
       >
         <div
           className={`absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r ${sectionToast?.type === "error"
-              ? "from-rose-100/60 to-transparent"
-              : "from-emerald-100/60 to-transparent"
+            ? "from-rose-100/60 to-transparent"
+            : "from-emerald-100/60 to-transparent"
             }`}
         />
         <div

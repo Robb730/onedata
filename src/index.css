@@ -430,3 +430,13 @@ body.hide-mobile-nav .mobile-fab {
 .hover-flare:hover::after {
   animation: flare 0.6s ease-out forwards;
 }
+
+.repo-morph-header {
+  transform: translateZ(0);
+  will-change: transform;
+  contain: layout style paint;
+}
+
+html, body, .app-main {
+  overflow-anchor: none !important;
+}
