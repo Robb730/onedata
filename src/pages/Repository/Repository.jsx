@@ -115,14 +115,7 @@ export default function Repository({ onFolderClick }) {
             onViewModeChange={setViewMode}
           />
 
-          {/* ── Removed Tab Filters ──────────────────────────────── */}
-          <div className="mt-4 border-t border-slate-100 pt-4">
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-[12px] font-semibold text-slate-500">
-                {filteredFolders.length} Divisions
-              </span>
-            </div>
-          </div>
+
         </div>
 
         {/* ── States: loading / error / empty / grid ───────── */}
