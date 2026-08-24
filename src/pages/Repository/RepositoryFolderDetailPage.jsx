@@ -35,7 +35,7 @@ import {
   Clock,
   Inbox,
   LayoutTemplate,
-  ClipboardList
+  ClipboardList,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import RepositoryBackButton from "../../components/RepositoryComponents/RepositoryBackButton";
@@ -48,7 +48,10 @@ import FileAccessRequestModal from "../../components/RepositoryComponents/FileAc
 import AccessRequestsSidebar from "../../components/RepositoryComponents/AccessRequestsSidebar";
 import FloatingActionGroup from "../../components/RepositoryComponents/FloatingActionGroup";
 import TemplatesModal from "../../components/RepositoryComponents/TemplatesModal";
-import { fetchScopedRequests, canApproveAccessRequests } from "../../utils/accessRequestsApi";
+import {
+  fetchScopedRequests,
+  canApproveAccessRequests,
+} from "../../utils/accessRequestsApi";
 import { RepositorySearchBar } from "../../components/RepositoryComponents";
 import FileRequestModal from "../../components/RepositoryComponents/FileRequestModal";
 import FileRequestsPanel from "../../components/RepositoryComponents/FileRequestsPanel";
@@ -152,17 +155,21 @@ function VerifyStatusPill({
             : "Click to verify"
           : undefined
       }
-      className={`inline-flex items-center gap-1 rounded-full font-bold border transition-colors ${compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]"
-        } ${isVerified
+      className={`inline-flex items-center gap-1 rounded-full font-bold border transition-colors ${
+        compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]"
+      } ${
+        isVerified
           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
           : "bg-slate-100 text-slate-500 border-slate-200"
-        } ${canVerify ? "cursor-pointer hover:brightness-95" : "cursor-default"
-        } disabled:opacity-60 disabled:cursor-not-allowed`}
+      } ${
+        canVerify ? "cursor-pointer hover:brightness-95" : "cursor-default"
+      } disabled:opacity-60 disabled:cursor-not-allowed`}
     >
       {isVerified ? (
         <>
           <CheckCircle2 size={compact ? 8 : 10} />
-          Verified </>
+          Verified{" "}
+        </>
       ) : (
         <>
           <XCircle size={compact ? 8 : 10} className="opacity-60" />
@@ -189,10 +196,11 @@ function MobileFileActionBtn({
       }}
       disabled={disabled}
       title={title}
-      className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-colors disabled:opacity-40 ${danger
+      className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-colors disabled:opacity-40 ${
+        danger
           ? "border-slate-100 bg-white text-slate-400 hover:border-red-100 hover:bg-red-50 hover:text-red-500"
           : "border-slate-100 bg-white text-slate-400 hover:border-blue-100 hover:bg-blue-50 hover:text-blue-600"
-        }`}
+      }`}
     >
       {children}
     </button>
@@ -282,10 +290,11 @@ function MobileFileListCard({
 
   return (
     <article
-      className={`rounded-2xl border bg-white p-3.5 transition-all select-none ${isSelected
+      className={`rounded-2xl border bg-white p-3.5 transition-all select-none ${
+        isSelected
           ? "border-blue-300 shadow-md ring-1 ring-blue-100 bg-blue-50/30"
           : "border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
-        }`}
+      }`}
       style={{ contentVisibility: "auto", containIntrinsicSize: "0 110px" }}
       onClick={(e) => {
         if (e.ctrlKey || e.metaKey) {
@@ -303,8 +312,11 @@ function MobileFileListCard({
             e.stopPropagation();
             onSelectOrVerify?.(e);
           }}
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all mt-0.5 ${isSelected ? "border-blue-200 bg-blue-100 text-blue-600" : `${bg} border-transparent hover:bg-slate-50`
-            }`}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all mt-0.5 ${
+            isSelected
+              ? "border-blue-200 bg-blue-100 text-blue-600"
+              : `${bg} border-transparent hover:bg-slate-50`
+          }`}
           title={isSelected ? "Deselect" : "Select"}
         >
           {isSelected ? (
@@ -390,10 +402,11 @@ function MobileFileGridCard({
 
   return (
     <article
-      className={`group relative flex flex-col rounded-2xl border bg-white p-3 transition-all select-none ${isSelected
+      className={`group relative flex flex-col rounded-2xl border bg-white p-3 transition-all select-none ${
+        isSelected
           ? "border-blue-300 shadow-md ring-1 ring-blue-100 bg-blue-50/30"
           : "border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.04)] hover:border-slate-300 hover:shadow-md"
-        }`}
+      }`}
       style={{ contentVisibility: "auto", containIntrinsicSize: "0 220px" }}
       onClick={(e) => {
         if (e.ctrlKey || e.metaKey) {
@@ -411,8 +424,11 @@ function MobileFileGridCard({
             e.stopPropagation();
             onSelectOrVerify?.(e);
           }}
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all ${isSelected ? "border-blue-200 bg-blue-100 text-blue-600" : `${bg} border-transparent hover:bg-slate-50`
-            }`}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all ${
+            isSelected
+              ? "border-blue-200 bg-blue-100 text-blue-600"
+              : `${bg} border-transparent hover:bg-slate-50`
+          }`}
           title={isSelected ? "Deselect" : "Select"}
         >
           {isSelected ? (
@@ -717,10 +733,11 @@ function PaginationBar({
               <button
                 key={p}
                 onClick={() => onPageChange(p)}
-                className={`min-w-7 h-7 px-2 rounded-lg text-[11px] font-bold transition-colors ${p === currentPage
+                className={`min-w-7 h-7 px-2 rounded-lg text-[11px] font-bold transition-colors ${
+                  p === currentPage
                     ? "bg-blue-600 text-white shadow-sm"
                     : "bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                  }`}
+                }`}
               >
                 {p}
               </button>
@@ -805,7 +822,13 @@ function DeleteFileConfirmModal({
 }
 
 // Bulk delete confirmation
-function BulkDeleteConfirmModal({ isOpen, onClose, onConfirm, count, isDeleting }) {
+function BulkDeleteConfirmModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  count,
+  isDeleting,
+}) {
   if (!isOpen) return null;
   return (
     <ModalPortal>
@@ -816,9 +839,17 @@ function BulkDeleteConfirmModal({ isOpen, onClose, onConfirm, count, isDeleting 
               <Trash2 className="text-red-600" size={28} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Delete {count} file{count > 1 ? "s" : ""}?</h2>
+              <h2 className="text-xl font-bold text-slate-900">
+                Delete {count} file{count > 1 ? "s" : ""}?
+              </h2>
               <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                This will permanently remove <span className="font-semibold text-slate-700">{count} file{count > 1 ? "s" : ""}</span> from storage and the database.<br />This action cannot be undone.
+                This will permanently remove{" "}
+                <span className="font-semibold text-slate-700">
+                  {count} file{count > 1 ? "s" : ""}
+                </span>{" "}
+                from storage and the database.
+                <br />
+                This action cannot be undone.
               </p>
             </div>
           </div>
@@ -835,7 +866,9 @@ function BulkDeleteConfirmModal({ isOpen, onClose, onConfirm, count, isDeleting 
               disabled={isDeleting}
               className="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
             >
-              {isDeleting ? "Deleting..." : `Delete ${count} file${count > 1 ? "s" : ""}`}
+              {isDeleting
+                ? "Deleting..."
+                : `Delete ${count} file${count > 1 ? "s" : ""}`}
             </button>
           </div>
         </div>
@@ -1016,7 +1049,8 @@ function FileInfoCard({ file, onPreview, onDownload, canEdit }) {
             <span className={`font-bold ${color}`}>{file.type}</span>
             {file.status === "Verified" ? (
               <span className="inline-flex items-center gap-0.5 text-emerald-600">
-                <CheckCircle2 size={9} /> Verified</span>
+                <CheckCircle2 size={9} /> Verified
+              </span>
             ) : (
               <span className="inline-flex items-center gap-0.5 text-amber-500">
                 <XCircle size={9} /> Unverified
@@ -1129,14 +1163,14 @@ function LastModifiedInfoCard({ rawDate, uploaderInfo }) {
   // Format full datetime string
   const fullDate = rawDate
     ? new Date(rawDate).toLocaleString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    })
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
     : "—";
 
   return (
@@ -1263,14 +1297,16 @@ export default function RepositoryFolderDetailPage() {
     fetchScopedRequests(userProfile, section?.id)
       .then((data) => {
         if (!cancelled) {
-          setPendingAccessRequestCount(data.filter((r) => r.status === "pending").length);
+          setPendingAccessRequestCount(
+            data.filter((r) => r.status === "pending").length,
+          );
         }
       })
       .catch((err) => console.error(err));
     return () => {
       cancelled = true;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile, section?.id, accessRefreshKey]);
 
   const [schoolYears, setSchoolYears] = useState([]);
@@ -1282,7 +1318,9 @@ export default function RepositoryFolderDetailPage() {
   const [feedbackTarget, setFeedbackTarget] = useState(null); // file
   const [feedbackCounts, setFeedbackCounts] = useState({}); // { [fileId]: totalCount }
   const [feedbackUnread, setFeedbackUnread] = useState({}); // { [fileId]: true }
-  const [isSearchOpen, setIsSearchOpen] = useState(() => window.innerWidth >= 1024);
+  const [isSearchOpen, setIsSearchOpen] = useState(
+    () => window.innerWidth >= 1024,
+  );
   const queryClient = useQueryClient();
 
   // ─────────────────────────────────────────────────────────────────
@@ -1307,7 +1345,9 @@ export default function RepositoryFolderDetailPage() {
     function getScrollContainer() {
       if (cachedContainer) return cachedContainer;
       const isDesktop = window.innerWidth >= 1024;
-      cachedContainer = isDesktop ? (document.querySelector('.app-main') || window) : window;
+      cachedContainer = isDesktop
+        ? document.querySelector(".app-main") || window
+        : window;
       return cachedContainer;
     }
     function invalidateContainerCache() {
@@ -1331,12 +1371,21 @@ export default function RepositoryFolderDetailPage() {
         scrollAnimationFrameRef.current = null;
 
         const scrollContainer = getScrollContainer();
-        const scrollY = scrollContainer === window ? window.scrollY : scrollContainer.scrollTop;
+        const scrollY =
+          scrollContainer === window
+            ? window.scrollY
+            : scrollContainer.scrollTop;
 
-        if (morphStateRef.current === 0 && scrollY > REPOSITORY_HEADER_SNAP_THRESHOLD) {
+        if (
+          morphStateRef.current === 0 &&
+          scrollY > REPOSITORY_HEADER_SNAP_THRESHOLD
+        ) {
           morphStateRef.current = 1;
           applyMorphedState(true);
-        } else if (morphStateRef.current === 1 && scrollY <= REPOSITORY_HEADER_UNSNAP_THRESHOLD) {
+        } else if (
+          morphStateRef.current === 1 &&
+          scrollY <= REPOSITORY_HEADER_UNSNAP_THRESHOLD
+        ) {
           morphStateRef.current = 0;
           applyMorphedState(false);
         }
@@ -1345,8 +1394,10 @@ export default function RepositoryFolderDetailPage() {
 
     if (headerRef.current) {
       const scrollContainer = getScrollContainer();
-      const currentScroll = scrollContainer === window ? window.scrollY : scrollContainer.scrollTop;
-      const initialState = currentScroll > REPOSITORY_HEADER_SNAP_THRESHOLD ? 1 : 0;
+      const currentScroll =
+        scrollContainer === window ? window.scrollY : scrollContainer.scrollTop;
+      const initialState =
+        currentScroll > REPOSITORY_HEADER_SNAP_THRESHOLD ? 1 : 0;
       morphStateRef.current = initialState;
       applyMorphedState(initialState === 1);
     }
@@ -1360,7 +1411,9 @@ export default function RepositoryFolderDetailPage() {
     if (scrollContainer !== window) {
       window.addEventListener("scroll", handleScroll, { passive: true });
     }
-    window.addEventListener("resize", invalidateContainerCache, { passive: true });
+    window.addEventListener("resize", invalidateContainerCache, {
+      passive: true,
+    });
     window.addEventListener("resize", handleScroll, { passive: true });
 
     return () => {
@@ -1375,7 +1428,7 @@ export default function RepositoryFolderDetailPage() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);  // Mirrors the query keys Dashboard.jsx uses for useQuery. Keep in sync
+  }, []); // Mirrors the query keys Dashboard.jsx uses for useQuery. Keep in sync
   // if new dashboard-backed upload types are added.
   const CATEGORY_TO_QUERY_KEYS = {
     enrollment: ["enrollment"],
@@ -1802,10 +1855,10 @@ export default function RepositoryFolderDetailPage() {
           requestedOn: r.created_at,
           dueDate: r.deadline
             ? new Date(r.deadline).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })
             : "—",
           requestedBy: r.users?.full_name ?? "Unknown",
           requesterRole: getRoleDisplay(r.users?.role) ?? "",
@@ -2100,18 +2153,18 @@ export default function RepositoryFolderDetailPage() {
         prev.map((f) =>
           f.id === file.id
             ? {
-              ...f,
-              status: newStatus,
-              rawUpdatedAt: now,
-              verifiedPdfPath:
-                newStatus === "Verified" ? verifiedPdfPath : null,
-              verifiedByName:
-                newStatus === "Verified"
-                  ? updatePayload.verified_by_name
-                  : null,
-              verifiedAt:
-                newStatus === "Verified" ? updatePayload.verified_at : null,
-            }
+                ...f,
+                status: newStatus,
+                rawUpdatedAt: now,
+                verifiedPdfPath:
+                  newStatus === "Verified" ? verifiedPdfPath : null,
+                verifiedByName:
+                  newStatus === "Verified"
+                    ? updatePayload.verified_by_name
+                    : null,
+                verifiedAt:
+                  newStatus === "Verified" ? updatePayload.verified_at : null,
+              }
             : f,
         ),
       );
@@ -2249,7 +2302,12 @@ export default function RepositoryFolderDetailPage() {
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        await logAudit("Download", file.name, `Bulk downloaded from ${section?.name}`, "Success");
+        await logAudit(
+          "Download",
+          file.name,
+          `Bulk downloaded from ${section?.name}`,
+          "Success",
+        );
       } catch (err) {
         console.error("Bulk download error for", file.name, err);
         await logAudit("Download", file.name, err.message, "Failed");
@@ -2269,22 +2327,33 @@ export default function RepositoryFolderDetailPage() {
         // 1. Remove from correct storage bucket
         if (file.path) {
           const bucket = getBucket(file.data_category);
-          const { data: removedData, error: storageErr } = await supabase.storage
-            .from(bucket)
-            .remove([file.path]);
+          const { data: removedData, error: storageErr } =
+            await supabase.storage.from(bucket).remove([file.path]);
           if (storageErr) throw new Error(storageErr.message);
           if (!removedData || removedData.length === 0)
-            console.error(`Bulk delete storage no-op: bucket="${bucket}" path="${file.path}"`);
+            console.error(
+              `Bulk delete storage no-op: bucket="${bucket}" path="${file.path}"`,
+            );
         }
         // 2. Remove verified PDF if present
         if (file.verifiedPdfPath) {
-          await supabase.storage.from("verified-pdfs").remove([file.verifiedPdfPath]);
+          await supabase.storage
+            .from("verified-pdfs")
+            .remove([file.verifiedPdfPath]);
         }
         // 3. Remove DB row
-        const { error: dbErr } = await supabase.from("files").delete().eq("id", file.id);
+        const { error: dbErr } = await supabase
+          .from("files")
+          .delete()
+          .eq("id", file.id);
         if (dbErr) throw new Error(dbErr.message);
         setAllFiles((prev) => prev.filter((f) => f.id !== file.id));
-        await logAudit("Delete", file.name, `Bulk deleted from ${section?.name}`, "Success");
+        await logAudit(
+          "Delete",
+          file.name,
+          `Bulk deleted from ${section?.name}`,
+          "Success",
+        );
       } catch (err) {
         console.error("Bulk delete error for", file.name, err);
         await logAudit("Delete", file.name, err.message, "Failed");
@@ -2311,7 +2380,8 @@ export default function RepositoryFolderDetailPage() {
       .sort((a, b) => {
         if (sortBy === "name") return a.name.localeCompare(b.name);
         if (sortBy === "size") return b.rawSize - a.rawSize;
-        if (sortBy === "date_asc") return new Date(a.rawCreatedAt) - new Date(b.rawCreatedAt);
+        if (sortBy === "date_asc")
+          return new Date(a.rawCreatedAt) - new Date(b.rawCreatedAt);
         // default: "date" = newest first
         return new Date(b.rawCreatedAt) - new Date(a.rawCreatedAt);
       });
@@ -2661,7 +2731,11 @@ export default function RepositoryFolderDetailPage() {
               padding-right: 12px !important;
             }
           }
-        `}</style>       <div ref={headerRef} className="sticky top-[56px] lg:top-0 z-20 bg-slate-50/95 pt-5 sm:pt-8 pb-3 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 mb-5 sm:mb-6 repo-morph-header">
+        `}</style>{" "}
+        <div
+          ref={headerRef}
+          className="sticky top-[56px] lg:top-0 z-20 bg-slate-50/95 pt-5 sm:pt-8 pb-3 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 mb-5 sm:mb-6 repo-morph-header"
+        >
           {/* ── Breadcrumb ─────────────────────────────────────── */}
           <nav className="flex items-center gap-1.5 text-[12px] text-slate-400 mb-4 sm:mb-5 font-medium overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden repo-morph-breadcrumb">
             <button
@@ -2697,11 +2771,19 @@ export default function RepositoryFolderDetailPage() {
                 <div className="flex items-center gap-1.5 sm:gap-2 repo-morph-inline-pills">
                   <span className="flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-md sm:rounded-lg text-[9px] sm:text-[10px] font-bold text-blue-700 border border-blue-200/60 shadow-sm">
                     <User size={11} className="text-blue-500 shrink-0" />
-                    <span className="truncate max-w-[80px] sm:max-w-[150px]">{loading ? "Loading…" : (sectionManagerNames.length > 0 ? sectionManagerNames.join(", ") : (section?.managed_by ?? "—"))}</span>
+                    <span className="truncate max-w-[80px] sm:max-w-[150px]">
+                      {loading
+                        ? "Loading…"
+                        : sectionManagerNames.length > 0
+                          ? sectionManagerNames.join(", ")
+                          : (section?.managed_by ?? "—")}
+                    </span>
                   </span>
                   <span className="flex items-center gap-1 bg-indigo-50 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-md sm:rounded-lg text-[9px] sm:text-[10px] font-bold text-indigo-700 border border-indigo-200/60 shadow-sm">
                     <Building2 size={11} className="text-indigo-500 shrink-0" />
-                    <span className="truncate max-w-[100px] sm:max-w-[150px]">{loading ? "Loading…" : (division?.name ?? "—")}</span>
+                    <span className="truncate max-w-[100px] sm:max-w-[150px]">
+                      {loading ? "Loading…" : (division?.name ?? "—")}
+                    </span>
                   </span>
                 </div>
               </div>
@@ -2714,7 +2796,11 @@ export default function RepositoryFolderDetailPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="flex items-center gap-1.5 bg-blue-50 px-2.5 py-1 rounded-lg text-[0.75rem] font-bold text-blue-700 border border-blue-200/60 shadow-sm">
                     <User size={13} className="text-blue-500 shrink-0" />
-                    {loading ? "Loading…" : (sectionManagerNames.length > 0 ? sectionManagerNames.join(", ") : (section?.managed_by ?? "—"))}
+                    {loading
+                      ? "Loading…"
+                      : sectionManagerNames.length > 0
+                        ? sectionManagerNames.join(", ")
+                        : (section?.managed_by ?? "—")}
                   </span>
                   <span className="flex items-center gap-1.5 bg-indigo-50 px-2.5 py-1 rounded-lg text-[0.75rem] font-bold text-indigo-700 border border-indigo-200/60 shadow-sm">
                     <Building2 size={13} className="text-indigo-500 shrink-0" />
@@ -2761,8 +2847,6 @@ export default function RepositoryFolderDetailPage() {
             </div>
           )}
 
-
-
           {/* ── Search / Sort / View Toggle ────────────────── */}
           <div className="mt-3 mb-2 rounded-xl sm:rounded-[24px] border border-slate-200/60 sm:border-white/70 bg-white p-3 sm:p-4 shadow-[0_8px_30px_rgba(15,23,42,0.04)] repo-morph-search">
             {/* Header Toggle */}
@@ -2774,7 +2858,11 @@ export default function RepositoryFolderDetailPage() {
                 Search & Filters
               </span>
               <button className="p-1 rounded-md text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-all">
-                {isSearchOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                {isSearchOpen ? (
+                  <ChevronUp size={14} />
+                ) : (
+                  <ChevronDown size={14} />
+                )}
               </button>
             </div>
 
@@ -2814,10 +2902,11 @@ export default function RepositoryFolderDetailPage() {
                         <button
                           key={tab}
                           onClick={() => setActiveType(tab)}
-                          className={`shrink-0 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[10px] sm:text-[11px] font-semibold rounded-full transition-all border ${isActive
+                          className={`shrink-0 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[10px] sm:text-[11px] font-semibold rounded-full transition-all border ${
+                            isActive
                               ? activeColors
                               : "text-slate-500 hover:bg-slate-50 border-slate-200 bg-white"
-                            }`}
+                          }`}
                         >
                           {tab}
                           <span
@@ -2836,9 +2925,31 @@ export default function RepositoryFolderDetailPage() {
                         onClick={toggleSelectAll}
                         className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 hover:text-blue-600 transition-colors px-2 py-1 rounded-lg hover:bg-blue-50"
                       >
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={someSelected ? "text-blue-600" : ""}>
-                          <rect x="1" y="1" width="10" height="10" rx="2" stroke="currentColor" strokeWidth="1.8" />
-                          {allFilteredSelected && <path d="M3 6l2.5 2.5L9 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />}
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 12 12"
+                          fill="none"
+                          className={someSelected ? "text-blue-600" : ""}
+                        >
+                          <rect
+                            x="1"
+                            y="1"
+                            width="10"
+                            height="10"
+                            rx="2"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          />
+                          {allFilteredSelected && (
+                            <path
+                              d="M3 6l2.5 2.5L9 4"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          )}
                         </svg>
                         {allFilteredSelected ? "Deselect All" : "Select All"}
                       </button>
@@ -2900,20 +3011,12 @@ export default function RepositoryFolderDetailPage() {
                     </div>
                   )}
                 </div>
-
-
               </div>
             )}
           </div>
-
-
         </div>
         {/* ── Bulk bar anchor ─────────────────────────── */}
         <div id="repo-file-list-anchor" className="scroll-mt-6" />
-
-
-
-
         {/* ── File list / grid ──────────────────────────────── */}
         {loading ? (
           <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
@@ -3039,8 +3142,9 @@ export default function RepositoryFolderDetailPage() {
                             toggleSelect(file.id);
                           }
                         }}
-                        className={`group relative transition-colors cursor-pointer select-none ${isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
-                          }`}
+                        className={`group relative transition-colors cursor-pointer select-none ${
+                          isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
+                        }`}
                         title="Ctrl+Click to select"
                       >
                         {/* File cell — with hover popover */}
@@ -3057,10 +3161,11 @@ export default function RepositoryFolderDetailPage() {
                                   e.stopPropagation();
                                   toggleSelect(file.id);
                                 }}
-                                className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${isSelected
+                                className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                                  isSelected
                                     ? "bg-blue-50 border border-blue-200 text-blue-600"
                                     : `border border-transparent group-hover:bg-slate-100 group-hover:border-slate-200 group-hover:text-slate-400 ${bg}`
-                                  }`}
+                                }`}
                                 title={isSelected ? "Deselect" : "Select"}
                               >
                                 {isSelected ? (
@@ -3115,10 +3220,11 @@ export default function RepositoryFolderDetailPage() {
                             </div>
                             {/* File hover popover */}
                             <div
-                              className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${isFileHovered
+                              className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
+                                isFileHovered
                                   ? "opacity-100 visible scale-100 pointer-events-auto"
                                   : "opacity-0 invisible scale-95 pointer-events-none"
-                                }`}
+                              }`}
                             >
                               <FileInfoCard
                                 file={file}
@@ -3153,17 +3259,20 @@ export default function RepositoryFolderDetailPage() {
                                   : "Click to verify"
                                 : undefined
                             }
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${isVerified
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${
+                              isVerified
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                 : "bg-slate-100 text-slate-500 border-slate-200"
-                              } ${canVerify
+                            } ${
+                              canVerify
                                 ? "cursor-pointer hover:brightness-95"
                                 : "cursor-default"
-                              } disabled:opacity-60 disabled:cursor-not-allowed`}
+                            } disabled:opacity-60 disabled:cursor-not-allowed`}
                           >
                             {isVerified ? (
                               <>
-                                <CheckCircle2 size={10} /> Verified </>
+                                <CheckCircle2 size={10} /> Verified{" "}
+                              </>
                             ) : (
                               <>
                                 <XCircle size={10} className="opacity-60" />{" "}
@@ -3212,10 +3321,11 @@ export default function RepositoryFolderDetailPage() {
                             {/* User hover popover */}
                             {uploaderInfo && (
                               <div
-                                className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${isUserHovered
+                                className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
+                                  isUserHovered
                                     ? "opacity-100 visible scale-100 pointer-events-auto"
                                     : "opacity-0 invisible scale-95 pointer-events-none"
-                                  }`}
+                                }`}
                               >
                                 <UserInfoCard info={uploaderInfo} />
                               </div>
@@ -3252,10 +3362,11 @@ export default function RepositoryFolderDetailPage() {
                             </div>
                             {/* Last Modified hover popover */}
                             <div
-                              className={`absolute z-50 right-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-right ${hoveredModifiedId === file.id
+                              className={`absolute z-50 right-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-right ${
+                                hoveredModifiedId === file.id
                                   ? "opacity-100 visible scale-100 pointer-events-auto"
                                   : "opacity-0 invisible scale-95 pointer-events-none"
-                                }`}
+                              }`}
                             >
                               <LastModifiedInfoCard
                                 rawDate={getFileModifiedAt(file)}
@@ -3405,7 +3516,6 @@ export default function RepositoryFolderDetailPage() {
             </div>
           </div>
         )}
-
         {/* ── Pagination (Bottom) ─────────────────────── */}
         {!loading && filtered.length > 0 && (
           <div className="mt-6">
@@ -3530,16 +3640,30 @@ export default function RepositoryFolderDetailPage() {
       {/* ── Floating Action Group ──────────────────────────────────── */}
       {(() => {
         const role = userProfile?.role;
-        // Section Officer uses section_focal role. The app specifies:
-        // division_focal, admin, section_focal can manage access requests.
         const canSeeAccessRequests =
           role === "administrator" ||
-          (role === "division_focal" && String(userProfile?.division_id) === String(section?.division_id)) ||
-          (role === "section_focal" && String(userProfile?.section_id) === String(section?.id));
+          (role === "division_focal" &&
+            String(userProfile?.division_id) ===
+              String(section?.division_id)) ||
+          (role === "section_focal" &&
+            String(userProfile?.section_id) === String(section?.id));
+
+        // Templates are per-section — only show them when the user actually
+        // belongs to / manages *this* section.
+        const canManageThisSection =
+          role === "administrator" ||
+          (role === "division_focal" &&
+            String(userProfile?.division_id) ===
+              String(section?.division_id)) ||
+          (role === "section_focal" &&
+            String(userProfile?.section_id) === String(section?.id)) ||
+          (role === "section_personnel" &&
+            String(userProfile?.section_id) === String(section?.id));
+
         const isPersonnel = role === "section_personnel";
 
         if (isPersonnel) {
-          // Personnel see only the Templates button at base position.
+          if (!canManageThisSection) return null;
           return (
             <>
               <button
@@ -3558,26 +3682,36 @@ export default function RepositoryFolderDetailPage() {
         }
 
         // Privileged roles: show the group trigger with Templates + (optionally) Access Requests.
+                // Privileged roles: show the group trigger with Templates (only if this
+        // section is in scope) + Access Requests (only if in scope).
         const groupActions = [
-          {
-            id: "templates",
-            icon: <LayoutTemplate size={20} className="text-white" />,
-            label: "Templates",
-            color: "bg-emerald-600 hover:bg-emerald-700 shadow-[0_8px_20px_rgba(5,150,105,0.40)]",
-            onClick: () => setShowTemplatesModal(true),
-          },
+          ...(canManageThisSection
+            ? [
+                {
+                  id: "templates",
+                  icon: <LayoutTemplate size={20} className="text-white" />,
+                  label: "Templates",
+                  color:
+                    "bg-emerald-600 hover:bg-emerald-700 shadow-[0_8px_20px_rgba(5,150,105,0.40)]",
+                  onClick: () => setShowTemplatesModal(true),
+                },
+              ]
+            : []),
           ...(canSeeAccessRequests
-            ? [{
-                id: "access-requests",
-                icon: <ClipboardList size={20} className="text-white" />,
-                label: "Access Requests",
-                color: "bg-blue-600 hover:bg-blue-700 shadow-[0_8px_20px_rgba(37,99,235,0.40)]",
-                onClick: () => setIsAccessSidebarOpen(true),
-                badge: pendingAccessRequestCount,
-              }]
+            ? [
+                {
+                  id: "access-requests",
+                  icon: <ClipboardList size={20} className="text-white" />,
+                  label: "Access Requests",
+                  color:
+                    "bg-blue-600 hover:bg-blue-700 shadow-[0_8px_20px_rgba(37,99,235,0.40)]",
+                  onClick: () => setIsAccessSidebarOpen(true),
+                  badge: pendingAccessRequestCount,
+                },
+              ]
             : []),
         ];
-
+        if (groupActions.length === 0) return null;
         return (
           <>
             <FloatingActionGroup
@@ -3607,10 +3741,11 @@ export default function RepositoryFolderDetailPage() {
 
       {/* ── Success toast ──────────────────────────────────── */}
       <div
-        className={`fixed left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(6.5rem+env(safe-area-inset-bottom))] lg:bottom-8 sm:left-auto sm:right-8 sm:w-[380px] ${showDeleteToast
+        className={`fixed left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(6.5rem+env(safe-area-inset-bottom))] lg:bottom-8 sm:left-auto sm:right-8 sm:w-[380px] ${
+          showDeleteToast
             ? "translate-x-0 opacity-100 pointer-events-auto"
             : "translate-x-[120%] opacity-0 pointer-events-none"
-          }`}
+        }`}
         style={{
           width: "380px",
           minHeight: "76px",
@@ -3684,10 +3819,11 @@ export default function RepositoryFolderDetailPage() {
 
       {/* ── File Request Success Toast ───────────────────────── */}
       <div
-        className={`fixed left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(6.5rem+env(safe-area-inset-bottom))] lg:bottom-8 sm:left-auto sm:right-8 sm:w-[380px] ${showFileRequestToast
-          ? "translate-x-0 opacity-100 pointer-events-auto"
-          : "translate-x-[120%] opacity-0 pointer-events-none"
-          }`}
+        className={`fixed left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(6.5rem+env(safe-area-inset-bottom))] lg:bottom-8 sm:left-auto sm:right-8 sm:w-[380px] ${
+          showFileRequestToast
+            ? "translate-x-0 opacity-100 pointer-events-auto"
+            : "translate-x-[120%] opacity-0 pointer-events-none"
+        }`}
         style={{
           minHeight: "76px",
           borderRadius: "16px",
@@ -3707,13 +3843,33 @@ export default function RepositoryFolderDetailPage() {
             className="flex items-center justify-center shrink-0 bg-white rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.06),_0_1px_3px_rgba(0,0,0,0.03)]"
             style={{ width: "42px", height: "42px" }}
           >
-            <CheckCircle size={22} className="text-emerald-500" strokeWidth={2.5} />
+            <CheckCircle
+              size={22}
+              className="text-emerald-500"
+              strokeWidth={2.5}
+            />
           </div>
           <div className="flex flex-col justify-center flex-1 min-w-0">
-            <p style={{ fontSize: "15px", fontWeight: 700, color: "#0F172A", lineHeight: 1.2, margin: 0 }}>
+            <p
+              style={{
+                fontSize: "15px",
+                fontWeight: 700,
+                color: "#0F172A",
+                lineHeight: 1.2,
+                margin: 0,
+              }}
+            >
               Success
             </p>
-            <p style={{ fontSize: "13px", fontWeight: 500, color: "#64748B", marginTop: "3px", margin: 0 }}>
+            <p
+              style={{
+                fontSize: "13px",
+                fontWeight: 500,
+                color: "#64748B",
+                marginTop: "3px",
+                margin: 0,
+              }}
+            >
               File request submitted.
             </p>
           </div>
