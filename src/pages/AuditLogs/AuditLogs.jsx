@@ -312,7 +312,7 @@ export default function AuditLogs() {
         .limit(200);
 
       if (error) throw error;
-      
+
       return data.map((row) => ({
         id: row.id,
         action: row.action,
@@ -367,72 +367,72 @@ export default function AuditLogs() {
   // then marks the alert as resolved (Success) so it stops standing out
   // as Pending.
   // ─── Handle "Review" action on a Security Alert row ───────
-// Security Alert logs store the offending account's email in
-// `performed_by`. With auto-deactivation now handling the lockout
-// itself at login time, this button is a fallback/review action:
-// it deactivates the account only if it isn't already inactive,
-// then marks the alert as reviewed so it stops standing out as Pending.
-async function handleDeactivateFromAlert(log) {
-  const confirmed = window.confirm(
-    `Review security alert for ${log.performedBy}? If the account is still active, it will be deactivated until an administrator reactivates it.`
-  );
-  if (!confirmed) return;
+  // Security Alert logs store the offending account's email in
+  // `performed_by`. With auto-deactivation now handling the lockout
+  // itself at login time, this button is a fallback/review action:
+  // it deactivates the account only if it isn't already inactive,
+  // then marks the alert as reviewed so it stops standing out as Pending.
+  async function handleDeactivateFromAlert(log) {
+    const confirmed = window.confirm(
+      `Review security alert for ${log.performedBy}? If the account is still active, it will be deactivated until an administrator reactivates it.`
+    );
+    if (!confirmed) return;
 
-  const { data: userRow, error: lookupError } = await supabase
-    .from("users")
-    .select("id, full_name, role, is_active")
-    .eq("email", log.performedBy)
-    .maybeSingle();
+    const { data: userRow, error: lookupError } = await supabase
+      .from("users")
+      .select("id, full_name, role, is_active")
+      .eq("email", log.performedBy)
+      .maybeSingle();
 
-  if (lookupError || !userRow) {
-    alert(
-      "Could not find a matching user account for " +
+    if (lookupError || !userRow) {
+      alert(
+        "Could not find a matching user account for " +
         log.performedBy +
         (lookupError ? `: ${lookupError.message}` : "."),
-    );
-    return;
-  }
-
-  // Only deactivate if it isn't already locked (e.g. auto-lockout already handled it)
-  if (userRow.is_active) {
-    const { error: updateError } = await supabase
-      .from("users")
-      .update({ is_active: false })
-      .eq("id", userRow.id);
-
-    if (updateError) {
-      alert("Error deactivating user: " + updateError.message);
+      );
       return;
     }
 
-    await supabase.from("audit_logs").insert({
-      action: "Edit",
-      file_name: userRow.full_name,
-      details: `Deactivated user account (${log.performedBy}) in response to a security alert.`,
-      performed_by: "Administrator",
-      role: userRow.role,
-      status: "Success",
-    });
+    // Only deactivate if it isn't already locked (e.g. auto-lockout already handled it)
+    if (userRow.is_active) {
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ is_active: false })
+        .eq("id", userRow.id);
+
+      if (updateError) {
+        alert("Error deactivating user: " + updateError.message);
+        return;
+      }
+
+      await supabase.from("audit_logs").insert({
+        action: "Edit",
+        file_name: userRow.full_name,
+        details: `Deactivated user account (${log.performedBy}) in response to a security alert.`,
+        performed_by: "Administrator",
+        role: userRow.role,
+        status: "Success",
+      });
+    }
+
+    // Mark the alert itself as reviewed
+    const resolutionNote = userRow.is_active
+      ? " — Account deactivated."
+      : " — Reviewed (account already deactivated).";
+
+    await supabase
+      .from("audit_logs")
+      .update({ status: "Success", details: `${log.details}${resolutionNote}` })
+      .eq("id", log.id);
+
+    queryClient.setQueryData(["auditLogs"], (prev) =>
+      (prev || []).map((l) =>
+        l.id === log.id
+          ? { ...l, status: "Success", details: `${l.details}${resolutionNote}` }
+          : l,
+      ),
+    );
   }
-
-  // Mark the alert itself as reviewed
-  const resolutionNote = userRow.is_active
-    ? " — Account deactivated."
-    : " — Reviewed (account already deactivated).";
-
-  await supabase
-    .from("audit_logs")
-    .update({ status: "Success", details: `${log.details}${resolutionNote}` })
-    .eq("id", log.id);
-
-  queryClient.setQueryData(["auditLogs"], (prev) =>
-    (prev || []).map((l) =>
-      l.id === log.id
-        ? { ...l, status: "Success", details: `${l.details}${resolutionNote}` }
-        : l,
-    ),
-  );
-}
 
   const filteredLogs = auditLogs.filter((log) => {
     const matchesSearch =

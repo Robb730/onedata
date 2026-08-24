@@ -52,128 +52,133 @@ export function RepositorySearchBar({
   }, []);
 
   return (
-    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-      <div className="relative min-w-0 flex-1 basis-[min(100%,12rem)]">
-        <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+    <div className="flex flex-row items-center gap-2.5 sm:gap-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full pb-[300px] -mb-[300px] pt-1 -mt-1 pointer-events-none relative z-50">
+      <div className="relative shrink-0 w-[180px] sm:w-[250px] md:flex-1 md:w-auto pointer-events-auto">
+        <Search className="absolute left-2.5 sm:left-4 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5 sm:w-4 sm:h-4" />
         <input
           type="text"
           placeholder={placeholder}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full rounded-xl sm:rounded-2xl border border-slate-200/80 bg-slate-50/80 py-2.5 sm:py-3 pl-10 sm:pl-11 pr-3 sm:pr-4 text-sm text-slate-700 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-4 focus:ring-sky-100"
+          className="w-full rounded-xl sm:rounded-2xl border border-slate-200/80 bg-slate-50/80 py-1.5 sm:py-3 pl-8 sm:pl-11 pr-3 sm:pr-4 text-[12px] sm:text-sm text-slate-700 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-4 focus:ring-sky-100"
         />
       </div>
 
+      {/* View Toggle */}
       {!hideViewMode && (
-        <div className="inline-flex shrink-0 items-center gap-1 rounded-xl sm:rounded-2xl border border-slate-200/80 bg-slate-50/80 p-1 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+        <div className="inline-flex shrink-0 items-center gap-0.5 sm:gap-1 rounded-xl sm:rounded-2xl border border-slate-200/80 bg-slate-50/80 p-0.5 sm:p-1 shadow-sm sm:shadow-[0_8px_24px_rgba(15,23,42,0.04)] pointer-events-auto">
           <button
             onClick={() => onViewModeChange("grid")}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-1 sm:p-2 rounded-lg sm:rounded-xl transition-all ${
               viewMode === "grid"
-                ? "bg-blue-600 text-white shadow-md"
+                ? "bg-blue-600 text-white shadow-sm"
                 : "text-slate-400 hover:text-slate-600 hover:bg-white"
             }`}
           >
-            <Grid3x3 size={16} />
+            <Grid3x3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
           <button
             onClick={() => onViewModeChange("list")}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-1 sm:p-2 rounded-lg sm:rounded-xl transition-all ${
               viewMode === "list"
-                ? "bg-blue-600 text-white shadow-md"
+                ? "bg-blue-600 text-white shadow-sm"
                 : "text-slate-400 hover:text-slate-600 hover:bg-white"
             }`}
           >
-            <List size={16} />
+            <List className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
         </div>
       )}
 
-      {/* Sort dropdown */}
-      {onSortChange && (
-        <div ref={sortRef} className="relative shrink-0">
-          <button
-            type="button"
-            onClick={() => setIsSortOpen((v) => !v)}
-            className="flex items-center gap-2 rounded-xl sm:rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 transition-colors hover:border-slate-300 whitespace-nowrap"
-          >
-            <ArrowUpDown size={15} className="text-blue-500 shrink-0" />
-            <span className="text-sm font-semibold text-slate-700 hidden sm:inline">{currentSortLabel}</span>
-            <ChevronDown
-              size={13}
-              strokeWidth={2.5}
-              className={`text-slate-400 shrink-0 transition-transform duration-200 ${isSortOpen ? "rotate-180" : ""}`}
-            />
-          </button>
+      {/* Filter Dropdowns (Sort, Year) */}
+      {(onSortChange || showYearFilter) && (
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 pointer-events-auto">
+          {/* Sort dropdown */}
+          {onSortChange && (
+            <div ref={sortRef} className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsSortOpen((v) => !v)}
+                className="flex items-center gap-1 sm:gap-2 rounded-xl sm:rounded-2xl border border-slate-200/80 bg-slate-50/80 px-2.5 sm:px-3 py-1.5 sm:py-2.5 transition-colors hover:border-slate-300 whitespace-nowrap"
+              >
+                <ArrowUpDown className="text-blue-500 shrink-0 w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span className="text-[12px] sm:text-sm font-semibold text-slate-700">{currentSortLabel}</span>
+                <ChevronDown
+                  strokeWidth={2.5}
+                  className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400 shrink-0 transition-transform duration-200 ${isSortOpen ? "rotate-180" : ""}`}
+                />
+              </button>
 
-          {isSortOpen && (
-            <div className="absolute top-[calc(100%+6px)] right-0 w-44 bg-white border border-slate-200 rounded-xl shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50">
-              {SORT_OPTIONS.map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => { onSortChange(value); setIsSortOpen(false); }}
-                  className={`w-full flex items-center justify-between px-3.5 py-2 text-sm transition-colors ${
-                    sortBy === value ? "bg-blue-50" : "hover:bg-slate-50"
-                  }`}
-                >
-                  <span className={`font-semibold ${sortBy === value ? "text-blue-700" : "text-slate-700"}`}>{label}</span>
-                  {sortBy === value && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />}
-                </button>
-              ))}
+              {isSortOpen && (
+                <div className="absolute top-[calc(100%+6px)] right-0 sm:left-0 w-44 bg-white border border-slate-200 rounded-xl shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50">
+                  {SORT_OPTIONS.map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => { onSortChange(value); setIsSortOpen(false); }}
+                      className={`w-full flex items-center justify-between px-3.5 py-2 text-[12px] sm:text-sm transition-colors ${
+                        sortBy === value ? "bg-blue-50" : "hover:bg-slate-50"
+                      }`}
+                    >
+                      <span className={`font-semibold ${sortBy === value ? "text-blue-700" : "text-slate-700"}`}>{label}</span>
+                      {sortBy === value && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      {showYearFilter && (
-        <div ref={yearRef} className="relative w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={() => setIsYearOpen((v) => !v)}
-            className="flex w-full sm:w-auto items-center gap-2 rounded-xl sm:rounded-2xl border border-slate-200/80 bg-slate-50/80 pl-3 pr-3 py-2.5 transition-colors hover:border-slate-300 min-w-0 sm:min-w-[168px]"
-          >
-            <CalendarDays size={16} className="text-blue-500 shrink-0" />
-            <span className="text-sm font-semibold text-slate-700 whitespace-nowrap">{selectedYear || "Select year"}</span>
-            {currentYear && (
-              <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${currentStyle.badge}`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${currentStyle.dot}`} />
-                {currentStyle.label}
-              </span>
-            )}
-            <ChevronDown
-              size={13}
-              strokeWidth={2.5}
-              className={`text-slate-400 ml-auto shrink-0 transition-transform duration-200 ${isYearOpen ? "rotate-180" : ""}`}
-            />
-          </button>
+          {/* Year Filter */}
+          {showYearFilter && (
+            <div ref={yearRef} className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsYearOpen((v) => !v)}
+                className="flex items-center gap-1 sm:gap-2 rounded-xl sm:rounded-2xl border border-slate-200/80 bg-slate-50/80 px-2.5 sm:px-3 py-1.5 sm:py-2.5 transition-colors hover:border-slate-300 whitespace-nowrap min-w-0 sm:min-w-[168px]"
+              >
+                <CalendarDays className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500 shrink-0" />
+                <span className="text-[12px] sm:text-sm font-semibold text-slate-700 whitespace-nowrap">{selectedYear || "Select year"}</span>
+                {currentYear && (
+                  <span className={`inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${currentStyle.badge}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${currentStyle.dot}`} />
+                    {currentStyle.label}
+                  </span>
+                )}
+                <ChevronDown
+                  strokeWidth={2.5}
+                  className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400 ml-auto shrink-0 transition-transform duration-200 ${isYearOpen ? "rotate-180" : ""}`}
+                />
+              </button>
 
-          {isYearOpen && (
-            <div className="absolute top-[calc(100%+6px)] left-0 w-full min-w-[220px] bg-white border border-slate-200 rounded-xl shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50 max-h-64 overflow-y-auto">
-              {selectableYears.map(({ label, status }) => {
-                const isSelected = selectedYear === label;
-                const style = STATUS_STYLES[status] ?? STATUS_STYLES.archived;
-                return (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => {
-                      onYearChange && onYearChange(label);
-                      setIsYearOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-2 px-3.5 py-2 text-sm transition-colors ${
-                      isSelected ? "bg-blue-50" : "hover:bg-slate-50"
-                    }`}
-                  >
-                    <span className={`font-semibold ${isSelected ? "text-blue-700" : "text-slate-700"}`}>{label}</span>
-                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${style.badge}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-                      {style.label}
-                    </span>
-                    {isSelected && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />}
-                  </button>
-                );
-              })}
+              {isYearOpen && (
+                <div className="absolute top-[calc(100%+6px)] right-0 sm:left-0 w-[200px] sm:min-w-[220px] bg-white border border-slate-200 rounded-xl shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50 max-h-64 overflow-y-auto">
+                  {selectableYears.map(({ label, status }) => {
+                    const isSelected = selectedYear === label;
+                    const style = STATUS_STYLES[status] ?? STATUS_STYLES.archived;
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => {
+                          onYearChange && onYearChange(label);
+                          setIsYearOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-2 px-3.5 py-2 text-[12px] sm:text-sm transition-colors ${
+                          isSelected ? "bg-blue-50" : "hover:bg-slate-50"
+                        }`}
+                      >
+                        <span className={`font-semibold ${isSelected ? "text-blue-700" : "text-slate-700"}`}>{label}</span>
+                        <span className={`inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full border ${style.badge}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
+                          {style.label}
+                        </span>
+                        {isSelected && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
