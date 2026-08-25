@@ -17,6 +17,9 @@ import {
 import { supabase } from "../../lib/supabaseClient";
 import { parseAndSyncStructuredData } from "../../utils/structuredDataSync";
 import ModalPortal from "../Modals/ModalPortal";
+import mammoth from "mammoth";
+import HTMLtoDOCX from "@turbodocx/html-to-docx";
+import "../../styles/docxViewer.css";
 
 // Must stay in sync with STRUCTURED_UPLOAD_TYPES in UploadFilesPage.jsx.
 const EXCEL_BUCKET_TYPES = new Set([
@@ -365,6 +368,7 @@ export default function FileEditModal({
   uploaderName,
   onSaved,
   canEdit,
+  schoolYears = [],
 }) {
   const [loading, setLoading] = useState(true); // true only while the initial fast (SheetJS) parse is in flight
   const [error, setError] = useState(null);
@@ -436,13 +440,35 @@ export default function FileEditModal({
   const pdfUrlRef = useRef(null); // so cleanup can revoke it even after state resets
   const [pdfLoaded, setPdfLoaded] = useState(false); // true once the iframe has actually painted the PDF
 
+  const [docxHtml, setDocxHtml] = useState(""); // mammoth's rendered HTML
+  const docxEditableRef = useRef(null); // the contentEditable <div> in edit mode
+  const docxSnapshotRef = useRef(null); // html captured at "Edit File" click, for discard
+  const [docxLoadWarning, setDocxLoadWarning] = useState(null); // mammoth conversion messages
+
   function isPdfFile(f) {
     if (!f) return false;
     if (f.type === "PDF") return true; // matches your inferType() output
     return f.name?.toLowerCase().endsWith(".pdf");
   }
+  function isWordFile(f) {
+    if (!f) return false;
+    if (f.type === "Word" || f.type === "Document") return true; // matches your inferType() output
+    const ext = f.name?.toLowerCase().split(".").pop();
+    return ext === "docx" || ext === "doc";
+  }
 
   const fileIsPdf = isPdfFile(file);
+  const fileIsWord = isWordFile(file);
+
+  const isVerifiedFile = file?.status === "Verified";
+  const archivedSchoolYear = useMemo(
+    () =>
+      schoolYears.find(
+        (y) => y.label === file?.school_year && y.status === "archived",
+      ),
+    [schoolYears, file?.school_year],
+  );
+  const editLocked = isVerifiedFile || !!archivedSchoolYear;
 
   useEffect(() => {
     sheetsRef.current = sheets;
@@ -646,7 +672,13 @@ export default function FileEditModal({
       setSavePrepError(null);
       setSheets({});
       setSheetFormulaCells({});
+
+      setDocxHtml("");
+      setDocxLoadWarning(null);
+      docxSnapshotRef.current = null;
+
       setMode("view");
+
       // PDFs open straight into an immersive full-screen reader; every
       // other file type keeps the normal windowed view.
       setIsFullScreen(isPdfFile(file));
@@ -706,6 +738,35 @@ export default function FileEditModal({
           const url = URL.createObjectURL(blob);
           pdfUrlRef.current = url;
           setPdfUrl(url);
+          setLoading(false);
+          return;
+        }
+
+        // ── DOCX: convert to HTML for display/editing, skip spreadsheet parsing ──
+        if (isWordFile(file)) {
+          if (cancelled) return;
+          const arrayBuffer = await blob.arrayBuffer();
+          if (cancelled) return;
+
+          try {
+            const result = await mammoth.convertToHtml(
+  { arrayBuffer },
+  { styleMap: ["table-row:first-of-type => thead > tr:fresh"] }
+);
+            if (cancelled) return;
+            setDocxHtml(result.value);
+            setDocxLoadWarning(
+              result.messages?.length
+                ? "Some formatting couldn't be fully preserved when opening this document for editing."
+                : null,
+            );
+          } catch (mammothErr) {
+            if (!cancelled) {
+              setError(
+                mammothErr.message || "Failed to open this Word document.",
+              );
+            }
+          }
           setLoading(false);
           return;
         }
@@ -933,11 +994,26 @@ export default function FileEditModal({
   };
 
   const handleTransitionTo2ndSem = () => {
-    const operationsSheet = sheetNames.find(n => /PART\s*I\b/i.test(n) && /OPERATIONS/i.test(n) && !/SUPPORT/i.test(n) && !/GENERAL/i.test(n) && !/GERAL/i.test(n));
-    const supportOpsSheet = sheetNames.find(n => /PART\s*I\b/i.test(n) && /SUPPORT/i.test(n));
-    const generalAdminSheet = sheetNames.find(n => /PART\s*I\b/i.test(n) && (/GENERAL/i.test(n) || /GERAL/i.test(n)));
+    const operationsSheet = sheetNames.find(
+      (n) =>
+        /PART\s*I\b/i.test(n) &&
+        /OPERATIONS/i.test(n) &&
+        !/SUPPORT/i.test(n) &&
+        !/GENERAL/i.test(n) &&
+        !/GERAL/i.test(n),
+    );
+    const supportOpsSheet = sheetNames.find(
+      (n) => /PART\s*I\b/i.test(n) && /SUPPORT/i.test(n),
+    );
+    const generalAdminSheet = sheetNames.find(
+      (n) => /PART\s*I\b/i.test(n) && (/GENERAL/i.test(n) || /GERAL/i.test(n)),
+    );
 
-    const sheetsToUpdate = [operationsSheet, supportOpsSheet, generalAdminSheet].filter(Boolean);
+    const sheetsToUpdate = [
+      operationsSheet,
+      supportOpsSheet,
+      generalAdminSheet,
+    ].filter(Boolean);
     if (sheetsToUpdate.length === 0) return;
 
     const nextSheets = { ...sheets };
@@ -946,7 +1022,10 @@ export default function FileEditModal({
 
     for (const sheetName of sheetsToUpdate) {
       if (!nextSheets[sheetName] && xWorkbookRef.current) {
-        const { rows, formulaRefs } = extractSheetDataFast(xWorkbookRef.current, sheetName);
+        const { rows, formulaRefs } = extractSheetDataFast(
+          xWorkbookRef.current,
+          sheetName,
+        );
         nextSheets[sheetName] = rows;
         formulaUpdates[sheetName] = formulaRefs;
         missingFormulas = true;
@@ -954,48 +1033,53 @@ export default function FileEditModal({
     }
 
     const editsToSend = [];
-    
+
     for (const sheetName of sheetsToUpdate) {
       const rows = nextSheets[sheetName];
       if (!rows) continue;
-      
-      const updatedRows = rows.map(r => [...r]);
-      const currentFormulaSet = formulaUpdates[sheetName] ? new Set(formulaUpdates[sheetName]) : new Set();
+
+      const updatedRows = rows.map((r) => [...r]);
+      const currentFormulaSet = formulaUpdates[sheetName]
+        ? new Set(formulaUpdates[sheetName])
+        : new Set();
       let formulaSetChanged = false;
 
       for (let r = 2; r < updatedRows.length; r++) {
         const row = updatedRows[r];
-        const isEmpty = row.every(cell => (cell === null || cell === undefined || String(cell).trim() === ""));
+        const isEmpty = row.every(
+          (cell) =>
+            cell === null || cell === undefined || String(cell).trim() === "",
+        );
         if (isEmpty) continue;
-        
+
         while (updatedRows[r].length <= 4) updatedRows[r].push("");
-        
+
         const valToCopy = row[3] !== undefined ? String(row[3]) : "";
-        
+
         updatedRows[r][4] = valToCopy;
-        
+
         const key = `${sheetName}::${r}::4`;
         editedCellsRef.current.set(key, {
           sheet: sheetName,
           r,
           c: 4,
-          value: valToCopy
+          value: valToCopy,
         });
-        
+
         const cellRef = XLSX.utils.encode_cell({ r, c: 4 });
         if (currentFormulaSet.has(cellRef)) {
           currentFormulaSet.delete(cellRef);
           formulaSetChanged = true;
         }
-        
+
         editsToSend.push({
           sheet: sheetName,
           row: r,
           col: 4,
-          value: valToCopy
+          value: valToCopy,
         });
       }
-      
+
       nextSheets[sheetName] = updatedRows;
       if (formulaSetChanged || missingFormulas) {
         formulaUpdates[sheetName] = currentFormulaSet;
@@ -1005,35 +1089,40 @@ export default function FileEditModal({
     setSheets(nextSheets);
     setSheetFormulaCells(formulaUpdates);
     setIsDirty(true);
-    
+
     if (formulaEngineReady && editsToSend.length > 0) {
-      editsToSend.forEach(edit => {
-         formulaRpc("edit", edit);
+      editsToSend.forEach((edit) => {
+        formulaRpc("edit", edit);
       });
     }
   };
 
   // ── Mode transitions ──────────────────────────────────────────
   function enterEditMode() {
-    if (!canEdit) return;
-    editSnapshotRef.current = deepCloneSheets(sheets);
-    editedCellsRef.current = new Map();
-    engineChangedCellsRef.current = new Map();
+    if (!canEdit || editLocked) return;
+    if (fileIsWord) {
+      docxSnapshotRef.current = docxHtml;
+    } else {
+      editSnapshotRef.current = deepCloneSheets(sheets);
+      editedCellsRef.current = new Map();
+      engineChangedCellsRef.current = new Map();
+    }
     setIsDirty(false);
     setMode("edit");
   }
 
   function discardEditsAndRestore() {
-    if (editSnapshotRef.current) {
-      setSheets(editSnapshotRef.current);
+    if (fileIsWord) {
+      if (docxSnapshotRef.current != null) setDocxHtml(docxSnapshotRef.current);
+      docxSnapshotRef.current = null;
+      setIsDirty(false);
+      return;
     }
+    if (editSnapshotRef.current) setSheets(editSnapshotRef.current);
     editSnapshotRef.current = null;
     editedCellsRef.current = new Map();
     engineChangedCellsRef.current = new Map();
     setIsDirty(false);
-    // Rebuild the formula engine from the original bytes so discarded
-    // edits (and anything that recalculated because of them) can't leak
-    // into a later editing session.
     startFormulaWorker();
   }
 
@@ -1076,11 +1165,57 @@ export default function FileEditModal({
     }
   }
 
-  const handleSave = async () => {
+      const handleSave = async () => {
     if (!canEdit) return;
     setSaving(true);
     setSaveError(null);
     try {
+      if (fileIsWord) {
+        const rawHtml = docxEditableRef.current?.innerHTML ?? docxHtml;
+        if (!rawHtml || !rawHtml.trim()) {
+          throw new Error("The document appears to be empty — nothing to save.");
+        }
+        const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${rawHtml}</body></html>`;
+        let converted;
+        try {
+          converted = await HTMLtoDOCX(fullHtml, null, {
+            table: { row: { cantSplit: true } },
+            footer: false,
+            pageNumber: false,
+          });
+        } catch (conversionErr) {
+          console.error("HTMLtoDOCX conversion failed:", conversionErr);
+          throw new Error(
+            "Couldn't convert this document back to .docx format. " +
+              (conversionErr?.message ||
+                "It may contain formatting the converter can't handle."),
+          );
+        }
+        if (!converted || converted.size === 0) {
+          throw new Error("Conversion produced an empty file — nothing was saved.");
+        }
+        const newFile = new File([converted], file.name, {
+          type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        });
+        const bucket = getBucket(file.data_category);
+        const { error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(file.path, newFile, { upsert: true, cacheControl: "0" });
+        if (uploadError) throw uploadError;
+        await supabase
+          .from("files")
+          .update({
+            file_size: newFile.size,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", file.id);
+        setDocxHtml(rawHtml);
+        docxSnapshotRef.current = null;
+        setIsDirty(false);
+        onSaved?.();
+        onClose();
+        return;
+      }
       const changes = Array.from(editedCellsRef.current.values());
 
       // Only the cells HyperFormula reported as changed as a direct
@@ -1185,9 +1320,15 @@ export default function FileEditModal({
       setIsDirty(false);
       onSaved?.();
       onClose();
-    } catch (err) {
-      setSaveError(err.message || "Failed to save changes.");
-      console.error(err); // add this so future errors show full detail in console, not just message
+        } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === "string"
+            ? err
+            : "Failed to save changes.";
+      setSaveError(message);
+      console.error("Save failed:", err);
     } finally {
       setSaving(false);
     }
@@ -1307,347 +1448,393 @@ export default function FileEditModal({
   // ─────────────────────────────────────────────────────────────
   return (
     <ModalPortal>
-    <div
-      className={`modal-overlay fixed inset-0 flex items-center justify-center z-50 ${isFullScreen ? "p-0" : "p-4"}`}
-    >
       <div
-        className={`relative bg-white shadow-2xl flex flex-col overflow-hidden transition-all ${
-          isFullScreen
-            ? "w-screen h-dvh rounded-none"
-            : "w-full max-w-6xl h-[85dvh] max-h-[85dvh] rounded-xl"
-        }`}
+        className={`modal-overlay fixed inset-0 flex items-center justify-center z-50 ${isFullScreen ? "p-0" : "p-4"}`}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 shrink-0">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-gray-900 truncate max-w-lg">
-                {file.name}
-              </h2>
-              <span
-                className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                  mode === "edit"
-                    ? "bg-blue-50 text-blue-700 border-blue-200"
-                    : "bg-gray-50 text-gray-500 border-gray-200"
-                }`}
-              >
-                {mode === "edit" ? <Pencil size={10} /> : <Eye size={10} />}
-                {mode === "edit" ? "Editing" : "Viewing"}
-              </span>
-            </div>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {mode === "edit"
-                ? file.data_category && file.data_category !== "general"
-                  ? "Saving will re-sync the dashboard data for this file."
-                  : "General file — saving only updates the stored spreadsheet."
-                : canEdit
-                  ? 'Read-only view. Click "Edit File" to make changes.'
-                  : "Read-only view. You don't have edit access to this file."}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {mode === "view" && canEdit && (
-              <button
-                onClick={enterEditMode}
-                disabled={loading || !!error}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Pencil size={13} />
-                Edit File
-              </button>
-            )}
-            <button
-              onClick={() => setIsFullScreen((f) => !f)}
-              className="text-gray-400 hover:text-gray-600 p-1"
-              title={isFullScreen ? "Exit full screen" : "Full screen"}
-            >
-              {isFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-            </button>
-            <button
-              onClick={handleRequestClose}
-              className="text-gray-400 hover:text-gray-600"
-              disabled={saving}
-            >
-              <X size={22} />
-            </button>
-          </div>
-        </div>
-
-        {/* Sheet tabs */}
-        {sheetNames.length > 1 && (
-          <div className="flex items-center gap-1 px-6 pt-3 border-b border-gray-100 shrink-0 overflow-x-auto">
-            {sheetNames.map((name) => (
-              <button
-                key={name}
-                onClick={() => setActiveSheet(name)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
-                  activeSheet === name
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Body */}
-        <div className="flex-1 overflow-hidden p-4 bg-gray-50 flex flex-col min-h-0">
-          {loading ? (
-            <div className="flex items-center justify-center h-full text-gray-400 gap-2">
-              <Loader2 className="animate-spin" size={18} /> Loading file…
-            </div>
-          ) : error ? (
-            <div className="flex items-center justify-center h-full text-red-500 gap-2 text-sm text-center px-8">
-              <AlertTriangle size={16} className="shrink-0" /> {error}
-            </div>
-          ) : sheetLoading ? (
-            <div className="flex items-center justify-center h-full text-gray-400 gap-2">
-              <Loader2 className="animate-spin" size={18} /> Loading sheet…
-            </div>
-          ) : (
-            <>
-              {isLargeSheet && (
-                <div className="mb-2 flex items-center gap-2 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 shrink-0">
-                  <AlertTriangle size={12} />
-                  Large sheet ({totalRows.toLocaleString()} rows × {colCount}{" "}
-                  columns) — only visible rows are rendered for performance.
-                  Scroll to load more.
-                </div>
-              )}
-              <div
-                ref={scrollRef}
-                onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
-                className="flex-1 min-h-0 overflow-auto rounded-lg border border-gray-200 bg-white shadow-sm"
-              >
-                <table
-                  className="border-collapse text-xs"
-                  style={{ tableLayout: "fixed" }}
+        <div
+          className={`relative bg-white shadow-2xl flex flex-col overflow-hidden transition-all ${
+            isFullScreen
+              ? "w-screen h-dvh rounded-none"
+              : "w-full max-w-6xl h-[85dvh] max-h-[85dvh] rounded-xl"
+          }`}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 shrink-0">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-gray-900 truncate max-w-lg">
+                  {file.name}
+                </h2>
+                <span
+                  className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                    mode === "edit"
+                      ? "bg-blue-50 text-blue-700 border-blue-200"
+                      : "bg-gray-50 text-gray-500 border-gray-200"
+                  }`}
                 >
-                  <tbody>
-                    {topSpacer > 0 && (
-                      <tr style={{ height: topSpacer }} aria-hidden="true">
-                        <td
-                          colSpan={colCount || 1}
-                          style={{ padding: 0, border: "none" }}
-                        />
-                      </tr>
-                    )}
-                    {activeRows.slice(startIndex, endIndex).map((row, i) => {
-                      const rowIdx = startIndex + i;
-                      return (
-                        <tr
-                          key={rowIdx}
-                          style={{ height: ROW_HEIGHT }}
-                          className={`${
-                            rowIdx === 0
-                              ? "bg-gray-100"
-                              : rowIdx % 2 === 0
-                                ? "bg-gray-50/60"
-                                : "bg-white"
-                          } ${mode === "view" ? "hover:bg-blue-50/50" : ""}`}
-                        >
-                          {Array.from({ length: colCount }).map((_, colIdx) => {
-                            const cellRef = XLSX.utils.encode_cell({
-                              r: rowIdx,
-                              c: colIdx,
-                            });
-                            const isFormula =
-                              sheetFormulaCells[activeSheet]?.has(cellRef);
-                            return (
-                              <td
-                                key={colIdx}
-                                className="border border-gray-200 p-0"
-                              >
-                                {mode === "edit" ? (
-                                  <input
-                                    value={row[colIdx] ?? ""}
-                                    onChange={(e) =>
-                                      handleCellChange(
-                                        rowIdx,
-                                        colIdx,
-                                        e.target.value,
-                                      )
-                                    }
-                                    title={
-                                      isFormula
-                                        ? "This cell is computed by a formula. Editing it will replace the formula with the value you type."
-                                        : undefined
-                                    }
-                                    style={{ height: ROW_HEIGHT - 2 }}
-                                    className={`w-28 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:bg-blue-50 ${
-                                      isFormula
-                                        ? "bg-amber-50/70 italic text-amber-800"
-                                        : "bg-transparent"
-                                    } ${
-                                      rowIdx === 0
-                                        ? "font-semibold text-gray-700"
-                                        : isFormula
-                                          ? ""
-                                          : "text-gray-800"
-                                    }`}
-                                  />
-                                ) : (
-                                  <div
-                                    style={{ height: ROW_HEIGHT - 2 }}
-                                    title={
-                                      isFormula
-                                        ? `Formula result: ${row[colIdx] ?? ""}`
-                                        : (row[colIdx] ?? "")
-                                    }
-                                    className={`w-28 px-2 py-1.5 text-xs truncate flex items-center gap-1 cursor-default select-text ${
-                                      isFormula ? "bg-amber-50/40" : ""
-                                    } ${
-                                      rowIdx === 0
-                                        ? "font-semibold text-gray-700"
-                                        : isFormula
-                                          ? "italic text-amber-800"
-                                          : "text-gray-700"
-                                    }`}
-                                  >
-                                    {isFormula && (
-                                      <span className="text-[9px] font-bold text-amber-500 shrink-0">
-                                        ƒx
-                                      </span>
-                                    )}
-                                    {row[colIdx] ?? ""}
-                                  </div>
-                                )}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                    {bottomSpacer > 0 && (
-                      <tr style={{ height: bottomSpacer }} aria-hidden="true">
-                        <td
-                          colSpan={colCount || 1}
-                          style={{ padding: 0, border: "none" }}
-                        />
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 shrink-0">
-          {saveError ? (
-            <span className="text-xs text-red-500 mr-auto flex items-center gap-1">
-              <AlertTriangle size={12} /> {saveError}
-            </span>
-          ) : mode === "edit" && !!sheetFormulaCells[activeSheet]?.size ? (
-            <span className="text-xs text-amber-600 mr-auto flex items-center gap-1.5">
-              <span className="text-[9px] font-bold text-amber-500">ƒx</span>
-              Amber cells are computed by formulas — editing one replaces it
-              with a fixed value.{" "}
-              {formulaEngineReady ? (
-                "Related cells update live as you type."
-              ) : (
-                <span className="inline-flex items-center gap-1 text-gray-500">
-                  <Loader2 className="animate-spin" size={11} />
-                  Formulas are still loading for this large sheet — totals will
-                  update live once ready.
+                  {mode === "edit" ? <Pencil size={10} /> : <Eye size={10} />}
+                  {mode === "edit" ? "Editing" : "Viewing"}
                 </span>
-              )}
-            </span>
-          ) : mode === "edit" && !savePrepared && !loading && !error ? (
-            <span className="text-xs text-gray-400 mr-auto flex items-center gap-1.5">
-              <Loader2 className="animate-spin" size={12} />
-              {savePrepError
-                ? "Simplified formatting will be used for saving this file."
-                : "Preparing full-fidelity save… you can save at any time."}
-            </span>
-          ) : null}
-
-          {mode === "view" ? (
-            <button
-              onClick={handleRequestClose}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-semibold"
-            >
-              Close
-            </button>
-          ) : (
-            <>
-              {file?.data_category === "cespes" && (
+              </div>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {mode === "edit"
+                  ? file.data_category && file.data_category !== "general"
+                    ? "Saving will re-sync the dashboard data for this file."
+                    : "General file — saving only updates the stored spreadsheet."
+                  : editLocked
+                    ? isVerifiedFile
+                      ? "Read-only view. This file is verified and can't be edited — unverify it first if changes are needed."
+                      : "Read-only view. This file belongs to an archived school year and can't be edited."
+                    : canEdit
+                      ? 'Read-only view. Click "Edit File" to make changes.'
+                      : "Read-only view. You don't have edit access to this file."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {mode === "view" && canEdit && (
                 <button
-                  onClick={handleTransitionTo2ndSem}
-                  disabled={saving}
-                  className="mr-auto flex items-center gap-1.5 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 text-sm font-semibold transition-colors disabled:opacity-50"
-                  title="Copy 1st Sem Accomplishment to 2nd Sem Target"
+                  onClick={enterEditMode}
+                  disabled={loading || !!error || editLocked}
+                  title={
+                    editLocked
+                      ? isVerifiedFile
+                        ? "Verified files can't be edited. Unverify the file first if changes are needed."
+                        : "Files from an archived school year can't be edited."
+                      : undefined
+                  }
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <ArrowRight size={15} />
-                  Transition to 2nd Sem
+                  <Pencil size={13} />
+                  Edit File
                 </button>
               )}
               <button
-                onClick={handleCancelEdit}
-                disabled={saving}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-semibold disabled:opacity-50"
+                onClick={() => setIsFullScreen((f) => !f)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+                title={isFullScreen ? "Exit full screen" : "Full screen"}
               >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || loading}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-semibold disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 className="animate-spin" size={15} />
+                {isFullScreen ? (
+                  <Minimize2 size={18} />
                 ) : (
-                  <Save size={15} />
+                  <Maximize2 size={18} />
                 )}
-                {saving ? "Saving…" : "Save Changes"}
               </button>
-            </>
-          )}
-        </div>
-
-        {/* Discard-changes confirmation overlay */}
-        {discardIntent && (
-          <div className="modal-overlay absolute inset-0 flex items-center justify-center z-10">
-            <div className="bg-white rounded-xl shadow-2xl p-5 w-80">
-              <div className="flex items-start gap-3 mb-4">
-                <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="text-amber-500" size={18} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900">
-                    Discard unsaved changes?
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-1">
-                    You have edits that haven't been saved.{" "}
-                    {discardIntent === "close"
-                      ? "Closing"
-                      : "Leaving edit mode"}{" "}
-                    now will lose them.
-                  </p>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setDiscardIntent(null)}
-                  className="px-3 py-1.5 text-xs font-semibold border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  Keep Editing
-                </button>
-                <button
-                  onClick={confirmDiscard}
-                  className="px-3 py-1.5 text-xs font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700"
-                >
-                  Discard Changes
-                </button>
-              </div>
+              <button
+                onClick={handleRequestClose}
+                className="text-gray-400 hover:text-gray-600"
+                disabled={saving}
+              >
+                <X size={22} />
+              </button>
             </div>
           </div>
-        )}
+
+          {/* Sheet tabs */}
+          {sheetNames.length > 1 && !fileIsWord && (
+            <div className="flex items-center gap-1 px-6 pt-3 border-b border-gray-100 shrink-0 overflow-x-auto">
+              {sheetNames.map((name) => (
+                <button
+                  key={name}
+                  onClick={() => setActiveSheet(name)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
+                    activeSheet === name
+                      ? "border-blue-600 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Body */}
+          <div className="flex-1 overflow-hidden p-4 bg-gray-50 flex flex-col min-h-0">
+            {loading ? (
+              <div className="flex items-center justify-center h-full text-gray-400 gap-2">
+                <Loader2 className="animate-spin" size={18} /> Loading file…
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center h-full text-red-500 gap-2 text-sm text-center px-8">
+                <AlertTriangle size={16} className="shrink-0" /> {error}
+              </div>
+            ) : sheetLoading ? (
+              <div className="flex items-center justify-center h-full text-gray-400 gap-2">
+                <Loader2 className="animate-spin" size={18} /> Loading sheet…
+              </div>
+            ) : fileIsWord ? (
+              <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-gray-200 bg-white shadow-sm p-6 sm:p-10">
+                {mode === "edit" ? (
+                  <div
+                    key="docx-editor" // stable across re-renders while editing, remounts on mode switch
+                    ref={docxEditableRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={() => setIsDirty(true)}
+                    className="docx-viewer focus:outline-none min-h-[60vh]"
+                    dangerouslySetInnerHTML={{ __html: docxHtml }}
+                  />
+                ) : (
+                  <div
+                    className="docx-viewer"
+                    dangerouslySetInnerHTML={{ __html: docxHtml }}
+                  />
+                )}
+              </div>
+            ) : (
+              <>
+                {isLargeSheet && (
+                  <div className="mb-2 flex items-center gap-2 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 shrink-0">
+                    <AlertTriangle size={12} />
+                    Large sheet ({totalRows.toLocaleString()} rows × {colCount}{" "}
+                    columns) — only visible rows are rendered for performance.
+                    Scroll to load more.
+                  </div>
+                )}
+                <div
+                  ref={scrollRef}
+                  onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+                  className="flex-1 min-h-0 overflow-auto rounded-lg border border-gray-200 bg-white shadow-sm"
+                >
+                  <table
+                    className="border-collapse text-xs"
+                    style={{ tableLayout: "fixed" }}
+                  >
+                    <tbody>
+                      {topSpacer > 0 && (
+                        <tr style={{ height: topSpacer }} aria-hidden="true">
+                          <td
+                            colSpan={colCount || 1}
+                            style={{ padding: 0, border: "none" }}
+                          />
+                        </tr>
+                      )}
+                      {activeRows.slice(startIndex, endIndex).map((row, i) => {
+                        const rowIdx = startIndex + i;
+                        return (
+                          <tr
+                            key={rowIdx}
+                            style={{ height: ROW_HEIGHT }}
+                            className={`${
+                              rowIdx === 0
+                                ? "bg-gray-100"
+                                : rowIdx % 2 === 0
+                                  ? "bg-gray-50/60"
+                                  : "bg-white"
+                            } ${mode === "view" ? "hover:bg-blue-50/50" : ""}`}
+                          >
+                            {Array.from({ length: colCount }).map(
+                              (_, colIdx) => {
+                                const cellRef = XLSX.utils.encode_cell({
+                                  r: rowIdx,
+                                  c: colIdx,
+                                });
+                                const isFormula =
+                                  sheetFormulaCells[activeSheet]?.has(cellRef);
+                                return (
+                                  <td
+                                    key={colIdx}
+                                    className="border border-gray-200 p-0"
+                                  >
+                                    {mode === "edit" ? (
+                                      <input
+                                        value={row[colIdx] ?? ""}
+                                        onChange={(e) =>
+                                          handleCellChange(
+                                            rowIdx,
+                                            colIdx,
+                                            e.target.value,
+                                          )
+                                        }
+                                        title={
+                                          isFormula
+                                            ? "This cell is computed by a formula. Editing it will replace the formula with the value you type."
+                                            : undefined
+                                        }
+                                        style={{ height: ROW_HEIGHT - 2 }}
+                                        className={`w-28 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 focus:bg-blue-50 ${
+                                          isFormula
+                                            ? "bg-amber-50/70 italic text-amber-800"
+                                            : "bg-transparent"
+                                        } ${
+                                          rowIdx === 0
+                                            ? "font-semibold text-gray-700"
+                                            : isFormula
+                                              ? ""
+                                              : "text-gray-800"
+                                        }`}
+                                      />
+                                    ) : (
+                                      <div
+                                        style={{ height: ROW_HEIGHT - 2 }}
+                                        title={
+                                          isFormula
+                                            ? `Formula result: ${row[colIdx] ?? ""}`
+                                            : (row[colIdx] ?? "")
+                                        }
+                                        className={`w-28 px-2 py-1.5 text-xs truncate flex items-center gap-1 cursor-default select-text ${
+                                          isFormula ? "bg-amber-50/40" : ""
+                                        } ${
+                                          rowIdx === 0
+                                            ? "font-semibold text-gray-700"
+                                            : isFormula
+                                              ? "italic text-amber-800"
+                                              : "text-gray-700"
+                                        }`}
+                                      >
+                                        {isFormula && (
+                                          <span className="text-[9px] font-bold text-amber-500 shrink-0">
+                                            ƒx
+                                          </span>
+                                        )}
+                                        {row[colIdx] ?? ""}
+                                      </div>
+                                    )}
+                                  </td>
+                                );
+                              },
+                            )}
+                          </tr>
+                        );
+                      })}
+                      {bottomSpacer > 0 && (
+                        <tr style={{ height: bottomSpacer }} aria-hidden="true">
+                          <td
+                            colSpan={colCount || 1}
+                            style={{ padding: 0, border: "none" }}
+                          />
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 shrink-0">
+            {saveError ? (
+              <span className="text-xs text-red-500 mr-auto flex items-center gap-1">
+                <AlertTriangle size={12} /> {saveError}
+              </span>
+            ) : !fileIsWord &&
+              mode === "edit" &&
+              !!sheetFormulaCells[activeSheet]?.size ? (
+              <span className="text-xs text-amber-600 mr-auto flex items-center gap-1.5">
+                <span className="text-[9px] font-bold text-amber-500">ƒx</span>
+                Amber cells are computed by formulas — editing one replaces it
+                with a fixed value.{" "}
+                {formulaEngineReady ? (
+                  "Related cells update live as you type."
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-gray-500">
+                    <Loader2 className="animate-spin" size={11} />
+                    Formulas are still loading for this large sheet — totals
+                    will update live once ready.
+                  </span>
+                )}
+              </span>
+            ) : !fileIsWord &&
+              mode === "edit" &&
+              !savePrepared &&
+              !loading &&
+              !error ? (
+              <span className="text-xs text-gray-400 mr-auto flex items-center gap-1.5">
+                <Loader2 className="animate-spin" size={12} />
+                {savePrepError
+                  ? "Simplified formatting will be used for saving this file."
+                  : "Preparing full-fidelity save… you can save at any time."}
+              </span>
+            ) : fileIsWord && docxLoadWarning ? (
+              <span className="text-xs text-amber-600 mr-auto flex items-center gap-1.5">
+                <AlertTriangle size={12} /> {docxLoadWarning}
+              </span>
+            ) : null}
+
+            {mode === "view" ? (
+              <button
+                onClick={handleRequestClose}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-semibold"
+              >
+                Close
+              </button>
+            ) : (
+              <>
+                {file?.data_category === "cespes" && (
+                  <button
+                    onClick={handleTransitionTo2ndSem}
+                    disabled={saving}
+                    className="mr-auto flex items-center gap-1.5 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 text-sm font-semibold transition-colors disabled:opacity-50"
+                    title="Copy 1st Sem Accomplishment to 2nd Sem Target"
+                  >
+                    <ArrowRight size={15} />
+                    Transition to 2nd Sem
+                  </button>
+                )}
+                <button
+                  onClick={handleCancelEdit}
+                  disabled={saving}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-semibold disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving || loading}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-semibold disabled:opacity-50"
+                >
+                  {saving ? (
+                    <Loader2 className="animate-spin" size={15} />
+                  ) : (
+                    <Save size={15} />
+                  )}
+                  {saving ? "Saving…" : "Save Changes"}
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Discard-changes confirmation overlay */}
+          {discardIntent && (
+            <div className="modal-overlay absolute inset-0 flex items-center justify-center z-10">
+              <div className="bg-white rounded-xl shadow-2xl p-5 w-80">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="text-amber-500" size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900">
+                      Discard unsaved changes?
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1">
+                      You have edits that haven't been saved.{" "}
+                      {discardIntent === "close"
+                        ? "Closing"
+                        : "Leaving edit mode"}{" "}
+                      now will lose them.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setDiscardIntent(null)}
+                    className="px-3 py-1.5 text-xs font-semibold border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Keep Editing
+                  </button>
+                  <button
+                    onClick={confirmDiscard}
+                    className="px-3 py-1.5 text-xs font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  >
+                    Discard Changes
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
     </ModalPortal>
   );
 }
