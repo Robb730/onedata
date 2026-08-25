@@ -3546,6 +3546,7 @@ export default function RepositoryFolderDetailPage() {
         file={editingFile}
         uploaderName={editingFile?.uploader}
         canEdit={canEdit}
+        schoolYears={schoolYears}
         onSaved={() => {
           setEditingFile(null);
           if (decodedName) fetchData();

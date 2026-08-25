@@ -1,0 +1,228 @@
+.docx-viewer {
+  font-family: "Calibri", "Aptos", "Segoe UI", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #1f1f1f;
+  max-width: 850px; /* mimics an 8.5in Word page */
+  margin: 0 auto;
+  word-wrap: break-word;
+}
+
+/* ── Headings ─────────────────────────────────────────────── */
+/* Mammoth maps Word's "Heading 1".."Heading 6" paragraph styles
+   straight to h1..h6, so all six need real rules, not just h1-h3. */
+
+.docx-viewer h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 20px;
+  line-height: 1.25;
+}
+
+.docx-viewer h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 28px 0 10px;
+  line-height: 1.3;
+}
+
+.docx-viewer h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 24px 0 8px;
+  line-height: 1.3;
+}
+
+.docx-viewer h4 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 20px 0 8px;
+}
+
+.docx-viewer h5 {
+  font-size: 14px;
+  font-weight: 700;
+  font-style: italic;
+  margin: 18px 0 6px;
+}
+
+.docx-viewer h6 {
+  font-size: 13px;
+  font-weight: 700;
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin: 16px 0 6px;
+}
+
+/* First heading/paragraph in the doc shouldn't have a big gap above it */
+.docx-viewer > :first-child {
+  margin-top: 0;
+}
+
+/* ── Paragraphs & inline formatting ──────────────────────────── */
+
+.docx-viewer p {
+  margin: 0 0 10px;
+}
+
+.docx-viewer strong {
+  font-weight: 700;
+}
+
+.docx-viewer em {
+  font-style: italic;
+}
+
+.docx-viewer u {
+  text-decoration: underline;
+}
+
+.docx-viewer s,
+.docx-viewer strike,
+.docx-viewer del {
+  text-decoration: line-through;
+}
+
+.docx-viewer sup {
+  vertical-align: super;
+  font-size: 0.7em;
+}
+
+.docx-viewer sub {
+  vertical-align: sub;
+  font-size: 0.7em;
+}
+
+/* ── Links ────────────────────────────────────────────────── */
+
+.docx-viewer a {
+  color: #1a5fb4;
+  text-decoration: underline;
+  text-underline-offset: 1px;
+}
+
+.docx-viewer a:hover {
+  color: #0d3d7a;
+}
+
+/* ── Lists ────────────────────────────────────────────────── */
+/* Word documents commonly nest 2-3 levels deep; browsers only give
+   distinct bullet/number styles by default for the outer level, so
+   nested levels get explicit list-style-type to match Word's look. */
+
+.docx-viewer ul,
+.docx-viewer ol {
+  margin: 0 0 12px;
+  padding-left: 28px;
+}
+
+.docx-viewer li {
+  margin: 0 0 4px;
+}
+
+.docx-viewer li > ul,
+.docx-viewer li > ol {
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.docx-viewer ul {
+  list-style-type: disc;
+}
+
+.docx-viewer ul ul {
+  list-style-type: circle;
+}
+
+.docx-viewer ul ul ul {
+  list-style-type: square;
+}
+
+.docx-viewer ol {
+  list-style-type: decimal;
+}
+
+.docx-viewer ol ol {
+  list-style-type: lower-alpha;
+}
+
+.docx-viewer ol ol ol {
+  list-style-type: lower-roman;
+}
+
+/* ── Blockquotes ──────────────────────────────────────────── */
+/* Mammoth maps Word's "Quote"/"Intense Quote" styles to <blockquote>. */
+
+.docx-viewer blockquote {
+  margin: 0 0 12px;
+  padding: 4px 16px;
+  border-left: 3px solid #d0d0d0;
+  color: #4a4a4a;
+  font-style: italic;
+}
+
+/* ── Images ───────────────────────────────────────────────── */
+/* Mammoth embeds images as base64 <img> tags with no wrapper, so
+   they need explicit sizing or a large embedded image blows out
+   the page width. */
+
+.docx-viewer img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 12px auto;
+}
+
+/* ── Horizontal rule ──────────────────────────────────────── */
+
+.docx-viewer hr {
+  border: none;
+  border-top: 1px solid #c9c9c9;
+  margin: 24px 0;
+}
+
+/* ── Tables ───────────────────────────────────────────────── */
+
+.docx-viewer table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0 0 20px;
+  table-layout: auto;
+}
+
+.docx-viewer table td,
+.docx-viewer table th {
+  border: 1px solid #808080;
+  padding: 6px 10px;
+  vertical-align: top;
+  text-align: left;
+}
+
+/* The component's styleMap ("table-row:first-of-type => thead > tr:fresh")
+   wraps each table's first row in a real <thead>, so style that directly
+   rather than relying only on :first-child — this also covers <th> cells
+   if a future styleMap change starts emitting them. */
+.docx-viewer table thead td,
+.docx-viewer table thead th,
+.docx-viewer table tr:first-child td {
+  font-weight: 700;
+  background: #f2f2f2;
+}
+
+.docx-viewer table + h2,
+.docx-viewer table + h3 {
+  margin-top: 28px;
+}
+
+/* Nested tables (common in Word forms) shouldn't inherit the outer
+   table's bottom margin, or spacing compounds oddly */
+.docx-viewer table table {
+  margin-bottom: 0;
+}
+
+/* ── Text selection ───────────────────────────────────────── */
+
+.docx-viewer ::selection {
+  background: #cfe3ff;
+}
