@@ -34,6 +34,9 @@ function getFileExt(url = "") {
 const FILTERS = [
   { key: "all", label: "All" },
   { key: "mine", label: "Mine" },
+  { key: "pending", label: "Pending" },
+  { key: "overdue", label: "Overdue" },
+  { key: "completed", label: "Completed" },
 ];
 
 export default function FileRequestsPanel({ isOpen, onClose, requests = [], isLoading = false }) {
@@ -65,8 +68,20 @@ export default function FileRequestsPanel({ isOpen, onClose, requests = [], isLo
 
   if (!shouldRender) return null;
 
-  const filtered = filter === "mine" ? requests.filter((r) => r.isOwnRequest) : requests;
+  const filtered =
+    filter === "mine"
+      ? requests.filter((r) => r.isOwnRequest)
+      : filter === "pending"
+        ? requests.filter((r) => r.status === "Pending")
+        : filter === "overdue"
+          ? requests.filter((r) => r.status === "Overdue")
+          : filter === "completed"
+            ? requests.filter((r) => r.status === "Completed")
+            : requests;
   const mineCount = requests.filter((r) => r.isOwnRequest).length;
+  const pendingCount = requests.filter((r) => r.status === "Pending").length;
+  const overdueCount = requests.filter((r) => r.status === "Overdue").length;
+  const completedCount = requests.filter((r) => r.status === "Completed").length;
 
   return (
     <ModalPortal>
@@ -115,17 +130,30 @@ export default function FileRequestsPanel({ isOpen, onClose, requests = [], isLo
             </div>
 
             {/* Filter pills */}
-            <div className="mt-4 inline-flex items-center gap-1 p-1 rounded-full bg-slate-100/80 border border-slate-200/60">
-              {FILTERS.map((f) => {
+            <div className="mt-4 flex items-center gap-1 p-1 rounded-full bg-slate-100/80 border border-slate-200/60 overflow-x-auto">
+              {FILTERS.map((f, idx) => {
                 const active = filter === f.key;
-                const count = f.key === "mine" ? mineCount : requests.length;
+                const count =
+                  f.key === "mine"
+                    ? mineCount
+                    : f.key === "pending"
+                      ? pendingCount
+                      : f.key === "overdue"
+                        ? overdueCount
+                        : f.key === "completed"
+                          ? completedCount
+                          : requests.length;
                 return (
                   <button
                     key={f.key}
                     onClick={() => setFilter(f.key)}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11.5px] font-bold transition-all ${active
-                        ? "bg-white text-blue-600 shadow-sm"
-                        : "text-slate-500 hover:text-slate-700"
+                    style={{
+                      scrollSnapAlign: "start",
+                      marginRight: idx === FILTERS.length - 1 ? "8px" : undefined,
+                    }}
+                    className={`inline-flex items-center gap-1.5 shrink-0 px-3.5 py-1.5 rounded-full text-[11.5px] font-bold whitespace-nowrap transition-all ${active
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
                       }`}
                   >
                     {f.label}
@@ -153,14 +181,28 @@ export default function FileRequestsPanel({ isOpen, onClose, requests = [], isLo
                 <div className="w-12 h-12 rounded-full bg-white border border-slate-100 flex items-center justify-center mb-3 shadow-sm">
                   <FileText className="text-slate-300" size={20} strokeWidth={1.5} />
                 </div>
-                <p className="text-[0.85rem] font-semibold text-slate-500">
-                  {filter === "mine" ? "You haven't requested any files" : "No file requests yet"}
-                </p>
-                <p className="text-[0.75rem] text-slate-400 mt-0.5 max-w-[240px]">
-                  {filter === "mine"
-                    ? "Files you request will show up here."
-                    : "Requests made for this section will show up here."}
-                </p>
+                  <p className="text-[0.85rem] font-semibold text-slate-500">
+                    {filter === "mine"
+                      ? "You haven't requested any files"
+                      : filter === "pending"
+                        ? "No pending requests"
+                        : filter === "overdue"
+                          ? "No overdue requests"
+                          : filter === "completed"
+                            ? "No completed requests"
+                            : "No file requests yet"}
+                  </p>
+                  <p className="text-[0.75rem] text-slate-400 mt-0.5 max-w-[240px]">
+                    {filter === "mine"
+                      ? "Files you request will show up here."
+                      : filter === "pending"
+                        ? "Requests waiting on a response will show up here."
+                        : filter === "overdue"
+                          ? "Requests past their due date will show up here."
+                          : filter === "completed"
+                            ? "Fulfilled requests will show up here."
+                            : "Requests made for this section will show up here."}
+                  </p>
               </div>
             ) : (
               filtered.map((req, i) => {
