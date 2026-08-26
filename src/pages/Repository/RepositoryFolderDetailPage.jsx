@@ -1223,6 +1223,9 @@ export default function RepositoryFolderDetailPage() {
   const [showFileRequestModal, setShowFileRequestModal] = useState(false);
   const [isSubmittingFileRequest, setIsSubmittingFileRequest] = useState(false);
   const [myFileRequests, setMyFileRequests] = useState([]);
+  const activeFileRequestsCount = myFileRequests.filter(
+    (r) => r.status === "Pending" || r.status === "Overdue",
+  ).length;
 
   const [loadingFileRequests, setLoadingFileRequests] = useState(false); // ← add this
   const [showFileRequestsPanel, setShowFileRequestsPanel] = useState(false);
@@ -2848,9 +2851,9 @@ export default function RepositoryFolderDetailPage() {
                   <Inbox size={15} />
                   <span className="hidden sm:inline">Files Requested</span>
                   <span className="sm:hidden">Requested</span>
-                  {myFileRequests.length > 0 && (
+                  {activeFileRequestsCount > 0 && (
                     <span className="inline-flex items-center justify-center min-w-4.5 h-4.5 px-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
-                      {myFileRequests.length}
+                      {activeFileRequestsCount}
                     </span>
                   )}
                 </button>

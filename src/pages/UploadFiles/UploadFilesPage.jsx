@@ -319,15 +319,36 @@ export default function UploadFilesPage() {
   };
 
   const notifyFileRequestCompleted = async (request, fileId, fileName) => {
+    const { data: requestRow, error: requestError } = await supabase
+      .from("file_requests")
+      .select("requested_by, section_id, division_id")
+      .eq("id", request.id)
+      .single();
+
+    if (requestError) {
+      console.error(
+        "Failed to load requester for completed file request:",
+        requestError,
+      );
+      return;
+    }
+
+    const recipientId = requestRow?.requested_by ?? request.requestedById;
+    if (!recipientId) {
+      console.error("Completed file request has no requester:", request.id);
+      return;
+    }
+
     await pushNotification({
-      recipientIds: [request.requestedById],
+      recipientIds: [recipientId],
       type: "file_request_completed",
       title: "File request completed",
       content: `Your requested file, ${fileName}, has been uploaded by ${userProfile?.full_name ?? "a section user"}.`,
       meta: {
         related_file_id: fileId,
-        section_id: selectedFolder?.id ?? null,
-        division_id: selectedFolder?.divisionId ?? null,
+        section_id: requestRow.section_id ?? selectedFolder?.id ?? null,
+        division_id:
+          requestRow.division_id ?? selectedFolder?.divisionId ?? null,
         uploaded_by: userProfile?.id ?? null,
       },
     });
@@ -1027,6 +1048,16 @@ export default function UploadFilesPage() {
         if (error) {
           console.error("Failed to complete linked request:", error);
         } else {
+          const linkedRequest = fileRequests.find(
+            (request) => request.id === linkedRequestId,
+          );
+          if (linkedRequest) {
+            await notifyFileRequestCompleted(
+              linkedRequest,
+              uploadedFileId,
+              fileName,
+            );
+          }
           await fetchFileRequests();
         }
       }
@@ -1276,8 +1307,8 @@ export default function UploadFilesPage() {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={`border-2 border-dashed rounded-xl px-4 py-8 sm:p-10 text-center transition-all ${isDragging
-            ? "border-blue-400 bg-blue-50/80"
-            : "border-slate-200 bg-slate-50/40 hover:border-slate-300 hover:bg-slate-50/70"
+          ? "border-blue-400 bg-blue-50/80"
+          : "border-slate-200 bg-slate-50/40 hover:border-slate-300 hover:bg-slate-50/70"
           }`}
       >
         <div className="flex flex-col items-center justify-center">
@@ -1349,8 +1380,8 @@ export default function UploadFilesPage() {
                   type="button"
                   onClick={() => setFileRequestFilter(f)}
                   className={`flex flex-col items-center justify-center gap-0.5 min-w-[4.5rem] flex-1 py-2 px-2 rounded-xl text-[10.5px] font-bold transition-colors shrink-0 ${isActive
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100"
                     }`}
                 >
                   <span className="text-[13px] leading-none">{counts[f]}</span>
@@ -1739,8 +1770,8 @@ export default function UploadFilesPage() {
         {/* Toast Notification */}
         <div
           className={`fixed left-4 right-4 sm:left-auto sm:right-6 sm:w-[380px] z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-8 ${uploadToastStatus
-              ? "translate-y-0 sm:translate-x-0 opacity-100 pointer-events-auto"
-              : "translate-y-4 sm:translate-y-0 sm:translate-x-[120%] opacity-0 pointer-events-none"
+            ? "translate-y-0 sm:translate-x-0 opacity-100 pointer-events-auto"
+            : "translate-y-4 sm:translate-y-0 sm:translate-x-[120%] opacity-0 pointer-events-none"
             }`}
           style={{
             maxWidth: "380px",
@@ -1760,10 +1791,10 @@ export default function UploadFilesPage() {
         >
           <div
             className={`absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r to-transparent ${uploadToastStatus === "success"
-                ? "from-emerald-100/60"
-                : uploadToastStatus === "error"
-                  ? "from-red-100/60"
-                  : "from-blue-100/60"
+              ? "from-emerald-100/60"
+              : uploadToastStatus === "error"
+                ? "from-red-100/60"
+                : "from-blue-100/60"
               }`}
           />
 
@@ -1849,8 +1880,8 @@ export default function UploadFilesPage() {
 
           <div
             className={`w-full h-1 bg-slate-100 transition-all duration-300 ${uploadToastStatus === "uploading"
-                ? "opacity-100"
-                : "opacity-0 h-0"
+              ? "opacity-100"
+              : "opacity-0 h-0"
               }`}
           >
             <div
