@@ -934,28 +934,28 @@ export default function TemplatesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
-      {/* ── Header ── */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 shadow-sm">
-            <LayoutTemplate size={20} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Templates</h1>
-            <p className="text-sm text-slate-500 mt-0.5">
+    <div className="min-h-full bg-slate-50/40">
+      <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 py-5 sm:py-8">
+        {/* ── Page header ─────────────────────────────────── */}
+        <div className="flex flex-col gap-4 mb-6 sm:mb-7 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
+              Templates
+            </h1>
+            <p className="hidden lg:block text-[0.78rem] text-slate-400 font-medium mt-1">
               {isAdmin
                 ? "Manage and assign Excel templates to sections"
                 : "Manage Excel templates for sections in your division"}
             </p>
           </div>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {isDivisionFocal && divisions[0]?.name && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-50 text-violet-700 text-[0.78rem] font-bold border border-violet-100 shadow-sm">
+                <Building2 size={12} /> {divisions[0].name}
+              </span>
+            )}
+          </div>
         </div>
-        {isDivisionFocal && divisions[0]?.name && (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-50 text-violet-700 text-xs font-bold border border-violet-100">
-            <Building2 size={12} /> {divisions[0].name}
-          </span>
-        )}
-      </div>
 
       {/* ── Layout: Upload card (left) + Browse area (right) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6 items-start">
@@ -1133,6 +1133,7 @@ export default function TemplatesPage() {
           <CheckCircle size={16} className="text-emerald-500 shrink-0" />
         )}
         <p className="text-sm font-semibold">{toast?.msg}</p>
+      </div>
       </div>
     </div>
   );

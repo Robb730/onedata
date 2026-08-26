@@ -1197,7 +1197,7 @@ export default function Dashboard() {
         {/* ── Page header ─────────────────────────────────── */}
         <div className="flex flex-col gap-4 mb-6 sm:mb-7 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <h1 className="text-[1.4rem] sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
+            <h1 className="text-xl sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
               Dashboard
             </h1>
             <p className="hidden lg:block text-[0.78rem] text-slate-400 font-medium mt-1">
