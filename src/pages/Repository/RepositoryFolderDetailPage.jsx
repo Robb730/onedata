@@ -155,15 +155,12 @@ function VerifyStatusPill({
             : "Click to verify"
           : undefined
       }
-      className={`inline-flex items-center gap-1 rounded-full font-bold border transition-colors ${
-        compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]"
-      } ${
-        isVerified
+      className={`inline-flex items-center gap-1 rounded-full font-bold border transition-colors ${compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]"
+        } ${isVerified
           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
           : "bg-slate-100 text-slate-500 border-slate-200"
-      } ${
-        canVerify ? "cursor-pointer hover:brightness-95" : "cursor-default"
-      } disabled:opacity-60 disabled:cursor-not-allowed`}
+        } ${canVerify ? "cursor-pointer hover:brightness-95" : "cursor-default"
+        } disabled:opacity-60 disabled:cursor-not-allowed`}
     >
       {isVerified ? (
         <>
@@ -196,11 +193,10 @@ function MobileFileActionBtn({
       }}
       disabled={disabled}
       title={title}
-      className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-colors disabled:opacity-40 ${
-        danger
+      className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-colors disabled:opacity-40 ${danger
           ? "border-slate-100 bg-white text-slate-400 hover:border-red-100 hover:bg-red-50 hover:text-red-500"
           : "border-slate-100 bg-white text-slate-400 hover:border-blue-100 hover:bg-blue-50 hover:text-blue-600"
-      }`}
+        }`}
     >
       {children}
     </button>
@@ -290,11 +286,10 @@ function MobileFileListCard({
 
   return (
     <article
-      className={`rounded-2xl border bg-white p-3.5 transition-all select-none ${
-        isSelected
+      className={`rounded-2xl border bg-white p-3.5 transition-all select-none ${isSelected
           ? "border-blue-300 shadow-md ring-1 ring-blue-100 bg-blue-50/30"
           : "border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
-      }`}
+        }`}
       style={{ contentVisibility: "auto", containIntrinsicSize: "0 110px" }}
       onClick={(e) => {
         if (e.ctrlKey || e.metaKey) {
@@ -312,11 +307,10 @@ function MobileFileListCard({
             e.stopPropagation();
             onSelectOrVerify?.(e);
           }}
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all mt-0.5 ${
-            isSelected
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all mt-0.5 ${isSelected
               ? "border-blue-200 bg-blue-100 text-blue-600"
               : `${bg} border-transparent hover:bg-slate-50`
-          }`}
+            }`}
           title={isSelected ? "Deselect" : "Select"}
         >
           {isSelected ? (
@@ -402,11 +396,10 @@ function MobileFileGridCard({
 
   return (
     <article
-      className={`group relative flex flex-col rounded-2xl border bg-white p-3 transition-all select-none ${
-        isSelected
+      className={`group relative flex flex-col rounded-2xl border bg-white p-3 transition-all select-none ${isSelected
           ? "border-blue-300 shadow-md ring-1 ring-blue-100 bg-blue-50/30"
           : "border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.04)] hover:border-slate-300 hover:shadow-md"
-      }`}
+        }`}
       style={{ contentVisibility: "auto", containIntrinsicSize: "0 220px" }}
       onClick={(e) => {
         if (e.ctrlKey || e.metaKey) {
@@ -424,11 +417,10 @@ function MobileFileGridCard({
             e.stopPropagation();
             onSelectOrVerify?.(e);
           }}
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all ${
-            isSelected
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all ${isSelected
               ? "border-blue-200 bg-blue-100 text-blue-600"
               : `${bg} border-transparent hover:bg-slate-50`
-          }`}
+            }`}
           title={isSelected ? "Deselect" : "Select"}
         >
           {isSelected ? (
@@ -733,11 +725,10 @@ function PaginationBar({
               <button
                 key={p}
                 onClick={() => onPageChange(p)}
-                className={`min-w-7 h-7 px-2 rounded-lg text-[11px] font-bold transition-colors ${
-                  p === currentPage
+                className={`min-w-7 h-7 px-2 rounded-lg text-[11px] font-bold transition-colors ${p === currentPage
                     ? "bg-blue-600 text-white shadow-sm"
                     : "bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                }`}
+                  }`}
               >
                 {p}
               </button>
@@ -1163,14 +1154,14 @@ function LastModifiedInfoCard({ rawDate, uploaderInfo }) {
   // Format full datetime string
   const fullDate = rawDate
     ? new Date(rawDate).toLocaleString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
     : "—";
 
   return (
@@ -1831,6 +1822,7 @@ export default function RepositoryFolderDetailPage() {
         `
       id, file_name, description, deadline, status, created_at,
       requested_by,
+      linked_file_id,
       users:requested_by ( full_name, role )
     `,
       )
@@ -1843,6 +1835,39 @@ export default function RepositoryFolderDetailPage() {
       return;
     }
 
+    const linkedFileIds = (data || [])
+      .map((request) => request.linked_file_id)
+      .filter(Boolean);
+    const linkedFiles = {};
+
+    if (linkedFileIds.length > 0) {
+      const { data: fileRows, error: fileError } = await supabase
+        .from("files")
+        .select("id, file_name, file_path, data_category")
+        .in("id", linkedFileIds);
+
+      if (fileError) {
+        console.error("Failed to fetch uploaded request files:", fileError);
+      } else {
+        await Promise.all(
+          (fileRows || []).map(async (file) => {
+            const { data: urlData, error: urlError } = await supabase.storage
+              .from(getBucket(file.data_category))
+              .createSignedUrl(file.file_path, 3600);
+
+            if (urlError) {
+              console.error("Failed to create uploaded file URL:", urlError);
+            }
+
+            linkedFiles[file.id] = {
+              ...file,
+              url: urlData?.signedUrl ?? null,
+            };
+          }),
+        );
+      }
+    }
+
     const today = new Date();
     setMyFileRequests(
       (data || []).map((r) => {
@@ -1851,14 +1876,16 @@ export default function RepositoryFolderDetailPage() {
         return {
           id: r.id,
           fileName: r.file_name,
+          uploadedFileName: linkedFiles[r.linked_file_id]?.file_name ?? null,
+          uploadedFileUrl: linkedFiles[r.linked_file_id]?.url ?? null,
           message: r.description,
           requestedOn: r.created_at,
           dueDate: r.deadline
             ? new Date(r.deadline).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
             : "—",
           requestedBy: r.users?.full_name ?? "Unknown",
           requesterRole: getRoleDisplay(r.users?.role) ?? "",
@@ -2153,18 +2180,18 @@ export default function RepositoryFolderDetailPage() {
         prev.map((f) =>
           f.id === file.id
             ? {
-                ...f,
-                status: newStatus,
-                rawUpdatedAt: now,
-                verifiedPdfPath:
-                  newStatus === "Verified" ? verifiedPdfPath : null,
-                verifiedByName:
-                  newStatus === "Verified"
-                    ? updatePayload.verified_by_name
-                    : null,
-                verifiedAt:
-                  newStatus === "Verified" ? updatePayload.verified_at : null,
-              }
+              ...f,
+              status: newStatus,
+              rawUpdatedAt: now,
+              verifiedPdfPath:
+                newStatus === "Verified" ? verifiedPdfPath : null,
+              verifiedByName:
+                newStatus === "Verified"
+                  ? updatePayload.verified_by_name
+                  : null,
+              verifiedAt:
+                newStatus === "Verified" ? updatePayload.verified_at : null,
+            }
             : f,
         ),
       );
@@ -2902,11 +2929,10 @@ export default function RepositoryFolderDetailPage() {
                         <button
                           key={tab}
                           onClick={() => setActiveType(tab)}
-                          className={`shrink-0 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[10px] sm:text-[11px] font-semibold rounded-full transition-all border ${
-                            isActive
+                          className={`shrink-0 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[10px] sm:text-[11px] font-semibold rounded-full transition-all border ${isActive
                               ? activeColors
                               : "text-slate-500 hover:bg-slate-50 border-slate-200 bg-white"
-                          }`}
+                            }`}
                         >
                           {tab}
                           <span
@@ -3142,9 +3168,8 @@ export default function RepositoryFolderDetailPage() {
                             toggleSelect(file.id);
                           }
                         }}
-                        className={`group relative transition-colors cursor-pointer select-none ${
-                          isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
-                        }`}
+                        className={`group relative transition-colors cursor-pointer select-none ${isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
+                          }`}
                         title="Ctrl+Click to select"
                       >
                         {/* File cell — with hover popover */}
@@ -3161,11 +3186,10 @@ export default function RepositoryFolderDetailPage() {
                                   e.stopPropagation();
                                   toggleSelect(file.id);
                                 }}
-                                className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                                  isSelected
+                                className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${isSelected
                                     ? "bg-blue-50 border border-blue-200 text-blue-600"
                                     : `border border-transparent group-hover:bg-slate-100 group-hover:border-slate-200 group-hover:text-slate-400 ${bg}`
-                                }`}
+                                  }`}
                                 title={isSelected ? "Deselect" : "Select"}
                               >
                                 {isSelected ? (
@@ -3220,11 +3244,10 @@ export default function RepositoryFolderDetailPage() {
                             </div>
                             {/* File hover popover */}
                             <div
-                              className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
-                                isFileHovered
+                              className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${isFileHovered
                                   ? "opacity-100 visible scale-100 pointer-events-auto"
                                   : "opacity-0 invisible scale-95 pointer-events-none"
-                              }`}
+                                }`}
                             >
                               <FileInfoCard
                                 file={file}
@@ -3259,15 +3282,13 @@ export default function RepositoryFolderDetailPage() {
                                   : "Click to verify"
                                 : undefined
                             }
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${
-                              isVerified
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${isVerified
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                 : "bg-slate-100 text-slate-500 border-slate-200"
-                            } ${
-                              canVerify
+                              } ${canVerify
                                 ? "cursor-pointer hover:brightness-95"
                                 : "cursor-default"
-                            } disabled:opacity-60 disabled:cursor-not-allowed`}
+                              } disabled:opacity-60 disabled:cursor-not-allowed`}
                           >
                             {isVerified ? (
                               <>
@@ -3321,11 +3342,10 @@ export default function RepositoryFolderDetailPage() {
                             {/* User hover popover */}
                             {uploaderInfo && (
                               <div
-                                className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
-                                  isUserHovered
+                                className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${isUserHovered
                                     ? "opacity-100 visible scale-100 pointer-events-auto"
                                     : "opacity-0 invisible scale-95 pointer-events-none"
-                                }`}
+                                  }`}
                               >
                                 <UserInfoCard info={uploaderInfo} />
                               </div>
@@ -3362,11 +3382,10 @@ export default function RepositoryFolderDetailPage() {
                             </div>
                             {/* Last Modified hover popover */}
                             <div
-                              className={`absolute z-50 right-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-right ${
-                                hoveredModifiedId === file.id
+                              className={`absolute z-50 right-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-right ${hoveredModifiedId === file.id
                                   ? "opacity-100 visible scale-100 pointer-events-auto"
                                   : "opacity-0 invisible scale-95 pointer-events-none"
-                              }`}
+                                }`}
                             >
                               <LastModifiedInfoCard
                                 rawDate={getFileModifiedAt(file)}
@@ -3645,7 +3664,7 @@ export default function RepositoryFolderDetailPage() {
           role === "administrator" ||
           (role === "division_focal" &&
             String(userProfile?.division_id) ===
-              String(section?.division_id)) ||
+            String(section?.division_id)) ||
           (role === "section_focal" &&
             String(userProfile?.section_id) === String(section?.id));
 
@@ -3655,7 +3674,7 @@ export default function RepositoryFolderDetailPage() {
           role === "administrator" ||
           (role === "division_focal" &&
             String(userProfile?.division_id) ===
-              String(section?.division_id)) ||
+            String(section?.division_id)) ||
           (role === "section_focal" &&
             String(userProfile?.section_id) === String(section?.id)) ||
           (role === "section_personnel" &&
@@ -3683,33 +3702,33 @@ export default function RepositoryFolderDetailPage() {
         }
 
         // Privileged roles: show the group trigger with Templates + (optionally) Access Requests.
-                // Privileged roles: show the group trigger with Templates (only if this
+        // Privileged roles: show the group trigger with Templates (only if this
         // section is in scope) + Access Requests (only if in scope).
         const groupActions = [
           ...(canManageThisSection
             ? [
-                {
-                  id: "templates",
-                  icon: <LayoutTemplate size={20} className="text-white" />,
-                  label: "Templates",
-                  color:
-                    "bg-emerald-600 hover:bg-emerald-700 shadow-[0_8px_20px_rgba(5,150,105,0.40)]",
-                  onClick: () => setShowTemplatesModal(true),
-                },
-              ]
+              {
+                id: "templates",
+                icon: <LayoutTemplate size={20} className="text-white" />,
+                label: "Templates",
+                color:
+                  "bg-emerald-600 hover:bg-emerald-700 shadow-[0_8px_20px_rgba(5,150,105,0.40)]",
+                onClick: () => setShowTemplatesModal(true),
+              },
+            ]
             : []),
           ...(canSeeAccessRequests
             ? [
-                {
-                  id: "access-requests",
-                  icon: <ClipboardList size={20} className="text-white" />,
-                  label: "Access Requests",
-                  color:
-                    "bg-blue-600 hover:bg-blue-700 shadow-[0_8px_20px_rgba(37,99,235,0.40)]",
-                  onClick: () => setIsAccessSidebarOpen(true),
-                  badge: pendingAccessRequestCount,
-                },
-              ]
+              {
+                id: "access-requests",
+                icon: <ClipboardList size={20} className="text-white" />,
+                label: "Access Requests",
+                color:
+                  "bg-blue-600 hover:bg-blue-700 shadow-[0_8px_20px_rgba(37,99,235,0.40)]",
+                onClick: () => setIsAccessSidebarOpen(true),
+                badge: pendingAccessRequestCount,
+              },
+            ]
             : []),
         ];
         if (groupActions.length === 0) return null;
@@ -3742,11 +3761,10 @@ export default function RepositoryFolderDetailPage() {
 
       {/* ── Success toast ──────────────────────────────────── */}
       <div
-        className={`fixed left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(6.5rem+env(safe-area-inset-bottom))] lg:bottom-8 sm:left-auto sm:right-8 sm:w-[380px] ${
-          showDeleteToast
+        className={`fixed left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(6.5rem+env(safe-area-inset-bottom))] lg:bottom-8 sm:left-auto sm:right-8 sm:w-[380px] ${showDeleteToast
             ? "translate-x-0 opacity-100 pointer-events-auto"
             : "translate-x-[120%] opacity-0 pointer-events-none"
-        }`}
+          }`}
         style={{
           width: "380px",
           minHeight: "76px",
@@ -3820,11 +3838,10 @@ export default function RepositoryFolderDetailPage() {
 
       {/* ── File Request Success Toast ───────────────────────── */}
       <div
-        className={`fixed left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(6.5rem+env(safe-area-inset-bottom))] lg:bottom-8 sm:left-auto sm:right-8 sm:w-[380px] ${
-          showFileRequestToast
+        className={`fixed left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(6.5rem+env(safe-area-inset-bottom))] lg:bottom-8 sm:left-auto sm:right-8 sm:w-[380px] ${showFileRequestToast
             ? "translate-x-0 opacity-100 pointer-events-auto"
             : "translate-x-[120%] opacity-0 pointer-events-none"
-        }`}
+          }`}
         style={{
           minHeight: "76px",
           borderRadius: "16px",

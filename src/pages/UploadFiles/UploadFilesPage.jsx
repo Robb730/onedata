@@ -20,7 +20,7 @@ import {
   parseAndSyncStructuredData,
   deleteParsedDataForFile,
 } from "../../utils/structuredDataSync";
-import { notifyScope } from "../../utils/notifications";
+import { notifyScope, pushNotification } from "../../utils/notifications";
 import LinkExistingFileModal from "../../components/UploadFilesComponents/LinkExistingFileModal";
 
 // ── Subfolder registry ────────────────────────────────────────────────────────
@@ -278,15 +278,16 @@ export default function UploadFilesPage() {
           r.status === "pending" && r.deadline && new Date(r.deadline) < today;
         return {
           id: r.id,
+          requestedById: r.requested_by,
           fileName: r.file_name,
           message: r.description,
           requestedOn: r.created_at,
           dueDate: r.deadline
             ? new Date(r.deadline).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
             : "—",
           requestedBy: r.users?.full_name ?? "Unknown",
           requesterRole: getRoleDisplay(r.users?.role) ?? "",
@@ -315,6 +316,21 @@ export default function UploadFilesPage() {
 
   const fetchFileRequests = async () => {
     refetchFileRequests();
+  };
+
+  const notifyFileRequestCompleted = async (request, fileId, fileName) => {
+    await pushNotification({
+      recipientIds: [request.requestedById],
+      type: "file_request_completed",
+      title: "File request completed",
+      content: `Your requested file, ${fileName}, has been uploaded by ${userProfile?.full_name ?? "a section user"}.`,
+      meta: {
+        related_file_id: fileId,
+        section_id: selectedFolder?.id ?? null,
+        division_id: selectedFolder?.divisionId ?? null,
+        uploaded_by: userProfile?.id ?? null,
+      },
+    });
   };
 
   // Near the top, after your state declarations
@@ -942,6 +958,7 @@ export default function UploadFilesPage() {
       // 1. Upload the replacement FIRST. If this throws, we bail out below
       //    and the old file/data is left completely untouched.
       const newWrittenPaths = [];
+      let uploadedFileId = null;
       if (Array.isArray(fileOrFiles)) {
         for (const file of fileOrFiles) {
           const result = await addToUploads(
@@ -954,6 +971,7 @@ export default function UploadFilesPage() {
             },
           );
           if (result?.storagePath) newWrittenPaths.push(result.storagePath);
+          uploadedFileId ??= result?.fileId ?? null;
           setUploadCompletedFiles((prev) => prev + 1);
         }
       } else {
@@ -967,6 +985,7 @@ export default function UploadFilesPage() {
           },
         );
         if (result?.storagePath) newWrittenPaths.push(result.storagePath);
+        uploadedFileId = result?.fileId ?? null;
         setUploadCompletedFiles(1);
       }
 
@@ -1001,6 +1020,7 @@ export default function UploadFilesPage() {
           .update({
             status: "completed",
             completed_at: new Date().toISOString(),
+            linked_file_id: uploadedFileId,
           })
           .eq("id", linkedRequestId);
 
@@ -1069,6 +1089,7 @@ export default function UploadFilesPage() {
         Array.isArray(replaceTargets) && replaceTargets.length > 0;
 
       const newWrittenPaths = [];
+      let uploadedFileId = null;
       if (Array.isArray(fileOrFiles)) {
         for (const file of fileOrFiles) {
           const result = await addToUploads(
@@ -1081,6 +1102,7 @@ export default function UploadFilesPage() {
             },
           );
           if (result?.storagePath) newWrittenPaths.push(result.storagePath);
+          uploadedFileId ??= result?.fileId ?? null;
           setUploadCompletedFiles((prev) => prev + 1);
         }
       } else {
@@ -1094,6 +1116,7 @@ export default function UploadFilesPage() {
           },
         );
         if (result?.storagePath) newWrittenPaths.push(result.storagePath);
+        uploadedFileId = result?.fileId ?? null;
         setUploadCompletedFiles(1);
       }
 
@@ -1118,10 +1141,16 @@ export default function UploadFilesPage() {
 
       const { error } = await supabase
         .from("file_requests")
-        .update({ status: "completed", completed_at: new Date().toISOString() })
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+          linked_file_id: uploadedFileId,
+        })
         .eq("id", req.id);
 
       if (error) throw error;
+
+      await notifyFileRequestCompleted(req, uploadedFileId, req.fileName);
 
       await fetchFileRequests();
       setUploadToastStatus("success");
@@ -1171,6 +1200,12 @@ export default function UploadFilesPage() {
       .eq("id", pendingLinkRequest.id);
 
     if (error) throw error;
+
+    await notifyFileRequestCompleted(
+      pendingLinkRequest,
+      file.id,
+      pendingLinkRequest.fileName,
+    );
 
     await logAuditEvent({
       action: "Link",
@@ -1240,17 +1275,15 @@ export default function UploadFilesPage() {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`border-2 border-dashed rounded-xl px-4 py-8 sm:p-10 text-center transition-all ${
-          isDragging
+        className={`border-2 border-dashed rounded-xl px-4 py-8 sm:p-10 text-center transition-all ${isDragging
             ? "border-blue-400 bg-blue-50/80"
             : "border-slate-200 bg-slate-50/40 hover:border-slate-300 hover:bg-slate-50/70"
-        }`}
+          }`}
       >
         <div className="flex flex-col items-center justify-center">
           <div
-            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center mb-3 sm:mb-4 ${
-              isDragging ? "bg-blue-100" : "bg-white border border-slate-200"
-            }`}
+            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center mb-3 sm:mb-4 ${isDragging ? "bg-blue-100" : "bg-white border border-slate-200"
+              }`}
           >
             <Upload
               className={isDragging ? "text-blue-600" : "text-slate-400"}
@@ -1315,11 +1348,10 @@ export default function UploadFilesPage() {
                   key={f}
                   type="button"
                   onClick={() => setFileRequestFilter(f)}
-                  className={`flex flex-col items-center justify-center gap-0.5 min-w-[4.5rem] flex-1 py-2 px-2 rounded-xl text-[10.5px] font-bold transition-colors shrink-0 ${
-                    isActive
+                  className={`flex flex-col items-center justify-center gap-0.5 min-w-[4.5rem] flex-1 py-2 px-2 rounded-xl text-[10.5px] font-bold transition-colors shrink-0 ${isActive
                       ? "bg-blue-600 text-white shadow-sm"
                       : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100"
-                  }`}
+                    }`}
                 >
                   <span className="text-[13px] leading-none">{counts[f]}</span>
                   <span className="leading-none">{f}</span>
@@ -1706,11 +1738,10 @@ export default function UploadFilesPage() {
 
         {/* Toast Notification */}
         <div
-          className={`fixed left-4 right-4 sm:left-auto sm:right-6 sm:w-[380px] z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-8 ${
-            uploadToastStatus
+          className={`fixed left-4 right-4 sm:left-auto sm:right-6 sm:w-[380px] z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-8 ${uploadToastStatus
               ? "translate-y-0 sm:translate-x-0 opacity-100 pointer-events-auto"
               : "translate-y-4 sm:translate-y-0 sm:translate-x-[120%] opacity-0 pointer-events-none"
-          }`}
+            }`}
           style={{
             maxWidth: "380px",
             marginLeft: "auto",
@@ -1728,13 +1759,12 @@ export default function UploadFilesPage() {
           }}
         >
           <div
-            className={`absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r to-transparent ${
-              uploadToastStatus === "success"
+            className={`absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r to-transparent ${uploadToastStatus === "success"
                 ? "from-emerald-100/60"
                 : uploadToastStatus === "error"
                   ? "from-red-100/60"
                   : "from-blue-100/60"
-            }`}
+              }`}
           />
 
           <div
@@ -1818,11 +1848,10 @@ export default function UploadFilesPage() {
           </div>
 
           <div
-            className={`w-full h-1 bg-slate-100 transition-all duration-300 ${
-              uploadToastStatus === "uploading"
+            className={`w-full h-1 bg-slate-100 transition-all duration-300 ${uploadToastStatus === "uploading"
                 ? "opacity-100"
                 : "opacity-0 h-0"
-            }`}
+              }`}
           >
             <div
               className="h-full bg-blue-500 transition-all duration-500 ease-out rounded-r-full"
