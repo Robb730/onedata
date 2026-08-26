@@ -81,7 +81,6 @@ const STRUCTURED_UPLOAD_TYPES = [
 ];
 const getBucketForType = (uploadType) =>
   STRUCTURED_UPLOAD_TYPES.includes(uploadType) ? "excel-files" : "repository-files";
-// ── Mock file requests ────────────────────────────────────────────────────────
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const ALLOWED_EXTENSIONS = [
