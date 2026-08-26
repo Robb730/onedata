@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Eye, EyeOff, AlertCircle, X } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, X, ArrowLeft } from "lucide-react";
 import { LoginFormInput } from "./LoginFormInput";
 import { LoginButton } from "./LoginButton";
 import { LoginCheckbox } from "./LoginCheckbox";
@@ -296,13 +296,15 @@ export function LoginForm() {
         </div>
       )}
 
+
       {/* Header */}
-      <div className="mb-6 text-center">
+      <div className="mb-6 text-center opacity-0 animate-[fadeUpIn_0.6s_cubic-bezier(0.16,1,0.3,1)_0.05s_forwards]">
         <h1
-          className="text-[1.6rem] sm:text-[1.9rem] font-extrabold tracking-tight"
+          className="text-[1.6rem] sm:text-[1.9rem] font-extrabold tracking-tight animate-[gradientShift_4s_ease_infinite]"
           style={{
             background:
-              "linear-gradient(135deg, #1a6fe0 0%, #2986e8 60%, #1daa74 100%)",
+              "linear-gradient(135deg, #4C8BF5 0%, #2986e8 25%, #34A853 50%, #2986e8 75%, #4C8BF5 100%)",
+            backgroundSize: "200% 200%",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             backgroundClip: "text",
@@ -315,7 +317,7 @@ export function LoginForm() {
         </p>
       </div>
 
-      <form onSubmit={handleLogin} className="flex flex-col gap-4">
+      <form onSubmit={handleLogin} className="flex flex-col gap-4 stagger-in">
         {/* Email */}
         <LoginFormInput
           id="login-email"
@@ -363,19 +365,20 @@ export function LoginForm() {
           <LoginButton loading={loading} />
         </div>
 
-        {/* Forgot password link */}
-<p className="text-center">
-  <button
-    type="button"
-    id="login-forgot-password"
-    onClick={() => setShowForgotPassword(true)}
-    className="text-[0.82rem] font-semibold text-[#2986e8] hover:text-[#1565c0] transition-colors relative
-               after:absolute after:bottom-[-2px] after:left-0 after:w-0 after:h-[1.5px] after:bg-[#2986e8] after:transition-all after:duration-300
-               hover:after:w-full"
-  >
-    Forgot password?
-  </button>
-</p>
+        {/* Links */}
+        <div className="flex flex-col items-center gap-3">
+          <button
+            type="button"
+            id="login-forgot-password"
+            onClick={() => setShowForgotPassword(true)}
+            className="text-[0.82rem] font-semibold text-[#2986e8] hover:text-[#1565c0] transition-colors relative
+                       after:absolute after:bottom-[-2px] after:left-0 after:w-0 after:h-[1.5px] after:bg-[#2986e8] after:transition-all after:duration-300
+                       hover:after:w-full"
+          >
+            Forgot password?
+          </button>
+          
+        </div>
       </form>
 
       {/* Footer */}
@@ -383,19 +386,30 @@ export function LoginForm() {
         OneData © {new Date().getFullYear()}
       </p>
 
-      {/* Keyframes for right-side pop entrance */}
-      {/* Keyframes for right-side pop entrance */}
+      {/* Keyframes */}
       <style>{`
         @keyframes toastPopRight {
-          0% {
-            opacity: 0;
-            transform: translateX(40px) scale(0.92);
-          }
-          100% {
-            opacity: 1;
-            transform: translateX(0) scale(1);
-          }
+          0% { opacity: 0; transform: translateX(40px) scale(0.92); }
+          100% { opacity: 1; transform: translateX(0) scale(1); }
         }
+        @keyframes gradientShift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes fadeUpIn {
+          0% { opacity: 0; transform: translateY(12px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .stagger-in > * {
+          opacity: 0;
+          animation: fadeUpIn 0.6s cubic-bezier(0.16,1,0.3,1) forwards;
+        }
+        .stagger-in > *:nth-child(1) { animation-delay: 0.15s; }
+        .stagger-in > *:nth-child(2) { animation-delay: 0.25s; }
+        .stagger-in > *:nth-child(3) { animation-delay: 0.35s; }
+        .stagger-in > *:nth-child(4) { animation-delay: 0.45s; }
+        .stagger-in > *:nth-child(5) { animation-delay: 0.55s; }
       `}</style>
 
       <ForgotPasswordModal
@@ -404,18 +418,7 @@ export function LoginForm() {
       />
     
 
-      <style>{`
-        @keyframes toastPopRight {
-          0% {
-            opacity: 0;
-            transform: translateX(40px) scale(0.92);
-          }
-          100% {
-            opacity: 1;
-            transform: translateX(0) scale(1);
-          }
-        }
-      `}</style>
     </div>
   );
 }
+  

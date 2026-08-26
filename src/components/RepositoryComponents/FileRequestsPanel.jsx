@@ -213,21 +213,23 @@ export default function FileRequestsPanel({ isOpen, onClose, requests = [], isLo
                 return (
                   <div
                     key={req.id}
-                    style={{ transitionDelay: animateIn ? `${Math.min(i, 8) * 40}ms` : "0ms" }}
-                    className={`relative flex rounded-2xl border overflow-hidden bg-white shadow-sm hover:shadow-md transition-all duration-300 ease-out ${animateIn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
-                      } ${req.isOwnRequest ? "border-blue-100 ring-1 ring-blue-50" : "border-slate-100"}`}
+                    style={{ transitionDelay: animateIn ? `${Math.min(i, 8) * 30}ms` : "0ms" }}
+                    className={`relative flex flex-col rounded-2xl border overflow-hidden bg-white shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 ease-out ${
+                      animateIn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                    } ${
+                      req.isOwnRequest ? "border-blue-100 ring-1 ring-blue-50" : "border-slate-200/80"
+                    }`}
                   >
-                    <div className={`w-[3px] shrink-0 ${accent}`} />
-                    <div className="flex-1 p-4">
-                      <div className="flex items-start justify-between gap-2 mb-3">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                            <FileText size={13} className="text-blue-500" />
+                    <div className="flex-1 p-4 sm:p-5">
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-slate-50/80 border border-slate-100 flex items-center justify-center shrink-0">
+                            <FileText size={16} className="text-blue-500" />
                           </div>
-                          <p className="text-[13px] font-bold text-slate-800 truncate">{req.fileName}</p>
+                          <p className="text-[0.9rem] font-bold text-slate-800 truncate tracking-tight">{req.fileName}</p>
                         </div>
                         <span
-                          className={`shrink-0 text-[9.5px] font-bold px-2 py-1 rounded-full border ${getStatusStyle(
+                          className={`shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full border tracking-wide uppercase ${getStatusStyle(
                             req.status,
                           )}`}
                         >
@@ -235,26 +237,26 @@ export default function FileRequestsPanel({ isOpen, onClose, requests = [], isLo
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2.5 mb-2.5">
-                        <div className={`w-7 h-7 ${avatarBg} rounded-full flex items-center justify-center shrink-0`}>
-                          <span className="text-[9.5px] font-bold text-white">{getInitials(req.requestedBy)}</span>
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className={`w-8 h-8 ${avatarBg} rounded-full flex items-center justify-center shrink-0 shadow-sm border border-white/20`}>
+                          <span className="text-[10px] font-bold text-white tracking-wide">{getInitials(req.requestedBy)}</span>
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[11.5px] font-semibold text-slate-700 truncate leading-tight flex items-center gap-1.5">
+                          <p className="text-[0.8rem] font-semibold text-slate-700 truncate flex items-center gap-1.5">
                             {req.requestedBy}
                             {req.isOwnRequest && (
-                              <span className="inline-flex items-center gap-1 text-[8.5px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600">
-                                <User2 size={8} /> You
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 tracking-wide uppercase">
+                                <User2 size={10} /> You
                               </span>
                             )}
                           </p>
-                          <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{req.requesterRole}</p>
+                          <p className="text-xs font-medium text-slate-500 mt-0.5 truncate">{req.requesterRole}</p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-[8.5px] font-bold uppercase tracking-wide text-slate-400 flex items-center gap-1 justify-end">
-                            <Calendar size={9} /> Due
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5 justify-end">
+                            <Calendar size={11} strokeWidth={2.5} /> Due
                           </p>
-                          <p className={`text-[11px] font-bold ${isOverdue ? "text-red-600" : "text-slate-600"}`}>
+                          <p className={`text-xs font-bold mt-0.5 ${isOverdue ? "text-rose-600" : "text-slate-700"}`}>
                             {req.dueDate}
                           </p>
                         </div>
@@ -265,27 +267,27 @@ export default function FileRequestsPanel({ isOpen, onClose, requests = [], isLo
                           href={req.uploadedFileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2.5 bg-blue-50/60 hover:bg-blue-50 rounded-lg px-2.5 py-2 border border-blue-100 mb-2.5 transition-colors group"
+                          className="flex items-center gap-3 bg-slate-50 hover:bg-slate-100 rounded-xl px-3 py-2.5 border border-slate-100 mb-3 transition-colors group"
                         >
-                          <div className="w-7 h-7 rounded-md bg-white border border-blue-200 flex items-center justify-center shrink-0">
-                            <Paperclip size={12} className="text-blue-500" />
+                          <div className="w-8 h-8 rounded-lg bg-white border border-slate-200/60 flex items-center justify-center shrink-0 shadow-sm">
+                            <Paperclip size={14} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-[11px] font-bold text-blue-700 truncate leading-tight">
+                            <p className="text-xs font-bold text-slate-700 truncate group-hover:text-blue-600 transition-colors">
                               {req.uploadedFileName || req.fileName}
                             </p>
-                            <p className="text-[9.5px] text-blue-400 font-semibold leading-tight mt-0.5">
+                            <p className="text-[10px] font-medium text-slate-400 mt-0.5">
                               {getFileExt(req.uploadedFileUrl)} · Uploaded file
                             </p>
                           </div>
-                          <Eye size={13} className="text-blue-400 group-hover:text-blue-600 shrink-0" />
+                          <Eye size={14} className="text-slate-400 group-hover:text-blue-500 shrink-0 transition-colors" />
                         </a>
                       )}
 
                       {req.message && (
-                        <div className="flex items-start gap-1.5 bg-slate-50 rounded-lg px-2.5 py-2 border border-slate-100">
-                          <MessageSquareText size={11} className="text-slate-400 mt-0.5 shrink-0" />
-                          <p className="text-[11px] text-slate-500 italic leading-snug">{req.message}</p>
+                        <div className="flex items-start gap-2 bg-slate-50/50 rounded-xl px-3 py-2.5 border border-slate-100">
+                          <MessageSquareText size={14} className="text-slate-400 shrink-0 mt-0.5" />
+                          <p className="text-xs text-slate-600 font-medium leading-relaxed italic">{req.message}</p>
                         </div>
                       )}
                     </div>
