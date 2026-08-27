@@ -48,6 +48,7 @@ import FileAccessRequestModal from "../../components/RepositoryComponents/FileAc
 import AccessRequestsSidebar from "../../components/RepositoryComponents/AccessRequestsSidebar";
 import FloatingActionGroup from "../../components/RepositoryComponents/FloatingActionGroup";
 import TemplatesModal from "../../components/RepositoryComponents/TemplatesModal";
+import RecycleBinModal from "../../components/RepositoryComponents/RecycleBinModal";
 import {
   fetchScopedRequests,
   canApproveAccessRequests,
@@ -780,13 +781,14 @@ function DeleteFileConfirmModal({
             <div>
               <h2 className="text-xl font-bold text-slate-900">Delete file?</h2>
               <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                This will permanently remove
+                This will move
                 <br />
                 <span className="font-semibold text-slate-700">
                   "{fileName}"
                 </span>
                 <br />
-                This action cannot be undone.
+                to the recycle bin. It will be permanently deleted after 14
+                days unless restored.
               </p>
             </div>
           </div>
@@ -834,13 +836,12 @@ function BulkDeleteConfirmModal({
                 Delete {count} file{count > 1 ? "s" : ""}?
               </h2>
               <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                This will permanently remove{" "}
+                This will move{" "}
                 <span className="font-semibold text-slate-700">
                   {count} file{count > 1 ? "s" : ""}
                 </span>{" "}
-                from storage and the database.
-                <br />
-                This action cannot be undone.
+                to the recycle bin. They will be permanently deleted after 14
+                days unless restored.
               </p>
             </div>
           </div>
@@ -1231,6 +1232,9 @@ export default function RepositoryFolderDetailPage() {
   const [showFileRequestsPanel, setShowFileRequestsPanel] = useState(false);
   const [showFileRequestToast, setShowFileRequestToast] = useState(false);
 
+  // ── Recycle Bin ────────────────────────────────────────────────
+  const [showRecycleBin, setShowRecycleBin] = useState(false);
+
   // ── Supabase state ─────────────────────────────────────────────
   const [section, setSection] = useState(null);
   const [sectionManagerNames, setSectionManagerNames] = useState([]);
@@ -1606,6 +1610,31 @@ export default function RepositoryFolderDetailPage() {
       !!section &&
       userProfile?.section_id === section.id);
 
+  // ── Recycle Bin permissions ──────────────────────────────────
+  // Full bin: sees every soft-deleted file in the section, can restore
+  // AND permanently delete. Same trust tier as canVerify — admin, any
+  // division_focal that owns this section's division, or the section's
+  // own section_focal.
+  const canViewRecycleBinFull =
+    userProfile?.role === "administrator" ||
+    (userProfile?.role === "division_focal" &&
+      !!section &&
+      userProfile?.division_id === section.division_id) ||
+    (userProfile?.role === "section_focal" &&
+      !!section &&
+      userProfile?.section_id === section.id);
+
+  // Own-only bin: section_personnel can see and restore ONLY files they
+  // personally uploaded (mirrors canDeleteFile's own-upload restriction).
+  // No permanent-delete access — that stays with officer+/admin.
+  const canViewOwnRecycleBin =
+    userProfile?.role === "section_personnel" &&
+    !!section &&
+    userProfile?.section_id === section.id;
+
+  const canOpenRecycleBin = canViewRecycleBinFull || canViewOwnRecycleBin;
+  const recycleBinScope = canViewRecycleBinFull ? "full" : "own";
+
   // Section personnel get "full" edit access to their own section like
   // everyone else with canEdit — but unlike section_focal/division_focal/
   // admin, they may only delete files they personally uploaded, not
@@ -1683,10 +1712,13 @@ export default function RepositoryFolderDetailPage() {
       .single();
     if (!divisionError) setDivision(divisionData);
 
+    // Soft-deleted files (deleted_at IS NOT NULL) live in the recycle bin
+    // and must never show up in the normal repository list.
     const { data: filesData } = await supabase
       .from("files")
       .select("*")
       .eq("section_id", sectionData.id)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
     const uploaderIds = [
@@ -2006,51 +2038,24 @@ export default function RepositoryFolderDetailPage() {
     setFileToDelete(file);
   }
 
+  // Soft delete — moves the file into the recycle bin instead of removing
+  // it from storage/DB. The storage object and DB row stay untouched (so
+  // restore is a simple field reset) until either the user restores it or
+  // the 14-day auto-purge job removes it for good.
   async function confirmDeleteFile() {
     const file = fileToDelete;
     if (!file) return;
     setDeletingId(file.id);
     try {
-      let storageRemoved = true;
-
-      if (file.path) {
-        const bucket = getBucket(file.data_category);
-        const { data: removedData, error: storageErr } = await supabase.storage
-          .from(bucket)
-          .remove([file.path]);
-
-        if (storageErr) throw new Error(storageErr.message);
-
-        // Supabase does NOT error when the path/bucket doesn't match an
-        // existing object — it just returns an empty array. Treat that as
-        // a real failure instead of silently deleting the DB row anyway.
-        if (!removedData || removedData.length === 0) {
-          storageRemoved = false;
-          console.error(
-            `Storage delete no-op: bucket="${bucket}" path="${file.path}" — no matching object found.`,
-          );
-        }
-      }
-
-      if (file.verifiedPdfPath) {
-        const { data: removedVerified, error: verifiedErr } =
-          await supabase.storage
-            .from("verified-pdfs")
-            .remove([file.verifiedPdfPath]);
-        if (verifiedErr) {
-          console.error("Failed to remove verified PDF:", verifiedErr);
-        } else if (!removedVerified || removedVerified.length === 0) {
-          console.error(
-            `Verified PDF delete no-op: path="${file.verifiedPdfPath}" — no matching object found.`,
-          );
-        }
-      }
-
-      const { error: dbErr } = await supabase
+      const { error } = await supabase
         .from("files")
-        .delete()
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: userProfile?.id,
+          deleted_by_name: userProfile?.full_name ?? "Unknown",
+        })
         .eq("id", file.id);
-      if (dbErr) throw new Error(dbErr.message);
+      if (error) throw new Error(error.message);
 
       const keysToInvalidate = CATEGORY_TO_QUERY_KEYS[file.data_category];
       if (keysToInvalidate) {
@@ -2071,19 +2076,11 @@ export default function RepositoryFolderDetailPage() {
       await logAudit(
         "Delete",
         file.name,
-        storageRemoved
-          ? `Deleted from ${section?.name}`
-          : `Deleted from ${section?.name} (storage object was not found — possible orphaned file)`,
+        `Moved to recycle bin in ${section?.name}`,
         "Success",
       );
       setFileToDelete(null);
       setShowDeleteToast(true);
-
-      if (!storageRemoved) {
-        alert(
-          "The database record was deleted, but the stored file could not be located in storage (it may already be orphaned). Check the console/audit log for the bucket and path used.",
-        );
-      }
 
       await notifyScope({
         sectionId: section?.id,
@@ -2103,7 +2100,7 @@ export default function RepositoryFolderDetailPage() {
           recipientIds: [file.uploaderId],
           type: "file_deleted",
           title: "Your file was deleted",
-          content: `${file.name} was deleted from ${section?.name}`,
+          content: `${file.name} was moved to the recycle bin in ${section?.name}`,
         });
       }
     } catch (err) {
@@ -2348,40 +2345,29 @@ export default function RepositoryFolderDetailPage() {
   }
 
   // ── Bulk delete ────────────────────────────────────────────────
+  // Same soft-delete treatment as the single-file path — files move to
+  // the recycle bin instead of being purged from storage/DB immediately.
   async function confirmBulkDelete() {
     if (!canEdit) return;
     const filesToDelete = deletableSelectedFiles;
     setIsBulkDeleting(true);
+    const now = new Date().toISOString();
     for (const file of filesToDelete) {
       try {
-        // 1. Remove from correct storage bucket
-        if (file.path) {
-          const bucket = getBucket(file.data_category);
-          const { data: removedData, error: storageErr } =
-            await supabase.storage.from(bucket).remove([file.path]);
-          if (storageErr) throw new Error(storageErr.message);
-          if (!removedData || removedData.length === 0)
-            console.error(
-              `Bulk delete storage no-op: bucket="${bucket}" path="${file.path}"`,
-            );
-        }
-        // 2. Remove verified PDF if present
-        if (file.verifiedPdfPath) {
-          await supabase.storage
-            .from("verified-pdfs")
-            .remove([file.verifiedPdfPath]);
-        }
-        // 3. Remove DB row
         const { error: dbErr } = await supabase
           .from("files")
-          .delete()
+          .update({
+            deleted_at: now,
+            deleted_by: userProfile?.id,
+            deleted_by_name: userProfile?.full_name ?? "Unknown",
+          })
           .eq("id", file.id);
         if (dbErr) throw new Error(dbErr.message);
         setAllFiles((prev) => prev.filter((f) => f.id !== file.id));
         await logAudit(
           "Delete",
           file.name,
-          `Bulk deleted from ${section?.name}`,
+          `Bulk moved to recycle bin in ${section?.name}`,
           "Success",
         );
       } catch (err) {
@@ -2792,7 +2778,7 @@ export default function RepositoryFolderDetailPage() {
           </nav>
 
           {/* ── Page Header ────────────────────────────────────── */}
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3 lg:gap-4">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <h1 className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em] leading-tight repo-morph-title shrink-0">
@@ -2839,31 +2825,49 @@ export default function RepositoryFolderDetailPage() {
                 </div>
               </div>
             </div>
-            {canRequestFile && (
-              <div className="flex items-center gap-2 shrink-0 repo-morph-actions">
-                <button
-                  onClick={() => {
-                    setShowFileRequestsPanel(true);
-                    fetchMyFileRequests();
-                  }}
-                  className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-all"
-                >
-                  <Inbox size={15} />
-                  <span className="hidden sm:inline">Files Requested</span>
-                  <span className="sm:hidden">Requested</span>
-                  {activeFileRequestsCount > 0 && (
-                    <span className="inline-flex items-center justify-center min-w-4.5 h-4.5 px-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
-                      {activeFileRequestsCount}
+            {(canRequestFile || canOpenRecycleBin) && (
+  <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto lg:shrink-0 repo-morph-actions">
+                {canRequestFile && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowFileRequestsPanel(true);
+                        fetchMyFileRequests();
+                      }}
+                      className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-all"
+                    >
+                      <Inbox size={15} />
+                      <span className="hidden sm:inline">Files Requested</span>
+                      <span className="sm:hidden">Requested</span>
+                      {activeFileRequestsCount > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-4.5 h-4.5 px-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
+                          {activeFileRequestsCount}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setShowFileRequestModal(true)}
+                      className="inline-flex items-center gap-1.5 sm:gap-2 rounded-[10px] bg-blue-500 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer"
+                    >
+                      <FileUp size={15} />
+                      Request File
+                    </button>
+                  </>
+                )}
+                {canOpenRecycleBin && (
+                  <button
+                    onClick={() => setShowRecycleBin(true)}
+                    className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-all"
+                  >
+                    <Trash2 size={15} />
+                    <span className="hidden sm:inline">
+                      {recycleBinScope === "own"
+                        ? "My Deleted Files"
+                        : "Recycle Bin"}
                     </span>
-                  )}
-                </button>
-                <button
-                  onClick={() => setShowFileRequestModal(true)}
-                  className="inline-flex items-center gap-1.5 sm:gap-2 rounded-[10px] bg-blue-500 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer"
-                >
-                  <FileUp size={15} />
-                  Request File
-                </button>
+                    <span className="sm:hidden">Bin</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -3660,6 +3664,18 @@ export default function RepositoryFolderDetailPage() {
         }
       />
 
+      <RecycleBinModal
+        isOpen={showRecycleBin}
+        onClose={() => setShowRecycleBin(false)}
+        sectionId={section?.id}
+        sectionName={section?.name}
+        userProfile={userProfile}
+        scope={recycleBinScope}
+        canPurgeForever={canViewRecycleBinFull}
+        getBucket={getBucket}
+        onChanged={fetchData}
+      />
+
       {/* ── Floating Action Group ──────────────────────────────────── */}
       {(() => {
         const role = userProfile?.role;
@@ -3825,7 +3841,7 @@ export default function RepositoryFolderDetailPage() {
                 margin: 0,
               }}
             >
-              File deleted successfully.
+              File moved to recycle bin.
             </p>
           </div>
 
