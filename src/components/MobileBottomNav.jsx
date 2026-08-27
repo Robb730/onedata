@@ -93,15 +93,13 @@ function NavItem({ item, active, onClick }) {
         <item.icon
           size={18}
           strokeWidth={active ? 2.45 : 1.7}
-          className={`transition-colors duration-300 ${
-            active ? "text-blue-600" : "text-slate-400"
-          }`}
+          className={`transition-colors duration-300 ${active ? "text-blue-600" : "text-slate-400"
+            }`}
         />
       </span>
       <span
-        className={`max-w-full truncate text-[0.56rem] leading-none transition-colors duration-300 ${
-          active ? "font-semibold text-blue-600" : "font-medium text-slate-400"
-        }`}
+        className={`max-w-full truncate text-[0.56rem] leading-none transition-colors duration-300 ${active ? "font-semibold text-blue-600" : "font-medium text-slate-400"
+          }`}
       >
         {item.label}
       </span>
@@ -154,15 +152,14 @@ export function MobileBottomNav({ visible = true }) {
       )}
 
       <nav
-        className={`mobile-bottom-nav lg:hidden pointer-events-none fixed inset-x-0 bottom-0 z-[80] bg-transparent px-4 ${
-          visible ? "" : "invisible"
-        }`}
+        className={`mobile-bottom-nav lg:hidden pointer-events-none fixed inset-x-0 bottom-0 z-[80] bg-transparent px-4 ${visible ? "" : "invisible"
+          }`}
         aria-hidden={!visible}
       >
         <div className="pointer-events-auto relative mx-auto w-full max-w-md overflow-visible">
           {hasMore && moreOpen && (
             <div className="absolute bottom-full left-0 right-0 z-10 mb-3 more-panel-in">
-              <div className="liquid-glass-panel overflow-hidden rounded-[22px] px-3 pt-3 pb-3.5">
+              <div className="overflow-hidden rounded-[22px] px-3 pt-3 pb-3.5 bg-white/85 backdrop-blur-2xl backdrop-saturate-200 border border-white/60 shadow-[0_8px_30px_rgba(15,23,42,0.12)]">
                 <div className="mb-2.5 flex items-center justify-between">
                   <p className="text-[0.82rem] font-bold text-slate-800">More</p>
                   <button
@@ -184,11 +181,10 @@ export function MobileBottomNav({ visible = true }) {
                         onClick={() => setMoreOpen(false)}
                         onPointerEnter={() => preloadRoute(item.path)}
                         onTouchStart={() => preloadRoute(item.path)}
-                        className={`more-tile-in flex min-w-0 items-center gap-2 rounded-2xl border px-2.5 py-2.5 no-underline transition-colors ${
-                          active
-                            ? "border-blue-200/70 bg-blue-50/80"
-                            : "border-white/50 bg-white/45 hover:bg-white/70"
-                        }`}
+                        className={`more-tile-in flex min-w-0 items-center gap-2 rounded-2xl border px-2.5 py-2.5 no-underline transition-colors backdrop-blur-md ${active
+                            ? "border-blue-200/70 bg-blue-100/80"
+                            : "border-white/60 bg-white/60 hover:bg-white/80"
+                          }`}
                         style={{ animationDelay: `${80 + index * 55}ms` }}
                       >
                         <item.icon
@@ -196,9 +192,8 @@ export function MobileBottomNav({ visible = true }) {
                           className={`shrink-0 ${active ? "text-blue-600" : "text-slate-500"}`}
                         />
                         <span
-                          className={`min-w-0 truncate text-[0.72rem] font-semibold ${
-                            active ? "text-blue-700" : "text-slate-700"
-                          }`}
+                          className={`min-w-0 truncate text-[0.72rem] font-semibold ${active ? "text-blue-700" : "text-slate-700"
+                            }`}
                         >
                           {item.label}
                         </span>
@@ -250,16 +245,14 @@ export function MobileBottomNav({ visible = true }) {
                   <MoreHorizontal
                     size={18}
                     strokeWidth={moreHighlighted ? 2.45 : 1.7}
-                    className={`transition-colors duration-300 ${
-                      moreHighlighted ? "text-blue-600" : "text-slate-400"
-                    }`}
+                    className={`transition-colors duration-300 ${moreHighlighted ? "text-blue-600" : "text-slate-400"
+                      }`}
                   />
                   <span
-                    className={`text-[0.56rem] leading-none transition-colors duration-300 ${
-                      moreHighlighted
+                    className={`text-[0.56rem] leading-none transition-colors duration-300 ${moreHighlighted
                         ? "font-semibold text-blue-600"
                         : "font-medium text-slate-400"
-                    }`}
+                      }`}
                   >
                     More
                   </span>

@@ -96,16 +96,6 @@ import { getAllSchoolYearsForSelector } from "../../utils/schoolYearsApi"; // ad
 import { useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../../contexts/UserContext";
 
-// ─── Sample data ────────────────────────────────────────────
-// In production this would come from Supabase or context/store.
-
-const enrollmentTrendStatic = [
-  { year: "22-2023", public: 25200, private: 12100 },
-  { year: "23-2024", public: 26800, private: 12900 },
-  { year: "24-2025", public: 27646, private: 13569 },
-  { year: "25-2026*", public: 9200, private: 4100 },
-];
-
 // ─── Helper: compute enrollment totals from raw rows ─────────
 // Extracted so both the primary-year fetch and the compare-year
 // fetch can share the exact same aggregation logic.
@@ -492,7 +482,7 @@ export default function Dashboard() {
       const { data: allEnrollment } = await supabase
         .from("enrollment_data")
         .select("school_year, category, grand_total");
-      let trendData = enrollmentTrendStatic;
+      let trendData = [];
       if (allEnrollment) {
         const trendYears = [
           ...new Set(allEnrollment.map((d) => d.school_year)),
@@ -569,7 +559,7 @@ export default function Dashboard() {
     male: { total: 0, public: 0, private: 0 },
     female: { total: 0, public: 0, private: 0 },
   };
-  const enrollmentTrend = enrollmentObj?.trend || enrollmentTrendStatic;
+  const enrollmentTrend = enrollmentObj?.trend || [];
 
   const loading = isEnrollmentLoading || !selectedYear;
   const error = enrollmentError?.message || null;
@@ -1207,7 +1197,7 @@ export default function Dashboard() {
         {/* ── Page header ─────────────────────────────────── */}
         <div className="flex flex-col gap-4 mb-6 sm:mb-7 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <h1 className="text-[1.4rem] sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
+            <h1 className="text-xl sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
               Dashboard
             </h1>
             <p className="hidden lg:block text-[0.78rem] text-slate-400 font-medium mt-1">

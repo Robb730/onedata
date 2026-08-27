@@ -1,4 +1,6 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { LoginBranding, LoginForm } from "../../components/LoginPageComponents";
 import logo from "../../assets/one-data-logo.png";
 
@@ -9,6 +11,8 @@ import logo from "../../assets/one-data-logo.png";
  * and change positions continuously across the background as an idle animation.
  */
 export default function LoginPage() {
+  const navigate = useNavigate();
+
   return (
     <div
       id="login-page"
@@ -45,11 +49,20 @@ export default function LoginPage() {
 
       <div
         id="login-card"
-        className="relative z-10 flex w-full max-w-[920px] flex-col overflow-hidden rounded-2xl bg-white md:min-h-[540px] md:flex-row"
+        className="relative z-10 flex w-full max-w-[920px] flex-col overflow-hidden rounded-2xl bg-white md:min-h-[540px] md:flex-row opacity-0 animate-[loginCardEnter_0.7s_cubic-bezier(0.16,1,0.3,1)_0.1s_forwards]"
         style={{
           boxShadow: "0 25px 60px rgba(15,50,100,0.12), 0 8px 24px rgba(15,50,100,0.08), 0 0 0 1px rgba(255,255,255,0.6)",
         }}
       >
+        {/* Back to Home — mobile only (branding panel handles desktop) */}
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="md:hidden absolute top-4 left-4 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-slate-50 border border-slate-200 shadow-[0_2px_12px_rgba(0,0,0,0.05)] text-slate-600 hover:bg-slate-100 hover:text-slate-800 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+          aria-label="Back to Home"
+        >
+          <ArrowLeft size={16} strokeWidth={2.2} />
+        </button>
         <div className="flex flex-col items-center pt-8 pb-2 px-6 md:hidden">
           <img src={logo} alt="OneData Logo" className="h-12 w-auto" />
           <h2 className="mt-1.5 text-xl font-extrabold tracking-wider" style={{ color: "#282828" }}>
@@ -81,6 +94,10 @@ export default function LoginPage() {
           50% { transform: translate(-100px, -260px) scale(1.05); }
           75% { transform: translate(60px, -140px) scale(0.92); }
           100% { transform: translate(0px, 0px) scale(1); }
+        }
+        @keyframes loginCardEnter {
+          0% { opacity: 0; transform: translateY(24px) scale(0.97); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
     </div>

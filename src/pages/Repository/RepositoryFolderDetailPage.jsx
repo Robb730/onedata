@@ -48,6 +48,7 @@ import FileAccessRequestModal from "../../components/RepositoryComponents/FileAc
 import AccessRequestsSidebar from "../../components/RepositoryComponents/AccessRequestsSidebar";
 import FloatingActionGroup from "../../components/RepositoryComponents/FloatingActionGroup";
 import TemplatesModal from "../../components/RepositoryComponents/TemplatesModal";
+import RecycleBinModal from "../../components/RepositoryComponents/RecycleBinModal";
 import {
   fetchScopedRequests,
   canApproveAccessRequests,
@@ -155,15 +156,12 @@ function VerifyStatusPill({
             : "Click to verify"
           : undefined
       }
-      className={`inline-flex items-center gap-1 rounded-full font-bold border transition-colors ${
-        compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]"
-      } ${
-        isVerified
+      className={`inline-flex items-center gap-1 rounded-full font-bold border transition-colors ${compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]"
+        } ${isVerified
           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
           : "bg-slate-100 text-slate-500 border-slate-200"
-      } ${
-        canVerify ? "cursor-pointer hover:brightness-95" : "cursor-default"
-      } disabled:opacity-60 disabled:cursor-not-allowed`}
+        } ${canVerify ? "cursor-pointer hover:brightness-95" : "cursor-default"
+        } disabled:opacity-60 disabled:cursor-not-allowed`}
     >
       {isVerified ? (
         <>
@@ -196,11 +194,10 @@ function MobileFileActionBtn({
       }}
       disabled={disabled}
       title={title}
-      className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-colors disabled:opacity-40 ${
-        danger
+      className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-colors disabled:opacity-40 ${danger
           ? "border-slate-100 bg-white text-slate-400 hover:border-red-100 hover:bg-red-50 hover:text-red-500"
           : "border-slate-100 bg-white text-slate-400 hover:border-blue-100 hover:bg-blue-50 hover:text-blue-600"
-      }`}
+        }`}
     >
       {children}
     </button>
@@ -290,11 +287,10 @@ function MobileFileListCard({
 
   return (
     <article
-      className={`rounded-2xl border bg-white p-3.5 transition-all select-none ${
-        isSelected
+      className={`rounded-2xl border bg-white p-3.5 transition-all select-none ${isSelected
           ? "border-blue-300 shadow-md ring-1 ring-blue-100 bg-blue-50/30"
           : "border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
-      }`}
+        }`}
       style={{ contentVisibility: "auto", containIntrinsicSize: "0 110px" }}
       onClick={(e) => {
         if (e.ctrlKey || e.metaKey) {
@@ -312,11 +308,10 @@ function MobileFileListCard({
             e.stopPropagation();
             onSelectOrVerify?.(e);
           }}
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all mt-0.5 ${
-            isSelected
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all mt-0.5 ${isSelected
               ? "border-blue-200 bg-blue-100 text-blue-600"
               : `${bg} border-transparent hover:bg-slate-50`
-          }`}
+            }`}
           title={isSelected ? "Deselect" : "Select"}
         >
           {isSelected ? (
@@ -402,11 +397,10 @@ function MobileFileGridCard({
 
   return (
     <article
-      className={`group relative flex flex-col rounded-2xl border bg-white p-3 transition-all select-none ${
-        isSelected
+      className={`group relative flex flex-col rounded-2xl border bg-white p-3 transition-all select-none ${isSelected
           ? "border-blue-300 shadow-md ring-1 ring-blue-100 bg-blue-50/30"
           : "border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.04)] hover:border-slate-300 hover:shadow-md"
-      }`}
+        }`}
       style={{ contentVisibility: "auto", containIntrinsicSize: "0 220px" }}
       onClick={(e) => {
         if (e.ctrlKey || e.metaKey) {
@@ -424,11 +418,10 @@ function MobileFileGridCard({
             e.stopPropagation();
             onSelectOrVerify?.(e);
           }}
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all ${
-            isSelected
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all ${isSelected
               ? "border-blue-200 bg-blue-100 text-blue-600"
               : `${bg} border-transparent hover:bg-slate-50`
-          }`}
+            }`}
           title={isSelected ? "Deselect" : "Select"}
         >
           {isSelected ? (
@@ -733,11 +726,10 @@ function PaginationBar({
               <button
                 key={p}
                 onClick={() => onPageChange(p)}
-                className={`min-w-7 h-7 px-2 rounded-lg text-[11px] font-bold transition-colors ${
-                  p === currentPage
+                className={`min-w-7 h-7 px-2 rounded-lg text-[11px] font-bold transition-colors ${p === currentPage
                     ? "bg-blue-600 text-white shadow-sm"
                     : "bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                }`}
+                  }`}
               >
                 {p}
               </button>
@@ -789,13 +781,14 @@ function DeleteFileConfirmModal({
             <div>
               <h2 className="text-xl font-bold text-slate-900">Delete file?</h2>
               <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                This will permanently remove
+                This will move
                 <br />
                 <span className="font-semibold text-slate-700">
                   "{fileName}"
                 </span>
                 <br />
-                This action cannot be undone.
+                to the recycle bin. It will be permanently deleted after 14
+                days unless restored.
               </p>
             </div>
           </div>
@@ -843,13 +836,12 @@ function BulkDeleteConfirmModal({
                 Delete {count} file{count > 1 ? "s" : ""}?
               </h2>
               <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                This will permanently remove{" "}
+                This will move{" "}
                 <span className="font-semibold text-slate-700">
                   {count} file{count > 1 ? "s" : ""}
                 </span>{" "}
-                from storage and the database.
-                <br />
-                This action cannot be undone.
+                to the recycle bin. They will be permanently deleted after 14
+                days unless restored.
               </p>
             </div>
           </div>
@@ -1163,14 +1155,14 @@ function LastModifiedInfoCard({ rawDate, uploaderInfo }) {
   // Format full datetime string
   const fullDate = rawDate
     ? new Date(rawDate).toLocaleString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
     : "—";
 
   return (
@@ -1232,10 +1224,16 @@ export default function RepositoryFolderDetailPage() {
   const [showFileRequestModal, setShowFileRequestModal] = useState(false);
   const [isSubmittingFileRequest, setIsSubmittingFileRequest] = useState(false);
   const [myFileRequests, setMyFileRequests] = useState([]);
+  const activeFileRequestsCount = myFileRequests.filter(
+    (r) => r.status === "Pending" || r.status === "Overdue",
+  ).length;
 
   const [loadingFileRequests, setLoadingFileRequests] = useState(false); // ← add this
   const [showFileRequestsPanel, setShowFileRequestsPanel] = useState(false);
   const [showFileRequestToast, setShowFileRequestToast] = useState(false);
+
+  // ── Recycle Bin ────────────────────────────────────────────────
+  const [showRecycleBin, setShowRecycleBin] = useState(false);
 
   // ── Supabase state ─────────────────────────────────────────────
   const [section, setSection] = useState(null);
@@ -1612,6 +1610,31 @@ export default function RepositoryFolderDetailPage() {
       !!section &&
       userProfile?.section_id === section.id);
 
+  // ── Recycle Bin permissions ──────────────────────────────────
+  // Full bin: sees every soft-deleted file in the section, can restore
+  // AND permanently delete. Same trust tier as canVerify — admin, any
+  // division_focal that owns this section's division, or the section's
+  // own section_focal.
+  const canViewRecycleBinFull =
+    userProfile?.role === "administrator" ||
+    (userProfile?.role === "division_focal" &&
+      !!section &&
+      userProfile?.division_id === section.division_id) ||
+    (userProfile?.role === "section_focal" &&
+      !!section &&
+      userProfile?.section_id === section.id);
+
+  // Own-only bin: section_personnel can see and restore ONLY files they
+  // personally uploaded (mirrors canDeleteFile's own-upload restriction).
+  // No permanent-delete access — that stays with officer+/admin.
+  const canViewOwnRecycleBin =
+    userProfile?.role === "section_personnel" &&
+    !!section &&
+    userProfile?.section_id === section.id;
+
+  const canOpenRecycleBin = canViewRecycleBinFull || canViewOwnRecycleBin;
+  const recycleBinScope = canViewRecycleBinFull ? "full" : "own";
+
   // Section personnel get "full" edit access to their own section like
   // everyone else with canEdit — but unlike section_focal/division_focal/
   // admin, they may only delete files they personally uploaded, not
@@ -1689,10 +1712,13 @@ export default function RepositoryFolderDetailPage() {
       .single();
     if (!divisionError) setDivision(divisionData);
 
+    // Soft-deleted files (deleted_at IS NOT NULL) live in the recycle bin
+    // and must never show up in the normal repository list.
     const { data: filesData } = await supabase
       .from("files")
       .select("*")
       .eq("section_id", sectionData.id)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
     const uploaderIds = [
@@ -1831,6 +1857,7 @@ export default function RepositoryFolderDetailPage() {
         `
       id, file_name, description, deadline, status, created_at,
       requested_by,
+      linked_file_id,
       users:requested_by ( full_name, role )
     `,
       )
@@ -1843,6 +1870,39 @@ export default function RepositoryFolderDetailPage() {
       return;
     }
 
+    const linkedFileIds = (data || [])
+      .map((request) => request.linked_file_id)
+      .filter(Boolean);
+    const linkedFiles = {};
+
+    if (linkedFileIds.length > 0) {
+      const { data: fileRows, error: fileError } = await supabase
+        .from("files")
+        .select("id, file_name, file_path, data_category")
+        .in("id", linkedFileIds);
+
+      if (fileError) {
+        console.error("Failed to fetch uploaded request files:", fileError);
+      } else {
+        await Promise.all(
+          (fileRows || []).map(async (file) => {
+            const { data: urlData, error: urlError } = await supabase.storage
+              .from(getBucket(file.data_category))
+              .createSignedUrl(file.file_path, 3600);
+
+            if (urlError) {
+              console.error("Failed to create uploaded file URL:", urlError);
+            }
+
+            linkedFiles[file.id] = {
+              ...file,
+              url: urlData?.signedUrl ?? null,
+            };
+          }),
+        );
+      }
+    }
+
     const today = new Date();
     setMyFileRequests(
       (data || []).map((r) => {
@@ -1851,14 +1911,16 @@ export default function RepositoryFolderDetailPage() {
         return {
           id: r.id,
           fileName: r.file_name,
+          uploadedFileName: linkedFiles[r.linked_file_id]?.file_name ?? null,
+          uploadedFileUrl: linkedFiles[r.linked_file_id]?.url ?? null,
           message: r.description,
           requestedOn: r.created_at,
           dueDate: r.deadline
             ? new Date(r.deadline).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
             : "—",
           requestedBy: r.users?.full_name ?? "Unknown",
           requesterRole: getRoleDisplay(r.users?.role) ?? "",
@@ -1976,51 +2038,24 @@ export default function RepositoryFolderDetailPage() {
     setFileToDelete(file);
   }
 
+  // Soft delete — moves the file into the recycle bin instead of removing
+  // it from storage/DB. The storage object and DB row stay untouched (so
+  // restore is a simple field reset) until either the user restores it or
+  // the 14-day auto-purge job removes it for good.
   async function confirmDeleteFile() {
     const file = fileToDelete;
     if (!file) return;
     setDeletingId(file.id);
     try {
-      let storageRemoved = true;
-
-      if (file.path) {
-        const bucket = getBucket(file.data_category);
-        const { data: removedData, error: storageErr } = await supabase.storage
-          .from(bucket)
-          .remove([file.path]);
-
-        if (storageErr) throw new Error(storageErr.message);
-
-        // Supabase does NOT error when the path/bucket doesn't match an
-        // existing object — it just returns an empty array. Treat that as
-        // a real failure instead of silently deleting the DB row anyway.
-        if (!removedData || removedData.length === 0) {
-          storageRemoved = false;
-          console.error(
-            `Storage delete no-op: bucket="${bucket}" path="${file.path}" — no matching object found.`,
-          );
-        }
-      }
-
-      if (file.verifiedPdfPath) {
-        const { data: removedVerified, error: verifiedErr } =
-          await supabase.storage
-            .from("verified-pdfs")
-            .remove([file.verifiedPdfPath]);
-        if (verifiedErr) {
-          console.error("Failed to remove verified PDF:", verifiedErr);
-        } else if (!removedVerified || removedVerified.length === 0) {
-          console.error(
-            `Verified PDF delete no-op: path="${file.verifiedPdfPath}" — no matching object found.`,
-          );
-        }
-      }
-
-      const { error: dbErr } = await supabase
+      const { error } = await supabase
         .from("files")
-        .delete()
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: userProfile?.id,
+          deleted_by_name: userProfile?.full_name ?? "Unknown",
+        })
         .eq("id", file.id);
-      if (dbErr) throw new Error(dbErr.message);
+      if (error) throw new Error(error.message);
 
       const keysToInvalidate = CATEGORY_TO_QUERY_KEYS[file.data_category];
       if (keysToInvalidate) {
@@ -2041,19 +2076,11 @@ export default function RepositoryFolderDetailPage() {
       await logAudit(
         "Delete",
         file.name,
-        storageRemoved
-          ? `Deleted from ${section?.name}`
-          : `Deleted from ${section?.name} (storage object was not found — possible orphaned file)`,
+        `Moved to recycle bin in ${section?.name}`,
         "Success",
       );
       setFileToDelete(null);
       setShowDeleteToast(true);
-
-      if (!storageRemoved) {
-        alert(
-          "The database record was deleted, but the stored file could not be located in storage (it may already be orphaned). Check the console/audit log for the bucket and path used.",
-        );
-      }
 
       await notifyScope({
         sectionId: section?.id,
@@ -2073,7 +2100,7 @@ export default function RepositoryFolderDetailPage() {
           recipientIds: [file.uploaderId],
           type: "file_deleted",
           title: "Your file was deleted",
-          content: `${file.name} was deleted from ${section?.name}`,
+          content: `${file.name} was moved to the recycle bin in ${section?.name}`,
         });
       }
     } catch (err) {
@@ -2153,18 +2180,18 @@ export default function RepositoryFolderDetailPage() {
         prev.map((f) =>
           f.id === file.id
             ? {
-                ...f,
-                status: newStatus,
-                rawUpdatedAt: now,
-                verifiedPdfPath:
-                  newStatus === "Verified" ? verifiedPdfPath : null,
-                verifiedByName:
-                  newStatus === "Verified"
-                    ? updatePayload.verified_by_name
-                    : null,
-                verifiedAt:
-                  newStatus === "Verified" ? updatePayload.verified_at : null,
-              }
+              ...f,
+              status: newStatus,
+              rawUpdatedAt: now,
+              verifiedPdfPath:
+                newStatus === "Verified" ? verifiedPdfPath : null,
+              verifiedByName:
+                newStatus === "Verified"
+                  ? updatePayload.verified_by_name
+                  : null,
+              verifiedAt:
+                newStatus === "Verified" ? updatePayload.verified_at : null,
+            }
             : f,
         ),
       );
@@ -2318,40 +2345,29 @@ export default function RepositoryFolderDetailPage() {
   }
 
   // ── Bulk delete ────────────────────────────────────────────────
+  // Same soft-delete treatment as the single-file path — files move to
+  // the recycle bin instead of being purged from storage/DB immediately.
   async function confirmBulkDelete() {
     if (!canEdit) return;
     const filesToDelete = deletableSelectedFiles;
     setIsBulkDeleting(true);
+    const now = new Date().toISOString();
     for (const file of filesToDelete) {
       try {
-        // 1. Remove from correct storage bucket
-        if (file.path) {
-          const bucket = getBucket(file.data_category);
-          const { data: removedData, error: storageErr } =
-            await supabase.storage.from(bucket).remove([file.path]);
-          if (storageErr) throw new Error(storageErr.message);
-          if (!removedData || removedData.length === 0)
-            console.error(
-              `Bulk delete storage no-op: bucket="${bucket}" path="${file.path}"`,
-            );
-        }
-        // 2. Remove verified PDF if present
-        if (file.verifiedPdfPath) {
-          await supabase.storage
-            .from("verified-pdfs")
-            .remove([file.verifiedPdfPath]);
-        }
-        // 3. Remove DB row
         const { error: dbErr } = await supabase
           .from("files")
-          .delete()
+          .update({
+            deleted_at: now,
+            deleted_by: userProfile?.id,
+            deleted_by_name: userProfile?.full_name ?? "Unknown",
+          })
           .eq("id", file.id);
         if (dbErr) throw new Error(dbErr.message);
         setAllFiles((prev) => prev.filter((f) => f.id !== file.id));
         await logAudit(
           "Delete",
           file.name,
-          `Bulk deleted from ${section?.name}`,
+          `Bulk moved to recycle bin in ${section?.name}`,
           "Success",
         );
       } catch (err) {
@@ -2762,7 +2778,7 @@ export default function RepositoryFolderDetailPage() {
           </nav>
 
           {/* ── Page Header ────────────────────────────────────── */}
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3 lg:gap-4">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <h1 className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em] leading-tight repo-morph-title shrink-0">
@@ -2809,31 +2825,49 @@ export default function RepositoryFolderDetailPage() {
                 </div>
               </div>
             </div>
-            {canRequestFile && (
-              <div className="flex items-center gap-2 shrink-0 repo-morph-actions">
-                <button
-                  onClick={() => {
-                    setShowFileRequestsPanel(true);
-                    fetchMyFileRequests();
-                  }}
-                  className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-all"
-                >
-                  <Inbox size={15} />
-                  <span className="hidden sm:inline">Files Requested</span>
-                  <span className="sm:hidden">Requested</span>
-                  {myFileRequests.length > 0 && (
-                    <span className="inline-flex items-center justify-center min-w-4.5 h-4.5 px-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
-                      {myFileRequests.length}
+            {(canRequestFile || canOpenRecycleBin) && (
+  <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto lg:shrink-0 repo-morph-actions">
+                {canRequestFile && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowFileRequestsPanel(true);
+                        fetchMyFileRequests();
+                      }}
+                      className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-all"
+                    >
+                      <Inbox size={15} />
+                      <span className="hidden sm:inline">Files Requested</span>
+                      <span className="sm:hidden">Requested</span>
+                      {activeFileRequestsCount > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-4.5 h-4.5 px-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
+                          {activeFileRequestsCount}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setShowFileRequestModal(true)}
+                      className="inline-flex items-center gap-1.5 sm:gap-2 rounded-[10px] bg-blue-500 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer"
+                    >
+                      <FileUp size={15} />
+                      Request File
+                    </button>
+                  </>
+                )}
+                {canOpenRecycleBin && (
+                  <button
+                    onClick={() => setShowRecycleBin(true)}
+                    className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-all"
+                  >
+                    <Trash2 size={15} />
+                    <span className="hidden sm:inline">
+                      {recycleBinScope === "own"
+                        ? "My Deleted Files"
+                        : "Recycle Bin"}
                     </span>
-                  )}
-                </button>
-                <button
-                  onClick={() => setShowFileRequestModal(true)}
-                  className="inline-flex items-center gap-1.5 sm:gap-2 rounded-[10px] bg-blue-500 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer"
-                >
-                  <FileUp size={15} />
-                  Request File
-                </button>
+                    <span className="sm:hidden">Bin</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -2902,11 +2936,10 @@ export default function RepositoryFolderDetailPage() {
                         <button
                           key={tab}
                           onClick={() => setActiveType(tab)}
-                          className={`shrink-0 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[10px] sm:text-[11px] font-semibold rounded-full transition-all border ${
-                            isActive
+                          className={`shrink-0 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[10px] sm:text-[11px] font-semibold rounded-full transition-all border ${isActive
                               ? activeColors
                               : "text-slate-500 hover:bg-slate-50 border-slate-200 bg-white"
-                          }`}
+                            }`}
                         >
                           {tab}
                           <span
@@ -3142,9 +3175,8 @@ export default function RepositoryFolderDetailPage() {
                             toggleSelect(file.id);
                           }
                         }}
-                        className={`group relative transition-colors cursor-pointer select-none ${
-                          isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
-                        }`}
+                        className={`group relative transition-colors cursor-pointer select-none ${isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
+                          }`}
                         title="Ctrl+Click to select"
                       >
                         {/* File cell — with hover popover */}
@@ -3161,11 +3193,10 @@ export default function RepositoryFolderDetailPage() {
                                   e.stopPropagation();
                                   toggleSelect(file.id);
                                 }}
-                                className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                                  isSelected
+                                className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${isSelected
                                     ? "bg-blue-50 border border-blue-200 text-blue-600"
                                     : `border border-transparent group-hover:bg-slate-100 group-hover:border-slate-200 group-hover:text-slate-400 ${bg}`
-                                }`}
+                                  }`}
                                 title={isSelected ? "Deselect" : "Select"}
                               >
                                 {isSelected ? (
@@ -3220,11 +3251,10 @@ export default function RepositoryFolderDetailPage() {
                             </div>
                             {/* File hover popover */}
                             <div
-                              className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
-                                isFileHovered
+                              className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${isFileHovered
                                   ? "opacity-100 visible scale-100 pointer-events-auto"
                                   : "opacity-0 invisible scale-95 pointer-events-none"
-                              }`}
+                                }`}
                             >
                               <FileInfoCard
                                 file={file}
@@ -3259,15 +3289,13 @@ export default function RepositoryFolderDetailPage() {
                                   : "Click to verify"
                                 : undefined
                             }
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${
-                              isVerified
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${isVerified
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                 : "bg-slate-100 text-slate-500 border-slate-200"
-                            } ${
-                              canVerify
+                              } ${canVerify
                                 ? "cursor-pointer hover:brightness-95"
                                 : "cursor-default"
-                            } disabled:opacity-60 disabled:cursor-not-allowed`}
+                              } disabled:opacity-60 disabled:cursor-not-allowed`}
                           >
                             {isVerified ? (
                               <>
@@ -3321,11 +3349,10 @@ export default function RepositoryFolderDetailPage() {
                             {/* User hover popover */}
                             {uploaderInfo && (
                               <div
-                                className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
-                                  isUserHovered
+                                className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${isUserHovered
                                     ? "opacity-100 visible scale-100 pointer-events-auto"
                                     : "opacity-0 invisible scale-95 pointer-events-none"
-                                }`}
+                                  }`}
                               >
                                 <UserInfoCard info={uploaderInfo} />
                               </div>
@@ -3362,11 +3389,10 @@ export default function RepositoryFolderDetailPage() {
                             </div>
                             {/* Last Modified hover popover */}
                             <div
-                              className={`absolute z-50 right-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-right ${
-                                hoveredModifiedId === file.id
+                              className={`absolute z-50 right-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-right ${hoveredModifiedId === file.id
                                   ? "opacity-100 visible scale-100 pointer-events-auto"
                                   : "opacity-0 invisible scale-95 pointer-events-none"
-                              }`}
+                                }`}
                             >
                               <LastModifiedInfoCard
                                 rawDate={getFileModifiedAt(file)}
@@ -3638,6 +3664,18 @@ export default function RepositoryFolderDetailPage() {
         }
       />
 
+      <RecycleBinModal
+        isOpen={showRecycleBin}
+        onClose={() => setShowRecycleBin(false)}
+        sectionId={section?.id}
+        sectionName={section?.name}
+        userProfile={userProfile}
+        scope={recycleBinScope}
+        canPurgeForever={canViewRecycleBinFull}
+        getBucket={getBucket}
+        onChanged={fetchData}
+      />
+
       {/* ── Floating Action Group ──────────────────────────────────── */}
       {(() => {
         const role = userProfile?.role;
@@ -3645,7 +3683,7 @@ export default function RepositoryFolderDetailPage() {
           role === "administrator" ||
           (role === "division_focal" &&
             String(userProfile?.division_id) ===
-              String(section?.division_id)) ||
+            String(section?.division_id)) ||
           (role === "section_focal" &&
             String(userProfile?.section_id) === String(section?.id));
 
@@ -3655,7 +3693,7 @@ export default function RepositoryFolderDetailPage() {
           role === "administrator" ||
           (role === "division_focal" &&
             String(userProfile?.division_id) ===
-              String(section?.division_id)) ||
+            String(section?.division_id)) ||
           (role === "section_focal" &&
             String(userProfile?.section_id) === String(section?.id)) ||
           (role === "section_personnel" &&
@@ -3683,33 +3721,33 @@ export default function RepositoryFolderDetailPage() {
         }
 
         // Privileged roles: show the group trigger with Templates + (optionally) Access Requests.
-                // Privileged roles: show the group trigger with Templates (only if this
+        // Privileged roles: show the group trigger with Templates (only if this
         // section is in scope) + Access Requests (only if in scope).
         const groupActions = [
           ...(canManageThisSection
             ? [
-                {
-                  id: "templates",
-                  icon: <LayoutTemplate size={20} className="text-white" />,
-                  label: "Templates",
-                  color:
-                    "bg-emerald-600 hover:bg-emerald-700 shadow-[0_8px_20px_rgba(5,150,105,0.40)]",
-                  onClick: () => setShowTemplatesModal(true),
-                },
-              ]
+              {
+                id: "templates",
+                icon: <LayoutTemplate size={20} className="text-white" />,
+                label: "Templates",
+                color:
+                  "bg-emerald-600 hover:bg-emerald-700 shadow-[0_8px_20px_rgba(5,150,105,0.40)]",
+                onClick: () => setShowTemplatesModal(true),
+              },
+            ]
             : []),
           ...(canSeeAccessRequests
             ? [
-                {
-                  id: "access-requests",
-                  icon: <ClipboardList size={20} className="text-white" />,
-                  label: "Access Requests",
-                  color:
-                    "bg-blue-600 hover:bg-blue-700 shadow-[0_8px_20px_rgba(37,99,235,0.40)]",
-                  onClick: () => setIsAccessSidebarOpen(true),
-                  badge: pendingAccessRequestCount,
-                },
-              ]
+              {
+                id: "access-requests",
+                icon: <ClipboardList size={20} className="text-white" />,
+                label: "Access Requests",
+                color:
+                  "bg-blue-600 hover:bg-blue-700 shadow-[0_8px_20px_rgba(37,99,235,0.40)]",
+                onClick: () => setIsAccessSidebarOpen(true),
+                badge: pendingAccessRequestCount,
+              },
+            ]
             : []),
         ];
         if (groupActions.length === 0) return null;
@@ -3742,11 +3780,10 @@ export default function RepositoryFolderDetailPage() {
 
       {/* ── Success toast ──────────────────────────────────── */}
       <div
-        className={`fixed left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(6.5rem+env(safe-area-inset-bottom))] lg:bottom-8 sm:left-auto sm:right-8 sm:w-[380px] ${
-          showDeleteToast
+        className={`fixed left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(6.5rem+env(safe-area-inset-bottom))] lg:bottom-8 sm:left-auto sm:right-8 sm:w-[380px] ${showDeleteToast
             ? "translate-x-0 opacity-100 pointer-events-auto"
             : "translate-x-[120%] opacity-0 pointer-events-none"
-        }`}
+          }`}
         style={{
           width: "380px",
           minHeight: "76px",
@@ -3804,7 +3841,7 @@ export default function RepositoryFolderDetailPage() {
                 margin: 0,
               }}
             >
-              File deleted successfully.
+              File moved to recycle bin.
             </p>
           </div>
 
@@ -3820,11 +3857,10 @@ export default function RepositoryFolderDetailPage() {
 
       {/* ── File Request Success Toast ───────────────────────── */}
       <div
-        className={`fixed left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(6.5rem+env(safe-area-inset-bottom))] lg:bottom-8 sm:left-auto sm:right-8 sm:w-[380px] ${
-          showFileRequestToast
+        className={`fixed left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(6.5rem+env(safe-area-inset-bottom))] lg:bottom-8 sm:left-auto sm:right-8 sm:w-[380px] ${showFileRequestToast
             ? "translate-x-0 opacity-100 pointer-events-auto"
             : "translate-x-[120%] opacity-0 pointer-events-none"
-        }`}
+          }`}
         style={{
           minHeight: "76px",
           borderRadius: "16px",

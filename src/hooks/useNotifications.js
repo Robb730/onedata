@@ -14,6 +14,7 @@ const TYPE_META = {
   file_unverified: { icon: AlertTriangle, iconBg: "bg-amber-100", iconColor: "text-amber-600" },
   file_deleted: { icon: AlertTriangle, iconBg: "bg-rose-100", iconColor: "text-rose-600" },
   file_access_request: { icon: AlertTriangle, iconBg: "bg-blue-100", iconColor: "text-blue-600" },
+  file_request_completed: { icon: UploadCloud, iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
   division_access_request: { icon: AlertTriangle, iconBg: "bg-indigo-100", iconColor: "text-indigo-600" },
   access_request_approved: { icon: ShieldCheck, iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
   access_request_denied: { icon: AlertTriangle, iconBg: "bg-rose-100", iconColor: "text-rose-600" },
