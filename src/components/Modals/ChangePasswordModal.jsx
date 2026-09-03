@@ -61,10 +61,16 @@ export function ChangePasswordModal({ isOpen, onSuccess }) {
     }
 
     const { data: { user } } = await supabase.auth.getUser();
-    await supabase
+    const { error: profileError } = await supabase
       .from("users")
       .update({ must_change_password: false })
       .eq("id", user.id);
+
+    if (profileError) {
+      setError(profileError.message);
+      setLoading(false);
+      return;
+    }
 
     setLoading(false);
     onSuccess();
@@ -72,112 +78,112 @@ export function ChangePasswordModal({ isOpen, onSuccess }) {
 
   return (
     <ModalPortal>
-    <div
-      className="modal-overlay fixed inset-0 z-50 flex items-center justify-center"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
-        <div className="flex justify-center mb-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50">
-            <Lock size={26} className="text-blue-600" />
-          </div>
-        </div>
-
-        <h2 className="text-center text-xl font-bold text-slate-800 mb-1">
-          Change Your Password
-        </h2>
-        <p className="text-center text-sm text-slate-400 mb-6">
-          You're using a temporary password. Please set a new one to continue.
-        </p>
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* New Password */}
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-slate-600">New Password</label>
-            <div className="relative">
-              <input
-                type={showNew ? "text" : "password"}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="At least 8 characters"
-                className="w-full rounded-lg border border-slate-200 px-4 py-2.5 pr-10 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowNew((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-              >
-                {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
+      <div
+        className="modal-overlay fixed inset-0 z-50 flex items-center justify-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
+          <div className="flex justify-center mb-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50">
+              <Lock size={26} className="text-blue-600" />
             </div>
+          </div>
 
-            {/* Strength meter — always visible, empty state until typing starts */}
-            <div className="mt-1">
-              <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${strength.color}`}
-                  style={{ width: strength.width }}
+          <h2 className="text-center text-xl font-bold text-slate-800 mb-1">
+            Change Your Password
+          </h2>
+          <p className="text-center text-sm text-slate-400 mb-6">
+            You're using a temporary password. Please set a new one to continue.
+          </p>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {/* New Password */}
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-slate-600">New Password</label>
+              <div className="relative">
+                <input
+                  type={showNew ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  className="w-full rounded-lg border border-slate-200 px-4 py-2.5 pr-10 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                  required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowNew((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                >
+                  {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
-              <p className={`mt-1 text-xs font-medium ${newPassword.length === 0 ? "text-slate-300" : strength.textColor}`}>
-                {newPassword.length === 0 ? "Enter a password" : strength.label}
-              </p>
+
+              {/* Strength meter — always visible, empty state until typing starts */}
+              <div className="mt-1">
+                <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${strength.color}`}
+                    style={{ width: strength.width }}
+                  />
+                </div>
+                <p className={`mt-1 text-xs font-medium ${newPassword.length === 0 ? "text-slate-300" : strength.textColor}`}>
+                  {newPassword.length === 0 ? "Enter a password" : strength.label}
+                </p>
+              </div>
+
+              {/* Requirement checklist — always visible */}
+              <ul className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1">
+                <RequirementItem met={checks.length} label="8+ characters" />
+                <RequirementItem met={checks.uppercase} label="Uppercase letter" />
+                <RequirementItem met={checks.lowercase} label="Lowercase letter" />
+                <RequirementItem met={checks.number} label="Number" />
+                <RequirementItem met={checks.special} label="Special character" />
+              </ul>
             </div>
 
-            {/* Requirement checklist — always visible */}
-            <ul className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1">
-              <RequirementItem met={checks.length} label="8+ characters" />
-              <RequirementItem met={checks.uppercase} label="Uppercase letter" />
-              <RequirementItem met={checks.lowercase} label="Lowercase letter" />
-              <RequirementItem met={checks.number} label="Number" />
-              <RequirementItem met={checks.special} label="Special character" />
-            </ul>
-          </div>
-
-          {/* Confirm Password */}
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-slate-600">Confirm Password</label>
-            <div className="relative">
-              <input
-                type={showConfirm ? "text" : "password"}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repeat your new password"
-                className="w-full rounded-lg border border-slate-200 px-4 py-2.5 pr-10 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirm((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-              >
-                {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
+            {/* Confirm Password */}
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-slate-600">Confirm Password</label>
+              <div className="relative">
+                <input
+                  type={showConfirm ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repeat your new password"
+                  className="w-full rounded-lg border border-slate-200 px-4 py-2.5 pr-10 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                >
+                  {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              {confirmPassword.length > 0 && (
+                <p className={`text-xs mt-1 ${newPassword === confirmPassword ? "text-emerald-500" : "text-rose-500"}`}>
+                  {newPassword === confirmPassword ? "Passwords match" : "Passwords do not match"}
+                </p>
+              )}
             </div>
-            {confirmPassword.length > 0 && (
-              <p className={`text-xs mt-1 ${newPassword === confirmPassword ? "text-emerald-500" : "text-rose-500"}`}>
-                {newPassword === confirmPassword ? "Passwords match" : "Passwords do not match"}
+
+            {error && (
+              <p className="text-sm text-rose-500 bg-rose-50 px-3 py-2 rounded-lg">
+                {error}
               </p>
             )}
-          </div>
 
-          {error && (
-            <p className="text-sm text-rose-500 bg-rose-50 px-3 py-2 rounded-lg">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading || !allChecksPassed}
-            className="mt-2 w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {loading ? "Updating..." : "Set New Password"}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading || !allChecksPassed}
+              className="mt-2 w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? "Updating..." : "Set New Password"}
+            </button>
+          </form>
+        </div>
       </div>
-    </div>
     </ModalPortal>
   );
 }
