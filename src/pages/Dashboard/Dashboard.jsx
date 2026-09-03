@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 import {
   TrendingUp,
   Info,
@@ -18,6 +18,7 @@ import {
   X,
   Clock,
   CheckCircle,
+  Search,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../../lib/supabaseClient";
@@ -436,6 +437,59 @@ export default function Dashboard() {
   const [resourceType, setResourceType] = useState("Teachers");
 
   const [activeCespesTab, setActiveCespesTab] = useState("Operations");
+
+  // ── Dashboard Search
+  const [dashboardSearch, setDashboardSearch] = useState("");
+
+  // ── Search keyword matching ────────────────────────────────
+  const searchQ = dashboardSearch.toLowerCase().trim();
+
+  const matchesPerformance = !searchQ ||
+    ["enrollment", "public", "private", "male", "female", "total", "by level",
+      "elementary", "junior high", "senior high", "jhs", "shs", "kinder",
+      "dropout", "promotion", "cohort", "survival", "performance", "indicator", "trend"]
+      .some((kw) => kw.includes(searchQ));
+
+  const matchesCespes = !searchQ ||
+    ["cespes", "operations", "support", "general admin", "admin", "individual",
+      "innovation", "intervention", "evaluation", "effectiveness"]
+      .some((kw) => kw.includes(searchQ));
+
+  const matchesResources = !searchQ ||
+    ["teachers", "teacher", "classrooms", "classroom", "seats", "seat",
+      "textbooks", "textbook", "shortage", "resources", "inventory", "needs"]
+      .some((kw) => kw.includes(searchQ));
+
+  const matchesInstitutional = !searchQ ||
+    ["aip", "qbedp", "quality basic education", "accomplishment", "report",
+      "plans", "institutional"]
+      .some((kw) => kw.includes(searchQ));
+
+  const visibleSections = [matchesPerformance, matchesCespes, matchesResources, matchesInstitutional]
+    .filter(Boolean).length;
+
+  // Auto-select sub-views when search query matches specific keywords
+  useEffect(() => {
+    if (!searchQ) return;
+    // Performance — enrollment sub-views
+    if (["by level", "elementary", "junior high", "senior high", "jhs", "shs", "kinder"].some((kw) => kw.includes(searchQ))) {
+      setEnrollmentView("By Level");
+    } else if (["enrollment", "public", "private", "male", "female", "total"].some((kw) => kw.includes(searchQ))) {
+      setEnrollmentView("Summary");
+    }
+    // Performance — rate sub-views
+    if (["cohort", "survival"].some((kw) => kw.includes(searchQ))) setRateView("Cohort");
+    else if (["promotion"].some((kw) => kw.includes(searchQ))) setRateView("Promotion");
+    else if (["dropout"].some((kw) => kw.includes(searchQ))) setRateView("Dropout");
+    // CESPES tabs
+    if (["innovation", "intervention"].some((kw) => kw.includes(searchQ))) setActiveCespesTab("Innovation & Intervention");
+    else if (["individual"].some((kw) => kw.includes(searchQ))) setActiveCespesTab("Individual Performance");
+    else if (["general admin"].some((kw) => kw.includes(searchQ))) setActiveCespesTab("General Admin");
+    else if (["support"].some((kw) => kw.includes(searchQ))) setActiveCespesTab("Support to Operations");
+    else if (["operations"].some((kw) => kw.includes(searchQ))) setActiveCespesTab("Operations");
+    // Resources sub-views
+    if (["inventory", "needs", "charts"].some((kw) => kw.includes(searchQ))) setResourceView("Charts");
+  }, [searchQ]);
 
   // --- useQuery logic replaces all the fetching useEffects ---
   const { data: yearData, isLoading: yearsLoading } = useQuery({
@@ -1021,6 +1075,71 @@ export default function Dashboard() {
     jhsDropoutTrend: "—",
   };
 
+  // ── Search data index: maps query terms to specific data values ──
+  const searchResults = useMemo(() => {
+    if (!searchQ || searchQ.length < 2) return [];
+    const results = [];
+    const q = searchQ;
+
+    const addIf = (keywords, label, value, section, icon) => {
+      if (keywords.some((kw) => kw.includes(q))) {
+        results.push({ label, value, section, icon });
+      }
+    };
+
+    // Enrollment data
+    addIf(["male", "men", "boy", "boys", "man"], "Male Enrollment", (genderSummary.male.total || 0).toLocaleString(), "Performance Indicators", Users);
+    addIf(["female", "women", "girl", "girls", "woman"], "Female Enrollment", (genderSummary.female.total || 0).toLocaleString(), "Performance Indicators", Users);
+    addIf(["enrollment", "enrolled", "students", "total", "population"], "Total Enrollment", (enrollmentSummary.total || 0).toLocaleString(), "Performance Indicators", Users);
+    addIf(["public", "government"], "Public Schools", (enrollmentSummary.public || 0).toLocaleString(), "Performance Indicators", School);
+    addIf(["private"], "Private Schools", (enrollmentSummary.private || 0).toLocaleString(), "Performance Indicators", School);
+
+    // KPI rates
+    addIf(["dropout", "drop out", "drop-out", "retention"], "Overall Dropout Rate", overviewData.overallDropout, "Performance Indicators", TrendingUp);
+    addIf(["promotion", "promoted", "passing"], "Elem Promotion Rate", overviewData.elemPromotion, "Performance Indicators", TrendingUp);
+    addIf(["cohort", "survival", "survival rate"], "Cohort Survival Rate", (elemCsrCurrent || 0).toFixed(2) + "%", "Performance Indicators", TrendingUp);
+    addIf(["jhs dropout", "junior dropout"], "JHS Dropout Rate", overviewData.jhsDropout, "Performance Indicators", TrendingUp);
+
+    // Level-specific enrollment
+    addIf(["elementary", "elem", "grade school"], "Elementary Enrollment", (() => {
+      const total = enrollmentRows.reduce((sum, r) => {
+        const ed = r.elementary_data;
+        return sum + (ed?.total?.m || 0) + (ed?.total?.f || 0);
+      }, 0);
+      return total.toLocaleString();
+    })(), "Performance Indicators", GraduationCap);
+    addIf(["junior high", "jhs"], "JHS Enrollment", (() => {
+      const total = enrollmentRows.reduce((sum, r) => {
+        const jd = r.junior_high_data;
+        return sum + (jd?.total?.m || 0) + (jd?.total?.f || 0);
+      }, 0);
+      return total.toLocaleString();
+    })(), "Performance Indicators", GraduationCap);
+    addIf(["senior high", "shs"], "SHS Enrollment", (() => {
+      const total = enrollmentRows.reduce((sum, r) => {
+        const s1 = r.senior_high_s1_data;
+        const s2 = r.senior_high_s2_data;
+        return sum + (s1?.total?.m || 0) + (s1?.total?.f || 0) + (s2?.total?.m || 0) + (s2?.total?.f || 0);
+      }, 0);
+      return total.toLocaleString();
+    })(), "Performance Indicators", GraduationCap);
+    addIf(["kinder", "kindergarten"], "Kinder Enrollment", (() => {
+      const total = enrollmentRows.reduce((sum, r) => {
+        const ed = r.elementary_data;
+        return sum + (ed?.kinder?.m || 0) + (ed?.kinder?.f || 0);
+      }, 0);
+      return total.toLocaleString();
+    })(), "Performance Indicators", GraduationCap);
+
+    // Resources
+    addIf(["teacher", "teachers", "faculty", "staff"], "Total Teachers", (resources.teachers.total || 0).toLocaleString(), "Crucial Resources", School);
+    addIf(["classroom", "classrooms", "room", "rooms"], "Total Classrooms", (resources.classrooms.total || 0).toLocaleString(), "Crucial Resources", School);
+    addIf(["seat", "seats", "chair", "chairs", "capacity"], "Total Seats", (resources.seats.total || 0).toLocaleString(), "Crucial Resources", School);
+    addIf(["textbook", "textbooks", "book", "books", "shortage"], "Textbook Shortage", (resources.textbooks.needs || 0).toLocaleString(), "Crucial Resources", BookOpen);
+
+    return results.slice(0, 6);
+  }, [searchQ, genderSummary, enrollmentSummary, overviewData, elemCsrCurrent, enrollmentRows, resources]);
+
   // Passed to DashboardOverview only while actively comparing.
   const compareOverviewData =
     compareMode && compareYear
@@ -1406,6 +1525,114 @@ export default function Dashboard() {
           compareData={compareOverviewData}
         />
 
+        {/* ── Data Categories header + Search ─────────────── */}
+        <div className="mt-8 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-[0.9rem] font-bold text-slate-700">
+                Data Categories
+              </h3>
+              <p className="text-[0.7rem] text-slate-400 mt-0.5">
+                {dashboardSearch
+                  ? `${visibleSections} of 4 sections`
+                  : "Expand a section to view detailed reports"}
+              </p>
+            </div>
+            {dashboardSearch && (
+              <button
+                onClick={() => setDashboardSearch("")}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[0.72rem] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+              >
+                <X size={13} />
+                Clear
+              </button>
+            )}
+          </div>
+          <div className="relative">
+            <Search
+              size={15}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+            />
+            <input
+              type="text"
+              value={dashboardSearch}
+              onChange={(e) => setDashboardSearch(e.target.value)}
+              placeholder="Search sections… e.g. enrollment, teachers, CESPES"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-[0.82rem] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+            />
+          </div>
+
+          {/* ── Quick results panel ────────────────────────── */}
+          {searchQ.length >= 2 && searchResults.length > 0 && (
+            <div className="mt-2 rounded-xl border border-slate-200 bg-white shadow-[0_4px_16px_rgba(15,23,42,0.06)] overflow-hidden">
+              <div className="px-3.5 py-2 border-b border-slate-100">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  Quick results
+                </p>
+              </div>
+              <div className="divide-y divide-slate-50">
+                {searchResults.map((result, i) => {
+                  const Icon = result.icon;
+                  const sectionColor =
+                    result.section === "Performance Indicators"
+                      ? "bg-indigo-50 text-indigo-600"
+                      : result.section === "Crucial Resources"
+                      ? "bg-amber-50 text-amber-600"
+                      : "bg-rose-50 text-rose-600";
+                  return (
+                    <button
+                      key={`${result.label}-${i}`}
+                      onClick={() => {
+                        const el =
+                          result.section === "Performance Indicators"
+                            ? performanceSectionRef.current
+                            : result.section === "Crucial Resources"
+                            ? resourcesSectionRef.current
+                            : null;
+                        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 hover:bg-slate-50/80 transition-colors text-left"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
+                        <Icon size={15} className="text-slate-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-medium text-slate-600 truncate">
+                          {result.label}
+                        </p>
+                      </div>
+                      <span className="text-[13px] font-bold text-slate-800 tabular-nums shrink-0">
+                        {result.value}
+                      </span>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${sectionColor}`}>
+                        {result.section === "Performance Indicators"
+                          ? "Performance"
+                          : result.section === "Crucial Resources"
+                          ? "Resources"
+                          : "CESPES"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {dashboardSearch && visibleSections === 0 && (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <div className="mb-3 text-slate-300">
+                <Search size={32} strokeWidth={1.5} />
+              </div>
+              <p className="text-[0.82rem] font-semibold text-slate-400">
+                No sections match "{dashboardSearch}"
+              </p>
+              <p className="text-[0.7rem] text-slate-300 mt-1">
+                Try a different keyword like enrollment, teachers, or CESPES
+              </p>
+            </div>
+          )}
+        </div>
+
         <Suspense
           fallback={
             <div className="mt-8">
@@ -1413,22 +1640,8 @@ export default function Dashboard() {
             </div>
           }
         >
-          {/* ── Data Categories header ──────────────────────── */}
-          <div className="flex items-baseline justify-between mt-8 mb-4">
-            <div>
-              <h3 className="text-[0.9rem] font-bold text-slate-700">
-                Data Categories
-              </h3>
-              <p className="text-[0.7rem] text-slate-400 mt-0.5">
-                Expand a section to view detailed reports
-              </p>
-            </div>
-            <span className="text-[0.72rem] font-medium text-slate-400">
-              4 sections
-            </span>
-          </div>
-
           {/* ── Performance Indicators ─────────────────────── */}
+          {matchesPerformance && (
           <div ref={performanceSectionRef} className="scroll-mt-24">
             <DashboardAccordion
               icon={
@@ -1746,10 +1959,12 @@ export default function Dashboard() {
               )}
             </DashboardAccordion>
           </div>
+          )}
 
           <div className="mt-3" />
 
           {/* ── CESPES (Single Accordion with Tabs) ────── */}
+          {matchesCespes && (
           <DashboardAccordion
             icon={
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50">
@@ -2042,6 +2257,7 @@ export default function Dashboard() {
               </>
             )}
           </DashboardAccordion>
+          )}
 
           <div className="mt-3" />
 
@@ -2073,6 +2289,7 @@ export default function Dashboard() {
           <div className="mt-3" />
 
           {/* ── Crucial Resources ─────────────────────────── */}
+          {matchesResources && (
           <div ref={resourcesSectionRef} className="scroll-mt-24">
             <DashboardAccordion
               icon={
@@ -2414,11 +2631,14 @@ export default function Dashboard() {
               )}
             </DashboardAccordion>
           </div>
+          )}
 
           <div className="mt-3" />
 
           {/* ── Institutional Plans & Reports ──────────────── */}
+          {matchesInstitutional && (
           <InstitutionalPlansCard selectedYear={selectedYear} />
+          )}
 
           {/* Footer spacing */}
           <div className="h-8" />
