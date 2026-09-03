@@ -11,7 +11,6 @@ import {
   File,
   FileSpreadsheet,
   MessageSquare,
-  Image,
   FileType,
   SlidersHorizontal,
   Trash2,
@@ -21,6 +20,8 @@ import {
   MoreHorizontal,
   ChevronRight,
   ChevronLeft,
+  ChevronUp,
+  ChevronDown,
   Upload,
   FileUp,
   Tag,
@@ -33,6 +34,8 @@ import {
   CheckCircle,
   Clock,
   Inbox,
+  LayoutTemplate,
+  ClipboardList,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import RepositoryBackButton from "../../components/RepositoryComponents/RepositoryBackButton";
@@ -43,7 +46,13 @@ import { getSectionAccessLevel } from "../../utils/accessControl";
 import { notifyScope, pushNotification } from "../../utils/notifications";
 import FileAccessRequestModal from "../../components/RepositoryComponents/FileAccessRequestModal";
 import AccessRequestsSidebar from "../../components/RepositoryComponents/AccessRequestsSidebar";
-import FloatingAccessRequestsButton from "../../components/RepositoryComponents/FloatingAccessRequestsButton";
+import FloatingActionGroup from "../../components/RepositoryComponents/FloatingActionGroup";
+import TemplatesModal from "../../components/RepositoryComponents/TemplatesModal";
+import RecycleBinModal from "../../components/RepositoryComponents/RecycleBinModal";
+import {
+  fetchScopedRequests,
+  canApproveAccessRequests,
+} from "../../utils/accessRequestsApi";
 import { RepositorySearchBar } from "../../components/RepositoryComponents";
 import FileRequestModal from "../../components/RepositoryComponents/FileRequestModal";
 import FileRequestsPanel from "../../components/RepositoryComponents/FileRequestsPanel";
@@ -53,6 +62,7 @@ import FileActionsMenu from "../../components/RepositoryComponents/FileActionsMe
 import FileFeedbackModal from "../../components/RepositoryComponents/FileFeedbackModal";
 
 import DownloadOptionsMenu from "../../components/RepositoryComponents/DownloadOptionsMenu";
+import { useQueryClient } from "@tanstack/react-query";
 
 // ── Role map ────────────────────────────────────────────────────
 const roleDisplayMap = {
@@ -63,10 +73,26 @@ const roleDisplayMap = {
 };
 const getRoleDisplay = (role) => roleDisplayMap[role] ?? role;
 
+// Must stay in sync with STRUCTURED_UPLOAD_TYPES in UploadFilesPage.jsx.
+// Only these categories are stored in "excel-files"; everything else
+// (including general) goes to "repository-files".
+const EXCEL_BUCKET_TYPES = new Set([
+  "enrollment",
+  "classrooms",
+  "seats",
+  "teachers_inventory",
+  "textbook_inventory",
+  "cespes",
+  "performance_indicators",
+  // Dashboard file categories — stored in excel-files
+  "aip_school",
+  "aip_sdo",
+  "qbedp",
+  "accomplishment_report",
+]);
+
 function getBucket(category) {
-  return category === "general" || !category
-    ? "repository-files"
-    : "excel-files";
+  return EXCEL_BUCKET_TYPES.has(category) ? "excel-files" : "repository-files";
 }
 
 const ALL_FILE_BUCKETS = ["repository-files", "excel-files"];
@@ -86,8 +112,6 @@ function getFileIcon(type) {
     case "Word":
     case "Document":
       return { Icon: FileText, color: "text-blue-500", bg: "bg-blue-50" };
-    case "Image":
-      return { Icon: Image, color: "text-violet-500", bg: "bg-violet-50" };
     default:
       return { Icon: File, color: "text-slate-400", bg: "bg-slate-50" };
   }
@@ -132,20 +156,17 @@ function VerifyStatusPill({
             : "Click to verify"
           : undefined
       }
-      className={`inline-flex items-center gap-1 rounded-full font-bold border transition-colors ${
-        compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]"
-      } ${
-        isVerified
+      className={`inline-flex items-center gap-1 rounded-full font-bold border transition-colors ${compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]"
+        } ${isVerified
           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
           : "bg-slate-100 text-slate-500 border-slate-200"
-      } ${
-        canVerify ? "cursor-pointer hover:brightness-95" : "cursor-default"
-      } disabled:opacity-60 disabled:cursor-not-allowed`}
+        } ${canVerify ? "cursor-pointer hover:brightness-95" : "cursor-default"
+        } disabled:opacity-60 disabled:cursor-not-allowed`}
     >
       {isVerified ? (
         <>
           <CheckCircle2 size={compact ? 8 : 10} />
-          Verified
+          Verified{" "}
         </>
       ) : (
         <>
@@ -173,11 +194,10 @@ function MobileFileActionBtn({
       }}
       disabled={disabled}
       title={title}
-      className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-colors disabled:opacity-40 ${
-        danger
+      className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-colors disabled:opacity-40 ${danger
           ? "border-slate-100 bg-white text-slate-400 hover:border-red-100 hover:bg-red-50 hover:text-red-500"
           : "border-slate-100 bg-white text-slate-400 hover:border-blue-100 hover:bg-blue-50 hover:text-blue-600"
-      }`}
+        }`}
     >
       {children}
     </button>
@@ -188,6 +208,7 @@ function MobileFileActionBtn({
 function MobileFileListCard({
   file,
   canEdit,
+  canDelete,
   canVerify,
   isVerifying,
   isSelected,
@@ -221,14 +242,16 @@ function MobileFileListCard({
       >
         <Download size={15} />
       </MobileFileActionBtn>
-      <MobileFileActionBtn
-        title="Delete"
-        onClick={onDelete}
-        disabled={deletingId === file.id}
-        danger
-      >
-        <Trash2 size={15} />
-      </MobileFileActionBtn>
+      {canDelete && (
+        <MobileFileActionBtn
+          title="Delete"
+          onClick={onDelete}
+          disabled={deletingId === file.id}
+          danger
+        >
+          <Trash2 size={15} />
+        </MobileFileActionBtn>
+      )}
     </>
   ) : hasAccess ? (
     <>
@@ -264,28 +287,35 @@ function MobileFileListCard({
 
   return (
     <article
-      className={`rounded-2xl border bg-white/90 backdrop-blur-sm p-3.5 transition-all ${
-        isSelected
-          ? "border-blue-300 shadow-md ring-1 ring-blue-100"
+      className={`rounded-2xl border bg-white p-3.5 transition-all select-none ${isSelected
+          ? "border-blue-300 shadow-md ring-1 ring-blue-100 bg-blue-50/30"
           : "border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
-      }`}
+        }`}
+      style={{ contentVisibility: "auto", containIntrinsicSize: "0 110px" }}
+      onClick={(e) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          onSelectOrVerify?.(e);
+        }
+      }}
+      title="Ctrl+Click to select"
     >
       <div className="flex items-start gap-3">
+        {/* File icon */}
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             onSelectOrVerify?.(e);
           }}
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-all ${
-            isSelected
-              ? "border-blue-200 bg-blue-50 text-blue-600"
-              : `${bg} border-transparent`
-          }`}
-          aria-label={isSelected ? "Deselect file" : "Select file"}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all mt-0.5 ${isSelected
+              ? "border-blue-200 bg-blue-100 text-blue-600"
+              : `${bg} border-transparent hover:bg-slate-50`
+            }`}
+          title={isSelected ? "Deselect" : "Select"}
         >
           {isSelected ? (
-            <CheckCircle2 size={18} />
+            <CheckCircle2 size={18} className="text-blue-600" />
           ) : (
             <Icon size={18} className={color} />
           )}
@@ -340,9 +370,25 @@ function MobileFileListCard({
 
 /** Compact enterprise tile for mobile/desktop grid */
 function MobileFileGridCard({
-  file, canEdit, canVerify, isVerifying, isSelected, downloadingId, deletingId,
-  hasAccess, requestStatus, canViewFeedback, hasUnreadFeedback,
-  onSelectOrVerify, onVerify, onPreview, onDownload, onDelete, onRequestAccess, onOpenFeedback,
+  file,
+  canEdit,
+  canDelete,
+  canVerify,
+  isVerifying,
+  isSelected,
+  downloadingId,
+  deletingId,
+  hasAccess,
+  requestStatus,
+  canViewFeedback,
+  hasUnreadFeedback,
+  onSelectOrVerify,
+  onVerify,
+  onPreview,
+  onDownload,
+  onDelete,
+  onRequestAccess,
+  onOpenFeedback,
 }) {
   const { Icon, color, bg } = getFileIcon(file.type);
   const uploaded = formatRelativeDate(file.rawCreatedAt);
@@ -351,28 +397,35 @@ function MobileFileGridCard({
 
   return (
     <article
-      className={`group relative flex flex-col rounded-2xl border bg-white p-3 transition-all ${
-        isSelected
-          ? "border-blue-300 shadow-md ring-1 ring-blue-100"
+      className={`group relative flex flex-col rounded-2xl border bg-white p-3 transition-all select-none ${isSelected
+          ? "border-blue-300 shadow-md ring-1 ring-blue-100 bg-blue-50/30"
           : "border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.04)] hover:border-slate-300 hover:shadow-md"
-      }`}
+        }`}
+      style={{ contentVisibility: "auto", containIntrinsicSize: "0 220px" }}
+      onClick={(e) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          onSelectOrVerify?.(e);
+        }
+      }}
+      title="Ctrl+Click to select"
     >
       <div className="flex items-start justify-between gap-2 mb-2.5">
+        {/* File icon */}
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             onSelectOrVerify?.(e);
           }}
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all ${
-            isSelected
-              ? "border-blue-200 bg-blue-50 text-blue-600"
-              : `${bg} border-transparent`
-          }`}
-          aria-label={isSelected ? "Deselect file" : "Select file"}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all ${isSelected
+              ? "border-blue-200 bg-blue-100 text-blue-600"
+              : `${bg} border-transparent hover:bg-slate-50`
+            }`}
+          title={isSelected ? "Deselect" : "Select"}
         >
           {isSelected ? (
-            <CheckCircle2 size={16} />
+            <CheckCircle2 size={16} className="text-blue-600" />
           ) : (
             <Icon size={18} className={color} />
           )}
@@ -429,14 +482,16 @@ function MobileFileGridCard({
             >
               <Download size={14} />
             </MobileFileActionBtn>
-            <MobileFileActionBtn
-              title="Delete"
-              onClick={onDelete}
-              disabled={deletingId === file.id}
-              danger
-            >
-              <Trash2 size={14} />
-            </MobileFileActionBtn>
+            {canDelete && (
+              <MobileFileActionBtn
+                title="Delete"
+                onClick={onDelete}
+                disabled={deletingId === file.id}
+                danger
+              >
+                <Trash2 size={14} />
+              </MobileFileActionBtn>
+            )}
           </>
         ) : hasAccess ? (
           <>
@@ -484,7 +539,7 @@ function MobileFileGridCard({
   );
 }
 
-const FILE_TYPE_TABS = ["All", "PDF", "Excel", "Word", "Image"];
+const FILE_TYPE_TABS = ["All", "PDF", "Excel", "Word"];
 
 // ── Pagination options ─────────────────────────────────────────
 const PAGE_SIZE_OPTIONS_LIST = [10, 25, 50, 100];
@@ -498,11 +553,6 @@ function inferType(mimeType, fileName) {
     return "Excel";
   if (mimeType?.includes("word") || ["docx", "doc"].includes(ext))
     return "Word";
-  if (
-    mimeType?.includes("image") ||
-    ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)
-  )
-    return "Image";
   return "Other";
 }
 
@@ -586,9 +636,11 @@ function formatFileDateTime(dateStr) {
 /** Latest touch timestamp — edits, verification, or record updates. */
 function getFileModifiedAt(file) {
   if (!file) return null;
-  const candidates = [file.rawUpdatedAt, file.verifiedAt, file.rawCreatedAt].filter(
-    Boolean,
-  );
+  const candidates = [
+    file.rawUpdatedAt,
+    file.verifiedAt,
+    file.rawCreatedAt,
+  ].filter(Boolean);
   if (candidates.length === 0) return null;
   return candidates.reduce((latest, ts) =>
     new Date(ts) > new Date(latest) ? ts : latest,
@@ -674,11 +726,10 @@ function PaginationBar({
               <button
                 key={p}
                 onClick={() => onPageChange(p)}
-                className={`min-w-7 h-7 px-2 rounded-lg text-[11px] font-bold transition-colors ${
-                  p === currentPage
+                className={`min-w-7 h-7 px-2 rounded-lg text-[11px] font-bold transition-colors ${p === currentPage
                     ? "bg-blue-600 text-white shadow-sm"
                     : "bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                }`}
+                  }`}
               >
                 {p}
               </button>
@@ -730,13 +781,14 @@ function DeleteFileConfirmModal({
             <div>
               <h2 className="text-xl font-bold text-slate-900">Delete file?</h2>
               <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                This will permanently remove
+                This will move
                 <br />
                 <span className="font-semibold text-slate-700">
                   "{fileName}"
                 </span>
                 <br />
-                This action cannot be undone.
+                to the recycle bin. It will be permanently deleted after 14
+                days unless restored.
               </p>
             </div>
           </div>
@@ -754,6 +806,61 @@ function DeleteFileConfirmModal({
               className="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
             >
               {isDeleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </ModalPortal>
+  );
+}
+
+// Bulk delete confirmation
+function BulkDeleteConfirmModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  count,
+  isDeleting,
+}) {
+  if (!isOpen) return null;
+  return (
+    <ModalPortal>
+      <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
+          <div className="flex flex-col items-center text-center gap-4 px-8 pt-8 pb-6">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50 ring-1 ring-red-100">
+              <Trash2 className="text-red-600" size={28} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">
+                Delete {count} file{count > 1 ? "s" : ""}?
+              </h2>
+              <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                This will move{" "}
+                <span className="font-semibold text-slate-700">
+                  {count} file{count > 1 ? "s" : ""}
+                </span>{" "}
+                to the recycle bin. They will be permanently deleted after 14
+                days unless restored.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3 px-8 pb-8 pt-2">
+            <button
+              onClick={onClose}
+              disabled={isDeleting}
+              className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={isDeleting}
+              className="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
+              {isDeleting
+                ? "Deleting..."
+                : `Delete ${count} file${count > 1 ? "s" : ""}`}
             </button>
           </div>
         </div>
@@ -1048,14 +1155,14 @@ function LastModifiedInfoCard({ rawDate, uploaderInfo }) {
   // Format full datetime string
   const fullDate = rawDate
     ? new Date(rawDate).toLocaleString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
     : "—";
 
   return (
@@ -1117,10 +1224,16 @@ export default function RepositoryFolderDetailPage() {
   const [showFileRequestModal, setShowFileRequestModal] = useState(false);
   const [isSubmittingFileRequest, setIsSubmittingFileRequest] = useState(false);
   const [myFileRequests, setMyFileRequests] = useState([]);
+  const activeFileRequestsCount = myFileRequests.filter(
+    (r) => r.status === "Pending" || r.status === "Overdue",
+  ).length;
 
   const [loadingFileRequests, setLoadingFileRequests] = useState(false); // ← add this
   const [showFileRequestsPanel, setShowFileRequestsPanel] = useState(false);
   const [showFileRequestToast, setShowFileRequestToast] = useState(false);
+
+  // ── Recycle Bin ────────────────────────────────────────────────
+  const [showRecycleBin, setShowRecycleBin] = useState(false);
 
   // ── Supabase state ─────────────────────────────────────────────
   const [section, setSection] = useState(null);
@@ -1150,6 +1263,9 @@ export default function RepositoryFolderDetailPage() {
 
   // ── Selection ──────────────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkDeletePending, setBulkDeletePending] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bulkDownloading, setBulkDownloading] = useState(false);
 
   // ── Verify modal ───────────────────────────────────────────────
   const [verifyTarget, setVerifyTarget] = useState(null); // file to verify/unverify
@@ -1169,6 +1285,27 @@ export default function RepositoryFolderDetailPage() {
 
   const [isAccessSidebarOpen, setIsAccessSidebarOpen] = useState(false);
   const [accessRefreshKey, setAccessRefreshKey] = useState(0);
+  const [showTemplatesModal, setShowTemplatesModal] = useState(false);
+  const [pendingAccessRequestCount, setPendingAccessRequestCount] = useState(0);
+
+  // Poll pending access-request badge count for the floating group
+  useEffect(() => {
+    if (!canApproveAccessRequests(userProfile)) return;
+    let cancelled = false;
+    fetchScopedRequests(userProfile, section?.id)
+      .then((data) => {
+        if (!cancelled) {
+          setPendingAccessRequestCount(
+            data.filter((r) => r.status === "pending").length,
+          );
+        }
+      })
+      .catch((err) => console.error(err));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userProfile, section?.id, accessRefreshKey]);
 
   const [schoolYears, setSchoolYears] = useState([]);
   const [selectedSchoolYear, setSelectedSchoolYear] = useState("");
@@ -1179,9 +1316,130 @@ export default function RepositoryFolderDetailPage() {
   const [feedbackTarget, setFeedbackTarget] = useState(null); // file
   const [feedbackCounts, setFeedbackCounts] = useState({}); // { [fileId]: totalCount }
   const [feedbackUnread, setFeedbackUnread] = useState({}); // { [fileId]: true }
+  const [isSearchOpen, setIsSearchOpen] = useState(
+    () => window.innerWidth >= 1024,
+  );
+  const queryClient = useQueryClient();
+
+  // ─────────────────────────────────────────────────────────────────
+  // SCROLL-SNAP MORPHING HEADER (desktop only)
+  // The header no longer tracks scroll position 1:1 (that's what caused
+  // slow-scroll bugs / half-morphed states). Instead it snaps fully
+  // collapsed the moment the user scrolls past a small threshold, and the
+  // CSS transition below animates that snap quickly — it doesn't need to
+  // reach the bottom of the page, just a few px of scroll.
+  const REPOSITORY_HEADER_SNAP_THRESHOLD = 60; // px scrolled down to trigger collapse
+  const REPOSITORY_HEADER_UNSNAP_THRESHOLD = 15; // px to trigger expand back (hysteresis, prevents flicker)
+
+  const headerRef = useRef(null); // the sticky <div>
+  const scrollAnimationFrameRef = useRef(null); // rAF handle
+  const morphStateRef = useRef(0); // 0 = expanded, 1 = collapsed
+
+  useEffect(() => {
+    // The AppLayout uses <main className="app-main lg:overflow-y-auto"> for desktop scrolling.
+    // On mobile, the window itself scrolls. Cache the resolved container so
+    // we don't re-run a querySelector + matchMedia check on every scroll tick.
+    let cachedContainer = null;
+    function getScrollContainer() {
+      if (cachedContainer) return cachedContainer;
+      const isDesktop = window.innerWidth >= 1024;
+      cachedContainer = isDesktop
+        ? document.querySelector(".app-main") || window
+        : window;
+      return cachedContainer;
+    }
+    function invalidateContainerCache() {
+      cachedContainer = null;
+    }
+
+    function applyMorphedState(morphed) {
+      if (headerRef.current) {
+        if (morphed) {
+          headerRef.current.classList.add("is-morphed");
+        } else {
+          headerRef.current.classList.remove("is-morphed");
+        }
+      }
+    }
+
+    function handleScroll() {
+      if (scrollAnimationFrameRef.current) return;
+
+      scrollAnimationFrameRef.current = requestAnimationFrame(() => {
+        scrollAnimationFrameRef.current = null;
+
+        const scrollContainer = getScrollContainer();
+        const scrollY =
+          scrollContainer === window
+            ? window.scrollY
+            : scrollContainer.scrollTop;
+
+        if (
+          morphStateRef.current === 0 &&
+          scrollY > REPOSITORY_HEADER_SNAP_THRESHOLD
+        ) {
+          morphStateRef.current = 1;
+          applyMorphedState(true);
+        } else if (
+          morphStateRef.current === 1 &&
+          scrollY <= REPOSITORY_HEADER_UNSNAP_THRESHOLD
+        ) {
+          morphStateRef.current = 0;
+          applyMorphedState(false);
+        }
+      });
+    }
+
+    if (headerRef.current) {
+      const scrollContainer = getScrollContainer();
+      const currentScroll =
+        scrollContainer === window ? window.scrollY : scrollContainer.scrollTop;
+      const initialState =
+        currentScroll > REPOSITORY_HEADER_SNAP_THRESHOLD ? 1 : 0;
+      morphStateRef.current = initialState;
+      applyMorphedState(initialState === 1);
+    }
+
+    const scrollContainer = getScrollContainer();
+    scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
+
+    // Only attach a second listener to window if the resolved container is a
+    // different node — attaching to both when they're the same element
+    // double-fires the handler on every scroll event.
+    if (scrollContainer !== window) {
+      window.addEventListener("scroll", handleScroll, { passive: true });
+    }
+    window.addEventListener("resize", invalidateContainerCache, {
+      passive: true,
+    });
+    window.addEventListener("resize", handleScroll, { passive: true });
+
+    return () => {
+      scrollContainer.removeEventListener("scroll", handleScroll);
+      if (scrollContainer !== window) {
+        window.removeEventListener("scroll", handleScroll);
+      }
+      window.removeEventListener("resize", invalidateContainerCache);
+      window.removeEventListener("resize", handleScroll);
+      if (scrollAnimationFrameRef.current) {
+        cancelAnimationFrame(scrollAnimationFrameRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Mirrors the query keys Dashboard.jsx uses for useQuery. Keep in sync
+  // if new dashboard-backed upload types are added.
+  const CATEGORY_TO_QUERY_KEYS = {
+    enrollment: ["enrollment"],
+    performance_indicators: ["kpiData"],
+    cespes: ["cespes"],
+    classrooms: ["resources"],
+    seats: ["resources"],
+    teachers_inventory: ["resources"],
+    textbook_inventory: ["resources"],
+  };
 
   function hasFileAccess(file) {
-    return canEdit || fileAccessMap[file.id] === "approved";
+    return canEdit || accessLevel === "view_download" || fileAccessMap[file.id] === "approved";
   }
   function fileRequestStatus(file) {
     return fileAccessMap[file.id];
@@ -1352,6 +1610,43 @@ export default function RepositoryFolderDetailPage() {
       !!section &&
       userProfile?.section_id === section.id);
 
+  // ── Recycle Bin permissions ──────────────────────────────────
+  // Full bin: sees every soft-deleted file in the section, can restore
+  // AND permanently delete. Same trust tier as canVerify — admin, any
+  // division_focal that owns this section's division, or the section's
+  // own section_focal.
+  const canViewRecycleBinFull =
+    userProfile?.role === "administrator" ||
+    (userProfile?.role === "division_focal" &&
+      !!section &&
+      userProfile?.division_id === section.division_id) ||
+    (userProfile?.role === "section_focal" &&
+      !!section &&
+      userProfile?.section_id === section.id);
+
+  // Own-only bin: section_personnel can see and restore ONLY files they
+  // personally uploaded (mirrors canDeleteFile's own-upload restriction).
+  // No permanent-delete access — that stays with officer+/admin.
+  const canViewOwnRecycleBin =
+    userProfile?.role === "section_personnel" &&
+    !!section &&
+    userProfile?.section_id === section.id;
+
+  const canOpenRecycleBin = canViewRecycleBinFull || canViewOwnRecycleBin;
+  const recycleBinScope = canViewRecycleBinFull ? "full" : "own";
+
+  // Section personnel get "full" edit access to their own section like
+  // everyone else with canEdit — but unlike section_focal/division_focal/
+  // admin, they may only delete files they personally uploaded, not
+  // teammates' files in the same section. Preview/download stay unrestricted.
+  function canDeleteFile(file) {
+    if (!canEdit || !file) return false;
+    if (userProfile?.role === "section_personnel") {
+      return file.uploaderId === userProfile?.id;
+    }
+    return true;
+  }
+
   function canViewFeedback(file) {
     if (!userProfile || !file || !section) return false;
     if (userProfile.role === "administrator") return true;
@@ -1417,10 +1712,13 @@ export default function RepositoryFolderDetailPage() {
       .single();
     if (!divisionError) setDivision(divisionData);
 
+    // Soft-deleted files (deleted_at IS NOT NULL) live in the recycle bin
+    // and must never show up in the normal repository list.
     const { data: filesData } = await supabase
       .from("files")
       .select("*")
       .eq("section_id", sectionData.id)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
     const uploaderIds = [
@@ -1559,6 +1857,7 @@ export default function RepositoryFolderDetailPage() {
         `
       id, file_name, description, deadline, status, created_at,
       requested_by,
+      linked_file_id,
       users:requested_by ( full_name, role )
     `,
       )
@@ -1571,6 +1870,39 @@ export default function RepositoryFolderDetailPage() {
       return;
     }
 
+    const linkedFileIds = (data || [])
+      .map((request) => request.linked_file_id)
+      .filter(Boolean);
+    const linkedFiles = {};
+
+    if (linkedFileIds.length > 0) {
+      const { data: fileRows, error: fileError } = await supabase
+        .from("files")
+        .select("id, file_name, file_path, data_category")
+        .in("id", linkedFileIds);
+
+      if (fileError) {
+        console.error("Failed to fetch uploaded request files:", fileError);
+      } else {
+        await Promise.all(
+          (fileRows || []).map(async (file) => {
+            const { data: urlData, error: urlError } = await supabase.storage
+              .from(getBucket(file.data_category))
+              .createSignedUrl(file.file_path, 3600);
+
+            if (urlError) {
+              console.error("Failed to create uploaded file URL:", urlError);
+            }
+
+            linkedFiles[file.id] = {
+              ...file,
+              url: urlData?.signedUrl ?? null,
+            };
+          }),
+        );
+      }
+    }
+
     const today = new Date();
     setMyFileRequests(
       (data || []).map((r) => {
@@ -1579,14 +1911,16 @@ export default function RepositoryFolderDetailPage() {
         return {
           id: r.id,
           fileName: r.file_name,
+          uploadedFileName: linkedFiles[r.linked_file_id]?.file_name ?? null,
+          uploadedFileUrl: linkedFiles[r.linked_file_id]?.url ?? null,
           message: r.description,
           requestedOn: r.created_at,
           dueDate: r.deadline
             ? new Date(r.deadline).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
             : "—",
           requestedBy: r.users?.full_name ?? "Unknown",
           requesterRole: getRoleDisplay(r.users?.role) ?? "",
@@ -1700,55 +2034,37 @@ export default function RepositoryFolderDetailPage() {
   };
 
   function handleDeleteFile(file) {
-    if (!canEdit) return;
+    if (!canDeleteFile(file)) return;
     setFileToDelete(file);
   }
 
+  // Soft delete — moves the file into the recycle bin instead of removing
+  // it from storage/DB. The storage object and DB row stay untouched (so
+  // restore is a simple field reset) until either the user restores it or
+  // the 14-day auto-purge job removes it for good.
   async function confirmDeleteFile() {
     const file = fileToDelete;
     if (!file) return;
     setDeletingId(file.id);
     try {
-      let storageRemoved = true;
-
-      if (file.path) {
-        const bucket = getBucket(file.data_category);
-        const { data: removedData, error: storageErr } = await supabase.storage
-          .from(bucket)
-          .remove([file.path]);
-
-        if (storageErr) throw new Error(storageErr.message);
-
-        // Supabase does NOT error when the path/bucket doesn't match an
-        // existing object — it just returns an empty array. Treat that as
-        // a real failure instead of silently deleting the DB row anyway.
-        if (!removedData || removedData.length === 0) {
-          storageRemoved = false;
-          console.error(
-            `Storage delete no-op: bucket="${bucket}" path="${file.path}" — no matching object found.`,
-          );
-        }
-      }
-
-      if (file.verifiedPdfPath) {
-        const { data: removedVerified, error: verifiedErr } =
-          await supabase.storage
-            .from("verified-pdfs")
-            .remove([file.verifiedPdfPath]);
-        if (verifiedErr) {
-          console.error("Failed to remove verified PDF:", verifiedErr);
-        } else if (!removedVerified || removedVerified.length === 0) {
-          console.error(
-            `Verified PDF delete no-op: path="${file.verifiedPdfPath}" — no matching object found.`,
-          );
-        }
-      }
-
-      const { error: dbErr } = await supabase
+      const { error } = await supabase
         .from("files")
-        .delete()
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: userProfile?.id,
+          deleted_by_name: userProfile?.full_name ?? "Unknown",
+        })
         .eq("id", file.id);
-      if (dbErr) throw new Error(dbErr.message);
+      if (error) throw new Error(error.message);
+
+      const keysToInvalidate = CATEGORY_TO_QUERY_KEYS[file.data_category];
+      if (keysToInvalidate) {
+        keysToInvalidate.forEach((key) =>
+          queryClient.invalidateQueries({ queryKey: [key] }),
+        );
+        // schoolYears/kpiData can shift if this was the last file for a year
+        queryClient.invalidateQueries({ queryKey: ["schoolYears"] });
+      }
 
       setAllFiles((prev) => prev.filter((f) => f.id !== file.id));
       setSelectedIds((prev) => {
@@ -1760,19 +2076,11 @@ export default function RepositoryFolderDetailPage() {
       await logAudit(
         "Delete",
         file.name,
-        storageRemoved
-          ? `Deleted from ${section?.name}`
-          : `Deleted from ${section?.name} (storage object was not found — possible orphaned file)`,
+        `Moved to recycle bin in ${section?.name}`,
         "Success",
       );
       setFileToDelete(null);
       setShowDeleteToast(true);
-
-      if (!storageRemoved) {
-        alert(
-          "The database record was deleted, but the stored file could not be located in storage (it may already be orphaned). Check the console/audit log for the bucket and path used.",
-        );
-      }
 
       await notifyScope({
         sectionId: section?.id,
@@ -1792,7 +2100,7 @@ export default function RepositoryFolderDetailPage() {
           recipientIds: [file.uploaderId],
           type: "file_deleted",
           title: "Your file was deleted",
-          content: `${file.name} was deleted from ${section?.name}`,
+          content: `${file.name} was moved to the recycle bin in ${section?.name}`,
         });
       }
     } catch (err) {
@@ -1872,18 +2180,18 @@ export default function RepositoryFolderDetailPage() {
         prev.map((f) =>
           f.id === file.id
             ? {
-                ...f,
-                status: newStatus,
-                rawUpdatedAt: now,
-                verifiedPdfPath:
-                  newStatus === "Verified" ? verifiedPdfPath : null,
-                verifiedByName:
-                  newStatus === "Verified"
-                    ? updatePayload.verified_by_name
-                    : null,
-                verifiedAt:
-                  newStatus === "Verified" ? updatePayload.verified_at : null,
-              }
+              ...f,
+              status: newStatus,
+              rawUpdatedAt: now,
+              verifiedPdfPath:
+                newStatus === "Verified" ? verifiedPdfPath : null,
+              verifiedByName:
+                newStatus === "Verified"
+                  ? updatePayload.verified_by_name
+                  : null,
+              verifiedAt:
+                newStatus === "Verified" ? updatePayload.verified_at : null,
+            }
             : f,
         ),
       );
@@ -1999,6 +2307,80 @@ export default function RepositoryFolderDetailPage() {
     setSelectedIds(new Set());
   }
 
+  // ── Bulk download ──────────────────────────────────────────────
+  async function handleBulkDownload() {
+    const filesToDownload = filtered.filter(
+      (f) => selectedIds.has(f.id) && hasFileAccess(f) && f.path,
+    );
+    if (filesToDownload.length === 0) return;
+    setBulkDownloading(true);
+    for (const file of filesToDownload) {
+      try {
+        const bucket = getBucket(file.data_category);
+        const { data: blob, error } = await supabase.storage
+          .from(bucket)
+          .download(file.path);
+        if (error) throw new Error(error.message);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        await logAudit(
+          "Download",
+          file.name,
+          `Bulk downloaded from ${section?.name}`,
+          "Success",
+        );
+      } catch (err) {
+        console.error("Bulk download error for", file.name, err);
+        await logAudit("Download", file.name, err.message, "Failed");
+      }
+    }
+    setBulkDownloading(false);
+    clearSelection();
+  }
+
+  // ── Bulk delete ────────────────────────────────────────────────
+  // Same soft-delete treatment as the single-file path — files move to
+  // the recycle bin instead of being purged from storage/DB immediately.
+  async function confirmBulkDelete() {
+    if (!canEdit) return;
+    const filesToDelete = deletableSelectedFiles;
+    setIsBulkDeleting(true);
+    const now = new Date().toISOString();
+    for (const file of filesToDelete) {
+      try {
+        const { error: dbErr } = await supabase
+          .from("files")
+          .update({
+            deleted_at: now,
+            deleted_by: userProfile?.id,
+            deleted_by_name: userProfile?.full_name ?? "Unknown",
+          })
+          .eq("id", file.id);
+        if (dbErr) throw new Error(dbErr.message);
+        setAllFiles((prev) => prev.filter((f) => f.id !== file.id));
+        await logAudit(
+          "Delete",
+          file.name,
+          `Bulk moved to recycle bin in ${section?.name}`,
+          "Success",
+        );
+      } catch (err) {
+        console.error("Bulk delete error for", file.name, err);
+        await logAudit("Delete", file.name, err.message, "Failed");
+      }
+    }
+    setBulkDeletePending(false);
+    setIsBulkDeleting(false);
+    clearSelection();
+    setShowDeleteToast(true);
+  }
+
   // ── Filter + sort ──────────────────────────────────────────────
   function filtered_local() {
     return allFiles
@@ -2014,6 +2396,9 @@ export default function RepositoryFolderDetailPage() {
       .sort((a, b) => {
         if (sortBy === "name") return a.name.localeCompare(b.name);
         if (sortBy === "size") return b.rawSize - a.rawSize;
+        if (sortBy === "date_asc")
+          return new Date(a.rawCreatedAt) - new Date(b.rawCreatedAt);
+        // default: "date" = newest first
         return new Date(b.rawCreatedAt) - new Date(a.rawCreatedAt);
       });
   }
@@ -2024,6 +2409,13 @@ export default function RepositoryFolderDetailPage() {
     sortBy,
     selectedSchoolYear,
   ]);
+
+  // Files selected AND deletable by this user — used to gate/scope bulk
+  // delete for section_personnel, who may only delete their own uploads.
+  const deletableSelectedFiles = useMemo(
+    () => filtered.filter((f) => selectedIds.has(f.id) && canDeleteFile(f)),
+    [filtered, selectedIds, canEdit, userProfile?.id, userProfile?.role],
+  );
 
   const yearFilteredFiles = selectedSchoolYear
     ? allFiles.filter((f) => f.school_year === selectedSchoolYear)
@@ -2123,243 +2515,559 @@ export default function RepositoryFolderDetailPage() {
   // ─────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50/40 pb-20">
-      <div className="mx-auto max-w-375 px-4 sm:px-6 lg:px-10 py-5 sm:py-8">
-        {/* ── Breadcrumb ─────────────────────────────────────── */}
-        <nav className="flex items-center gap-1.5 text-[12px] text-slate-400 mb-4 sm:mb-5 font-medium overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <button
-            onClick={() => navigate("/repository")}
-            className="hover:text-slate-600 transition-colors"
-          >
-            Repository
-          </button>
-          {division && (
-            <>
-              <ChevronRight size={12} />
-              <button
-                onClick={() => navigate(backTarget)}
-                className="hover:text-slate-600 transition-colors truncate max-w-45"
-              >
-                {backLabel}
-              </button>
-            </>
-          )}
-          <ChevronRight size={12} />
-          <span className="text-slate-700 font-semibold truncate max-w-55">
-            {decodedName}
-          </span>
-        </nav>
+      <div className="mx-auto max-w-375 px-4 sm:px-6 lg:px-10 pb-5 sm:pb-8">
+        {/* ── Sticky Header Area ─────────────────────────────── */}
+        <style>{`
+          .repo-morph-header {
+            transform: translateZ(0);
+            will-change: transform;
+            contain: layout style;
+            overflow-anchor: none !important;
+            transition: padding 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+          }
+          .repo-morph-breadcrumb {
+            transition: opacity 0.15s ease-out, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), margin-bottom 0.2s cubic-bezier(0.22, 1, 0.36, 1), font-size 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: opacity, transform, margin-bottom, font-size;
+          }
+          .repo-morph-title {
+            transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), margin-bottom 0.2s cubic-bezier(0.22, 1, 0.36, 1), font-size 0.2s cubic-bezier(0.22, 1, 0.36, 1), line-height 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: transform, margin-bottom, font-size, line-height;
+            transform-origin: left top;
+          }
+          .repo-morph-meta,
+          .repo-morph-actions,
+          .repo-morph-banner,
+          .repo-morph-search {
+             will-change: padding, margin, font-size, opacity, transform, max-height, max-width, line-height;
+             transition: padding 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+                         margin 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+                         font-size 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+                         line-height 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+                         max-height 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+                         transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+                         opacity 0.15s ease-out;
+          }
+          
+          .repo-morph-inline-pills {
+             opacity: 0;
+             max-width: 0;
+             overflow: hidden;
+             transform: translateY(10px);
+             will-change: opacity, max-width, transform;
+             transition: opacity 0.15s ease-out, max-width 0.2s cubic-bezier(0.22, 1, 0.36, 1), transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+          }
+          .repo-morph-header.is-morphed .repo-morph-inline-pills {
+             opacity: 1;
+             max-width: 100vw;
+             transform: translateY(0);
+          }
 
-        {/* ── Page Header ────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 mb-5 sm:mb-6">
-          <div className="min-w-0">
-            <h1 className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em] leading-tight">
+          /* Mobile (<1024px) */
+          @media (max-width: 1023px) {
+            .repo-morph-header {
+              padding-top: 20px !important;
+              padding-bottom: 12px !important;
+            }
+            .repo-morph-header.is-morphed {
+              padding-top: 8px !important;
+              padding-bottom: 4px !important;
+            }
+
+            .repo-morph-breadcrumb {
+              margin-bottom: 16px !important;
+              opacity: 1;
+              font-size: 12px !important;
+              transform: translateY(0);
+            }
+            .repo-morph-header.is-morphed .repo-morph-breadcrumb {
+              margin-bottom: 4px !important;
+              opacity: 0.4;
+              font-size: 10.5px !important;
+              transform: translateY(-2px);
+            }
+
+            .repo-morph-title {
+              font-size: 21.6px !important;
+              line-height: 1.2 !important;
+              margin-bottom: 6px;
+              transform: translateY(0);
+            }
+            .repo-morph-header.is-morphed .repo-morph-title {
+              font-size: 14.6px !important;
+              line-height: 1.3 !important;
+              margin-bottom: 0px;
+              transform: translateY(-2px);
+            }
+
+            .repo-morph-meta {
+              max-height: 150px !important;
+              margin-top: 6px !important;
+              opacity: 1 !important;
+              overflow: hidden;
+              transform: translateY(0);
+            }
+            .repo-morph-header.is-morphed .repo-morph-meta {
+              max-height: 0px !important;
+              margin-top: 0px !important;
+              opacity: 0 !important;
+              transform: translateY(-4px);
+            }
+
+            .repo-morph-actions {
+              opacity: 1;
+              transform: scale(1) translateY(0);
+              transform-origin: top right;
+            }
+            .repo-morph-header.is-morphed .repo-morph-actions {
+              opacity: 0.55;
+              transform: scale(0.93) translateY(-2px);
+            }
+
+            .repo-morph-banner {
+              margin-bottom: 16px !important;
+              margin-top: 12px !important;
+              padding-top: 12px !important;
+              padding-bottom: 12px !important;
+              transform: translateY(0);
+            }
+            .repo-morph-header.is-morphed .repo-morph-banner {
+              margin-bottom: 4px !important;
+              margin-top: 4px !important;
+              padding-top: 6px !important;
+              padding-bottom: 6px !important;
+              transform: translateY(-2px);
+            }
+
+            .repo-morph-search {
+              margin-top: 12px !important;
+              margin-bottom: 8px !important;
+              padding-top: 12px !important;
+              padding-bottom: 12px !important;
+              padding-left: 12px !important;
+              padding-right: 12px !important;
+            }
+            .repo-morph-header.is-morphed .repo-morph-search {
+              margin-top: 4px !important;
+              margin-bottom: 0px !important;
+              padding-top: 6px !important;
+              padding-bottom: 6px !important;
+              padding-left: 8px !important;
+              padding-right: 8px !important;
+            }
+          }
+
+          /* Desktop (>=1024px) */
+          @media (min-width: 1024px) {
+            .repo-morph-header {
+              padding-top: 32px !important;
+              padding-bottom: 12px !important;
+            }
+            .repo-morph-header.is-morphed {
+              padding-top: 8px !important;
+              padding-bottom: 4px !important;
+            }
+
+            .repo-morph-breadcrumb {
+              margin-bottom: 20px !important;
+              opacity: 1;
+              font-size: 12px !important;
+              transform: translateY(0);
+            }
+            .repo-morph-header.is-morphed .repo-morph-breadcrumb {
+              margin-bottom: 4px !important;
+              opacity: 0.55;
+              font-size: 10.5px !important;
+              transform: translateY(-2px);
+            }
+
+            .repo-morph-title {
+              font-size: 26.4px !important;
+              line-height: 1.15 !important;
+              margin-bottom: 6px;
+              transform: translateY(0);
+            }
+            .repo-morph-header.is-morphed .repo-morph-title {
+              font-size: 15.4px !important;
+              line-height: 1.3 !important;
+              margin-bottom: 0px;
+              transform: translateY(-2px);
+            }
+
+            .repo-morph-meta {
+              max-height: 120px !important;
+              margin-top: 6px !important;
+              opacity: 1 !important;
+              overflow: hidden;
+              transform: translateY(0);
+            }
+            .repo-morph-header.is-morphed .repo-morph-meta {
+              max-height: 0px !important;
+              margin-top: 0px !important;
+              opacity: 0 !important;
+              transform: translateY(-4px);
+            }
+
+            .repo-morph-actions {
+              transform: scale(1) translateY(0);
+              transform-origin: top right;
+            }
+            .repo-morph-header.is-morphed .repo-morph-actions {
+              transform: scale(0.93) translateY(-2px);
+            }
+
+            .repo-morph-banner {
+              margin-bottom: 20px !important;
+              margin-top: 12px !important;
+              padding-top: 12px !important;
+              padding-bottom: 12px !important;
+              transform: translateY(0);
+            }
+            .repo-morph-header.is-morphed .repo-morph-banner {
+              margin-bottom: 4px !important;
+              margin-top: 4px !important;
+              padding-top: 6px !important;
+              padding-bottom: 6px !important;
+              transform: translateY(-2px);
+            }
+
+            .repo-morph-search {
+              margin-top: 12px !important;
+              margin-bottom: 8px !important;
+              padding-top: 16px !important;
+              padding-bottom: 16px !important;
+              padding-left: 16px !important;
+              padding-right: 16px !important;
+            }
+            .repo-morph-header.is-morphed .repo-morph-search {
+              margin-top: 4px !important;
+              margin-bottom: 4px !important;
+              padding-top: 8px !important;
+              padding-bottom: 8px !important;
+              padding-left: 12px !important;
+              padding-right: 12px !important;
+            }
+          }
+        `}</style>{" "}
+        <div
+          ref={headerRef}
+          className="sticky top-[56px] lg:top-0 z-20 bg-slate-50/95 pt-5 sm:pt-8 pb-3 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 mb-5 sm:mb-6 repo-morph-header"
+        >
+          {/* ── Breadcrumb ─────────────────────────────────────── */}
+          <nav className="flex items-center gap-1.5 text-[12px] text-slate-400 mb-4 sm:mb-5 font-medium overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden repo-morph-breadcrumb">
+            <button
+              onClick={() => navigate("/repository")}
+              className="hover:text-slate-600 transition-colors"
+            >
+              Repository
+            </button>
+            {division && (
+              <>
+                <ChevronRight size={12} />
+                <button
+                  onClick={() => navigate(backTarget)}
+                  className="hover:text-slate-600 transition-colors truncate max-w-45"
+                >
+                  {backLabel}
+                </button>
+              </>
+            )}
+            <ChevronRight size={12} />
+            <span className="text-slate-700 font-semibold truncate max-w-55">
               {decodedName}
-            </h1>
-            <p className="hidden lg:block text-[0.78rem] text-slate-400 font-medium mt-1">
-              {loading
-                ? "Loading…"
-                : `${yearFilteredFiles.length} files · ${verifiedCount} verified`}
-            </p>
-          </div>
-          {canRequestFile && (
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => {
-                  setShowFileRequestsPanel(true);
-                  fetchMyFileRequests();
-                }}
-                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-all"
-              >
-                <Inbox size={15} />
-                <span className="hidden sm:inline">Files Requested</span>
-                <span className="sm:hidden">Requested</span>
-                {myFileRequests.length > 0 && (
-                  <span className="inline-flex items-center justify-center min-w-4.5 h-4.5 px-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
-                    {myFileRequests.length}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setShowFileRequestModal(true)}
-                className="inline-flex items-center gap-1.5 sm:gap-2 rounded-[10px] bg-blue-500 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer"
-              >
-                <FileUp size={15} />
-                Request File
-              </button>
-            </div>
-          )}
-        </div>
+            </span>
+          </nav>
 
-        {/* ── Locked-access banner ──────────────────────────── */}
-        {accessLevel === "locked" && (
-          <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
-            <Lock size={14} className="shrink-0" />
-            You can view files in this section, but download, edit, and delete
-            are limited to your assigned section.
-          </div>
-        )}
-
-        {/* ── Stats row ─────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-            <div className="flex items-center gap-2 mb-1.5">
-              <User size={11} className="text-slate-400" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                Managed By
-              </p>
-            </div>
-            {loading ? (
-              <p className="text-[0.88rem] font-semibold text-slate-800">—</p>
-            ) : sectionManagerNames.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-1.5">
-                {sectionManagerNames.map((name, i) => (
-                  <span
-                    key={`${name}-${i}`}
-                    className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-50 border border-slate-100 text-[0.8rem] font-semibold text-slate-800"
-                  >
-                    {name}
+          {/* ── Page Header ────────────────────────────────────── */}
+          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3 lg:gap-4">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h1 className="text-[1.35rem] sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em] leading-tight repo-morph-title shrink-0">
+                  {decodedName}
+                </h1>
+                <div className="flex items-center gap-1.5 sm:gap-2 repo-morph-inline-pills">
+                  <span className="flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-md sm:rounded-lg text-[9px] sm:text-[10px] font-bold text-blue-700 border border-blue-200/60 shadow-sm">
+                    <User size={11} className="text-blue-500 shrink-0" />
+                    <span className="truncate max-w-[80px] sm:max-w-[150px]">
+                      {loading
+                        ? "Loading…"
+                        : sectionManagerNames.length > 0
+                          ? sectionManagerNames.join(", ")
+                          : (section?.managed_by ?? "—")}
+                    </span>
                   </span>
-                ))}
+                  <span className="flex items-center gap-1 bg-indigo-50 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-md sm:rounded-lg text-[9px] sm:text-[10px] font-bold text-indigo-700 border border-indigo-200/60 shadow-sm">
+                    <Building2 size={11} className="text-indigo-500 shrink-0" />
+                    <span className="truncate max-w-[100px] sm:max-w-[150px]">
+                      {loading ? "Loading…" : (division?.name ?? "—")}
+                    </span>
+                  </span>
+                </div>
               </div>
-            ) : (
-              <p className="text-[0.88rem] font-semibold text-slate-800">
-                {section?.managed_by ?? "—"}
-              </p>
+              <div className="flex flex-col gap-1.5 mt-1.5 repo-morph-meta">
+                <p className="text-[0.8rem] text-slate-400 font-medium">
+                  {loading
+                    ? "Loading…"
+                    : `${yearFilteredFiles.length} files · ${verifiedCount} verified`}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex items-center gap-1.5 bg-blue-50 px-2.5 py-1 rounded-lg text-[0.75rem] font-bold text-blue-700 border border-blue-200/60 shadow-sm">
+                    <User size={13} className="text-blue-500 shrink-0" />
+                    {loading
+                      ? "Loading…"
+                      : sectionManagerNames.length > 0
+                        ? sectionManagerNames.join(", ")
+                        : (section?.managed_by ?? "—")}
+                  </span>
+                  <span className="flex items-center gap-1.5 bg-indigo-50 px-2.5 py-1 rounded-lg text-[0.75rem] font-bold text-indigo-700 border border-indigo-200/60 shadow-sm">
+                    <Building2 size={13} className="text-indigo-500 shrink-0" />
+                    {loading ? "Loading…" : (division?.name ?? "—")}
+                  </span>
+                </div>
+              </div>
+            </div>
+            {(canRequestFile || canOpenRecycleBin) && (
+  <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto lg:shrink-0 repo-morph-actions">
+                {canRequestFile && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowFileRequestsPanel(true);
+                        fetchMyFileRequests();
+                      }}
+                      className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-all"
+                    >
+                      <Inbox size={15} />
+                      <span className="hidden sm:inline">Files Requested</span>
+                      <span className="sm:hidden">Requested</span>
+                      {activeFileRequestsCount > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-4.5 h-4.5 px-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
+                          {activeFileRequestsCount}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setShowFileRequestModal(true)}
+                      className="inline-flex items-center gap-1.5 sm:gap-2 rounded-[10px] bg-blue-500 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer"
+                    >
+                      <FileUp size={15} />
+                      Request File
+                    </button>
+                  </>
+                )}
+                {canOpenRecycleBin && (
+                  <button
+                    onClick={() => setShowRecycleBin(true)}
+                    className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-all"
+                  >
+                    <Trash2 size={15} />
+                    <span className="hidden sm:inline">
+                      {recycleBinScope === "own"
+                        ? "My Deleted Files"
+                        : "Recycle Bin"}
+                    </span>
+                    <span className="sm:hidden">Bin</span>
+                  </button>
+                )}
+              </div>
             )}
           </div>
-          <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Building2 size={11} className="text-slate-400" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                Division
-              </p>
+
+          {/* ── Locked-access banner ──────────────────────────── */}
+          {accessLevel === "locked" && (
+            <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700 repo-morph-banner">
+              <Lock size={14} className="shrink-0" />
+              You can view files in this section, but download, edit, and delete
+              are limited to your assigned section.
             </div>
-            <p className="text-[0.88rem] font-semibold text-slate-800">
-              {loading ? "—" : (division?.name ?? "—")}
-            </p>
-          </div>
-        </div>
-
-        {/* ── Search / Sort / View Toggle ────────────────── */}
-        <div className="mb-5 sm:mb-6 rounded-2xl sm:rounded-[28px] border border-white/70 bg-white/85 p-3 sm:p-5 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-          <RepositorySearchBar
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            placeholder="Search files by name or uploader..."
-            schoolYears={schoolYears}
-            selectedYear={selectedSchoolYear}
-            onYearChange={setSelectedSchoolYear}
-          />
-
-          {/* Type filter pills */}
-          <div className="mt-4 border-t border-slate-100 pt-4">
-            <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {FILE_TYPE_TABS.map((tab) => {
-                const isActive = activeType === tab;
-
-                let activeColors =
-                  "bg-blue-600 text-white border-blue-600 shadow-sm";
-                if (isActive) {
-                  if (tab === "PDF")
-                    activeColors =
-                      "bg-red-500 text-white border-red-500 shadow-sm";
-                  else if (tab === "Excel")
-                    activeColors =
-                      "bg-emerald-500 text-white border-emerald-500 shadow-sm";
-                }
-
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveType(tab)}
-                    className={`shrink-0 px-3.5 py-1.5 text-[11px] font-semibold rounded-full transition-all border ${
-                      isActive
-                        ? activeColors
-                        : "text-slate-500 hover:bg-slate-50 border-slate-200 bg-white"
-                    }`}
-                  >
-                    {tab}
-                    <span
-                      className={`ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"}`}
-                    >
-                      {typeCounts[tab]}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* ── Bulk bar anchor + audit note ─────────────────────────── */}
-        <div
-          id="repo-file-list-anchor"
-          className="flex items-center justify-end mb-3 scroll-mt-6"
-        >
-          {allFiles.length > 0 && (
-            <p className="text-[11px] text-slate-400">
-              ○ All actions are audit-logged
-            </p>
           )}
-        </div>
+          {accessLevel === "view_download" && (
+            <div className="mb-5 flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-700 repo-morph-banner">
+              <Lock size={14} className="shrink-0" />
+              You can view and download files in this section, but editing and
+              deleting are limited to your assigned section.
+            </div>
+          )}
 
-        {/* ── Bulk action bar (Verify/Unverify only) ─────────── */}
+          {/* ── Search / Sort / View Toggle ────────────────── */}
+          <div className="mt-3 mb-2 rounded-xl sm:rounded-[24px] border border-slate-200/60 sm:border-white/70 bg-white p-3 sm:p-4 shadow-[0_8px_30px_rgba(15,23,42,0.04)] repo-morph-search">
+            {/* Header Toggle */}
+            <div
+              className="flex items-center justify-between mb-1 cursor-pointer group"
+              onClick={() => setIsSearchOpen((prev) => !prev)}
+            >
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest group-hover:text-blue-500 transition-colors select-none">
+                Search & Filters
+              </span>
+              <button className="p-1 rounded-md text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-all">
+                {isSearchOpen ? (
+                  <ChevronUp size={14} />
+                ) : (
+                  <ChevronDown size={14} />
+                )}
+              </button>
+            </div>
 
-        {someSelected && !canEdit && (
-          <div className="mb-3 flex items-center gap-3 px-4 py-3 rounded-2xl border border-blue-200 bg-blue-50">
-            <span className="text-[13px] font-semibold text-blue-700">
-              {selectedIds.size} file{selectedIds.size > 1 ? "s" : ""} selected
-            </span>
-            <button
-              onClick={() => {
-                const files = filtered.filter(
-                  (f) =>
-                    selectedIds.has(f.id) &&
-                    !hasFileAccess(f) &&
-                    fileRequestStatus(f) !== "pending",
-                );
-                if (files.length > 0) openRequestModal(files);
-                else
-                  alert(
-                    "The selected files are already granted or have a pending request.",
-                  );
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold transition-colors"
-            >
-              <Lock size={12} /> Request Access
-            </button>
-            <button
-              onClick={clearSelection}
-              className="ml-auto p-1.5 rounded-lg hover:bg-blue-100 text-blue-400 hover:text-blue-600 transition-colors"
-            >
-              <X size={16} />
-            </button>
+            {isSearchOpen && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                <RepositorySearchBar
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  viewMode={viewMode}
+                  onViewModeChange={setViewMode}
+                  sortBy={sortBy}
+                  onSortChange={setSortBy}
+                  placeholder="Search files by name or uploader..."
+                  schoolYears={schoolYears}
+                  selectedYear={selectedSchoolYear}
+                  onYearChange={setSelectedSchoolYear}
+                />
+
+                {/* Type filter pills */}
+                <div className="mt-2 sm:mt-3 border-t border-slate-100 pt-2 sm:pt-3 flex flex-wrap sm:flex-row items-center justify-between gap-2 sm:gap-3">
+                  <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {FILE_TYPE_TABS.map((tab) => {
+                      const isActive = activeType === tab;
+
+                      let activeColors =
+                        "bg-blue-600 text-white border-blue-600 shadow-sm";
+                      if (isActive) {
+                        if (tab === "PDF")
+                          activeColors =
+                            "bg-red-500 text-white border-red-500 shadow-sm";
+                        else if (tab === "Excel")
+                          activeColors =
+                            "bg-emerald-500 text-white border-emerald-500 shadow-sm";
+                      }
+
+                      return (
+                        <button
+                          key={tab}
+                          onClick={() => setActiveType(tab)}
+                          className={`shrink-0 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[10px] sm:text-[11px] font-semibold rounded-full transition-all border ${isActive
+                              ? activeColors
+                              : "text-slate-500 hover:bg-slate-50 border-slate-200 bg-white"
+                            }`}
+                        >
+                          {tab}
+                          <span
+                            className={`ml-1 sm:ml-1.5 text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"}`}
+                          >
+                            {typeCounts[tab]}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {allFiles.length > 0 && (
+                    <div className="flex items-center gap-2 shrink-0 repo-morph-actions">
+                      <button
+                        type="button"
+                        onClick={toggleSelectAll}
+                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 hover:text-blue-600 transition-colors px-2 py-1 rounded-lg hover:bg-blue-50"
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 12 12"
+                          fill="none"
+                          className={someSelected ? "text-blue-600" : ""}
+                        >
+                          <rect
+                            x="1"
+                            y="1"
+                            width="10"
+                            height="10"
+                            rx="2"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          />
+                          {allFilteredSelected && (
+                            <path
+                              d="M3 6l2.5 2.5L9 4"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          )}
+                        </svg>
+                        {allFilteredSelected ? "Deselect All" : "Select All"}
+                      </button>
+
+                      {someSelected && canEdit && (
+                        <>
+                          <div className="w-px h-3.5 bg-slate-200 mx-1"></div>
+                          <span className="text-[11px] font-semibold text-blue-600 mr-1">
+                            {selectedIds.size} selected
+                          </span>
+                          <button
+                            onClick={handleBulkDownload}
+                            disabled={bulkDownloading}
+                            className="p-1.5 rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50 transition-colors"
+                            title="Download Selected"
+                          >
+                            <Download size={14} />
+                          </button>
+                          {deletableSelectedFiles.length > 0 && (
+                            <button
+                              onClick={() => setBulkDeletePending(true)}
+                              disabled={isBulkDeleting}
+                              className="p-1.5 rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 transition-colors"
+                              title={`Delete ${deletableSelectedFiles.length} selected`}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </>
+                      )}
+
+                      {someSelected && !canEdit && (
+                        <>
+                          <div className="w-px h-3.5 bg-slate-200 mx-1"></div>
+                          <span className="text-[11px] font-semibold text-blue-600 mr-1">
+                            {selectedIds.size} selected
+                          </span>
+                          {accessLevel === "view_download" ? (
+                            <button
+                              onClick={handleBulkDownload}
+                              disabled={bulkDownloading}
+                              className="p-1.5 rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50 transition-colors"
+                              title="Download Selected"
+                            >
+                              <Download size={14} />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                const files = filtered.filter(
+                                  (f) =>
+                                    selectedIds.has(f.id) &&
+                                    !hasFileAccess(f) &&
+                                    fileRequestStatus(f) !== "pending",
+                                );
+                                if (files.length > 0) openRequestModal(files);
+                                else
+                                  alert(
+                                    "The selected files are already granted or have a pending request.",
+                                  );
+                              }}
+                              className="p-1.5 rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                              title="Request Access"
+                            >
+                              <Lock size={14} />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        )}
-
-        {/* ── Pagination (Moved to Top) ─────────────────────── */}
-        {!loading && filtered.length > 0 && (
-          <PaginationBar
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={filtered.length}
-            pageSize={viewMode === "list" ? pageSizeList : pageSizeGrid}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-            pageSizeOptions={
-              viewMode === "list"
-                ? PAGE_SIZE_OPTIONS_LIST
-                : PAGE_SIZE_OPTIONS_GRID
-            }
-            rangeStart={rangeStart}
-            rangeEnd={rangeEnd}
-          />
-        )}
-
+        </div>
+        {/* ── Bulk bar anchor ─────────────────────────── */}
+        <div id="repo-file-list-anchor" className="scroll-mt-6" />
         {/* ── File list / grid ──────────────────────────────── */}
         {loading ? (
           <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
@@ -2394,6 +3102,7 @@ export default function RepositoryFolderDetailPage() {
                   key={file.id}
                   file={file}
                   canEdit={canEdit}
+                  canDelete={canDeleteFile(file)}
                   canVerify={canVerify}
                   isVerifying={isVerifying}
                   isSelected={selectedIds.has(file.id)}
@@ -2404,13 +3113,13 @@ export default function RepositoryFolderDetailPage() {
                   canViewFeedback={canViewFeedback(file)}
                   hasUnreadFeedback={!!feedbackUnread[file.id]}
                   onSelectOrVerify={() => {
-  if (canVerify) {
-    if (isVerifying) return;
-    setVerifyTarget(file);
-  } else {
-    toggleSelect(file.id);
-  }
-}}
+                    if (canVerify) {
+                      if (isVerifying) return;
+                      setVerifyTarget(file);
+                    } else {
+                      toggleSelect(file.id);
+                    }
+                  }}
                   onVerify={() => setVerifyTarget(file)}
                   onPreview={() => setEditingFile(file)}
                   onDownload={(e) => handleDownloadClick(e, file)}
@@ -2466,7 +3175,9 @@ export default function RepositoryFolderDetailPage() {
                     const isSelected = selectedIds.has(file.id);
                     const isVerified = file.status === "Verified";
                     const uploaded = formatRelativeDate(file.rawCreatedAt);
-                    const modified = formatRelativeDate(getFileModifiedAt(file));
+                    const modified = formatRelativeDate(
+                      getFileModifiedAt(file),
+                    );
                     const uploaderInfo = uploaderDetails[file.uploaderId];
                     const { bg: avatarBg } = getAvatarColor(file.uploader);
                     const isFileHovered = hoveredFileId === file.id;
@@ -2476,9 +3187,15 @@ export default function RepositoryFolderDetailPage() {
                     return (
                       <tr
                         key={file.id}
-                        className={`group relative transition-colors ${
-                          isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
-                        }`}
+                        onClick={(e) => {
+                          if (e.ctrlKey || e.metaKey) {
+                            e.preventDefault();
+                            toggleSelect(file.id);
+                          }
+                        }}
+                        className={`group relative transition-colors cursor-pointer select-none ${isSelected ? "bg-blue-50/60" : "hover:bg-slate-50/80"
+                          }`}
+                        title="Ctrl+Click to select"
                       >
                         {/* File cell — with hover popover */}
                         <td className="px-3 py-3.5 min-w-55">
@@ -2489,20 +3206,16 @@ export default function RepositoryFolderDetailPage() {
                           >
                             <div className="flex items-center gap-2.5">
                               <button
+                                type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (canVerify) {
-                                    if (isVerifying) return;
-                                    setVerifyTarget(file);
-                                  } else {
-                                    toggleSelect(file.id);
-                                  }
+                                  toggleSelect(file.id);
                                 }}
-                                className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                                  isSelected
+                                className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${isSelected
                                     ? "bg-blue-50 border border-blue-200 text-blue-600"
                                     : `border border-transparent group-hover:bg-slate-100 group-hover:border-slate-200 group-hover:text-slate-400 ${bg}`
-                                }`}
+                                  }`}
+                                title={isSelected ? "Deselect" : "Select"}
                               >
                                 {isSelected ? (
                                   <svg
@@ -2556,11 +3269,10 @@ export default function RepositoryFolderDetailPage() {
                             </div>
                             {/* File hover popover */}
                             <div
-                              className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
-                                isFileHovered
+                              className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${isFileHovered
                                   ? "opacity-100 visible scale-100 pointer-events-auto"
                                   : "opacity-0 invisible scale-95 pointer-events-none"
-                              }`}
+                                }`}
                             >
                               <FileInfoCard
                                 file={file}
@@ -2595,19 +3307,17 @@ export default function RepositoryFolderDetailPage() {
                                   : "Click to verify"
                                 : undefined
                             }
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${
-                              isVerified
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${isVerified
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                 : "bg-slate-100 text-slate-500 border-slate-200"
-                            } ${
-                              canVerify
+                              } ${canVerify
                                 ? "cursor-pointer hover:brightness-95"
                                 : "cursor-default"
-                            } disabled:opacity-60 disabled:cursor-not-allowed`}
+                              } disabled:opacity-60 disabled:cursor-not-allowed`}
                           >
                             {isVerified ? (
                               <>
-                                <CheckCircle2 size={10} /> Verified ✓
+                                <CheckCircle2 size={10} /> Verified{" "}
                               </>
                             ) : (
                               <>
@@ -2657,11 +3367,10 @@ export default function RepositoryFolderDetailPage() {
                             {/* User hover popover */}
                             {uploaderInfo && (
                               <div
-                                className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${
-                                  isUserHovered
+                                className={`absolute z-50 left-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-left ${isUserHovered
                                     ? "opacity-100 visible scale-100 pointer-events-auto"
                                     : "opacity-0 invisible scale-95 pointer-events-none"
-                                }`}
+                                  }`}
                               >
                                 <UserInfoCard info={uploaderInfo} />
                               </div>
@@ -2698,11 +3407,10 @@ export default function RepositoryFolderDetailPage() {
                             </div>
                             {/* Last Modified hover popover */}
                             <div
-                              className={`absolute z-50 right-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-right ${
-                                hoveredModifiedId === file.id
+                              className={`absolute z-50 right-[calc(100%+20px)] ${verticalPos} transition-all duration-200 ease-out origin-right ${hoveredModifiedId === file.id
                                   ? "opacity-100 visible scale-100 pointer-events-auto"
                                   : "opacity-0 invisible scale-95 pointer-events-none"
-                              }`}
+                                }`}
                             >
                               <LastModifiedInfoCard
                                 rawDate={getFileModifiedAt(file)}
@@ -2714,7 +3422,7 @@ export default function RepositoryFolderDetailPage() {
 
                         {/* Actions */}
                         <td className="px-3 py-3.5 pr-4 w-40">
-                          <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-150">
+                          <div className="flex items-center gap-0.5 transition-all duration-150">
                             {canEdit ? (
                               <>
                                 <button
@@ -2732,14 +3440,16 @@ export default function RepositoryFolderDetailPage() {
                                 >
                                   <Download size={14} />
                                 </button>
-                                <button
-                                  onClick={() => handleDeleteFile(file)}
-                                  disabled={deletingId === file.id}
-                                  className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors disabled:opacity-40"
-                                  title="Delete"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
+                                {canDeleteFile(file) && (
+                                  <button
+                                    onClick={() => handleDeleteFile(file)}
+                                    disabled={deletingId === file.id}
+                                    className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors disabled:opacity-40"
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
                               </>
                             ) : hasFileAccess(file) ? (
                               <>
@@ -2779,21 +3489,24 @@ export default function RepositoryFolderDetailPage() {
                             )}
 
                             {canViewFeedback(file) && (
-  <button
-    onClick={(e) => {
-      e.stopPropagation();
-      setFeedbackTarget(file);
-      setFeedbackUnread((prev) => ({ ...prev, [file.id]: false }));
-    }}
-    className="relative p-1.5 rounded-lg hover:bg-blue-50 text-slate-300 hover:text-blue-600 transition-colors"
-    title="Feedback"
-  >
-    <MessageSquare size={14} />
-    {feedbackUnread[file.id] && (
-      <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-blue-500" />
-    )}
-  </button>
-)}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFeedbackTarget(file);
+                                  setFeedbackUnread((prev) => ({
+                                    ...prev,
+                                    [file.id]: false,
+                                  }));
+                                }}
+                                className="relative p-1.5 rounded-lg hover:bg-blue-50 text-slate-300 hover:text-blue-600 transition-colors"
+                                title="Feedback"
+                              >
+                                <MessageSquare size={14} />
+                                {feedbackUnread[file.id] && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-blue-500" />
+                                )}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -2809,38 +3522,62 @@ export default function RepositoryFolderDetailPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-3 p-2.5 sm:p-4">
               {paginated.map((file) => (
                 <MobileFileGridCard
-                 key={file.id}
-  file={file}
-  canEdit={canEdit}
-  canVerify={canVerify}
-  isVerifying={isVerifying}
-  isSelected={selectedIds.has(file.id)}
-  downloadingId={downloadingId}
-  deletingId={deletingId}
-  hasAccess={hasFileAccess(file)}
-  requestStatus={fileRequestStatus(file)}
-  canViewFeedback={canViewFeedback(file)}
-  hasUnreadFeedback={!!feedbackUnread[file.id]}
-  onSelectOrVerify={() => {
-    if (canVerify) {
-      if (isVerifying) return;
-      setVerifyTarget(file);
-    } else {
-      toggleSelect(file.id);
-    }
-  }}
-  onVerify={() => setVerifyTarget(file)}
-  onPreview={() => setEditingFile(file)}
-  onDownload={(e) => handleDownloadClick(e, file)}
-  onDelete={() => handleDeleteFile(file)}
-  onRequestAccess={() => openRequestModal(file)}
-  onOpenFeedback={() => {
-    setFeedbackTarget(file);
-    setFeedbackUnread((prev) => ({ ...prev, [file.id]: false }));
-  }}
+                  key={file.id}
+                  file={file}
+                  canEdit={canEdit}
+                  canVerify={canVerify}
+                  canDelete={canDeleteFile(file)}
+                  isVerifying={isVerifying}
+                  isSelected={selectedIds.has(file.id)}
+                  downloadingId={downloadingId}
+                  deletingId={deletingId}
+                  hasAccess={hasFileAccess(file)}
+                  requestStatus={fileRequestStatus(file)}
+                  canViewFeedback={canViewFeedback(file)}
+                  hasUnreadFeedback={!!feedbackUnread[file.id]}
+                  onSelectOrVerify={() => {
+                    if (canVerify) {
+                      if (isVerifying) return;
+                      setVerifyTarget(file);
+                    } else {
+                      toggleSelect(file.id);
+                    }
+                  }}
+                  onVerify={() => setVerifyTarget(file)}
+                  onPreview={() => setEditingFile(file)}
+                  onDownload={(e) => handleDownloadClick(e, file)}
+                  onDelete={() => handleDeleteFile(file)}
+                  onRequestAccess={() => openRequestModal(file)}
+                  onOpenFeedback={() => {
+                    setFeedbackTarget(file);
+                    setFeedbackUnread((prev) => ({
+                      ...prev,
+                      [file.id]: false,
+                    }));
+                  }}
                 />
               ))}
             </div>
+          </div>
+        )}
+        {/* ── Pagination (Bottom) ─────────────────────── */}
+        {!loading && filtered.length > 0 && (
+          <div className="mt-6">
+            <PaginationBar
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filtered.length}
+              pageSize={viewMode === "list" ? pageSizeList : pageSizeGrid}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+              pageSizeOptions={
+                viewMode === "list"
+                  ? PAGE_SIZE_OPTIONS_LIST
+                  : PAGE_SIZE_OPTIONS_GRID
+              }
+              rangeStart={rangeStart}
+              rangeEnd={rangeEnd}
+            />
           </div>
         )}
       </div>
@@ -2853,6 +3590,7 @@ export default function RepositoryFolderDetailPage() {
         file={editingFile}
         uploaderName={editingFile?.uploader}
         canEdit={canEdit}
+        schoolYears={schoolYears}
         onSaved={() => {
           setEditingFile(null);
           if (decodedName) fetchData();
@@ -2944,32 +3682,126 @@ export default function RepositoryFolderDetailPage() {
         }
       />
 
-      {canEdit && (
-        <>
-          <FloatingAccessRequestsButton
-            userProfile={userProfile}
-            refreshKey={accessRefreshKey}
-            onClick={() => setIsAccessSidebarOpen(true)}
-          />
+      <RecycleBinModal
+        isOpen={showRecycleBin}
+        onClose={() => setShowRecycleBin(false)}
+        sectionId={section?.id}
+        sectionName={section?.name}
+        userProfile={userProfile}
+        scope={recycleBinScope}
+        canPurgeForever={canViewRecycleBinFull}
+        getBucket={getBucket}
+        onChanged={fetchData}
+      />
 
-          <AccessRequestsSidebar
-            isOpen={isAccessSidebarOpen}
-            onClose={() => {
-              setIsAccessSidebarOpen(false);
-              setAccessRefreshKey((k) => k + 1);
-            }}
-            userProfile={userProfile}
-          />
-        </>
-      )}
+      {/* ── Floating Action Group ──────────────────────────────────── */}
+      {(() => {
+        const role = userProfile?.role;
+        const canSeeAccessRequests =
+          role === "administrator" ||
+          (role === "division_focal" &&
+            String(userProfile?.division_id) ===
+            String(section?.division_id)) ||
+          (role === "section_focal" &&
+            String(userProfile?.section_id) === String(section?.id));
+
+        // Templates are per-section — only show them when the user actually
+        // belongs to / manages *this* section.
+        const canManageThisSection =
+          role === "administrator" ||
+          (role === "division_focal" &&
+            String(userProfile?.division_id) ===
+            String(section?.division_id)) ||
+          (role === "section_focal" &&
+            String(userProfile?.section_id) === String(section?.id)) ||
+          (role === "section_personnel" &&
+            String(userProfile?.section_id) === String(section?.id));
+
+        const isPersonnel = role === "section_personnel";
+
+        if (isPersonnel) {
+          if (!canManageThisSection) return null;
+          return (
+            <>
+              <button
+                onClick={() => setShowTemplatesModal(true)}
+                className="fixed right-4 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-30 group flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 shadow-[0_12px_30px_rgba(5,150,105,0.35)] transition-all hover:scale-105 hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 lg:right-6 lg:bottom-6"
+                title="Templates"
+                aria-label="Open Templates"
+              >
+                <LayoutTemplate size={22} className="text-white" />
+                <span className="pointer-events-none absolute right-full mr-3 hidden whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 lg:block">
+                  Templates
+                </span>
+              </button>
+            </>
+          );
+        }
+
+        // Privileged roles: show the group trigger with Templates + (optionally) Access Requests.
+        // Privileged roles: show the group trigger with Templates (only if this
+        // section is in scope) + Access Requests (only if in scope).
+        const groupActions = [
+          ...(canManageThisSection
+            ? [
+              {
+                id: "templates",
+                icon: <LayoutTemplate size={20} className="text-white" />,
+                label: "Templates",
+                color:
+                  "bg-emerald-600 hover:bg-emerald-700 shadow-[0_8px_20px_rgba(5,150,105,0.40)]",
+                onClick: () => setShowTemplatesModal(true),
+              },
+            ]
+            : []),
+          ...(canSeeAccessRequests
+            ? [
+              {
+                id: "access-requests",
+                icon: <ClipboardList size={20} className="text-white" />,
+                label: "Access Requests",
+                color:
+                  "bg-blue-600 hover:bg-blue-700 shadow-[0_8px_20px_rgba(37,99,235,0.40)]",
+                onClick: () => setIsAccessSidebarOpen(true),
+                badge: pendingAccessRequestCount,
+              },
+            ]
+            : []),
+        ];
+        if (groupActions.length === 0) return null;
+        return (
+          <>
+            <FloatingActionGroup
+              actions={groupActions}
+              triggerColor="bg-[linear-gradient(135deg,#2563EB_0%,#10B981_100%)] hover:brightness-110 shadow-[0_12px_30px_rgba(37,99,235,0.3),0_12px_30px_rgba(16,185,129,0.2)]"
+            />
+            {canSeeAccessRequests && (
+              <AccessRequestsSidebar
+                isOpen={isAccessSidebarOpen}
+                onClose={() => {
+                  setIsAccessSidebarOpen(false);
+                  setAccessRefreshKey((k) => k + 1);
+                }}
+                userProfile={userProfile}
+                sectionId={section?.id}
+              />
+            )}
+          </>
+        );
+      })()}
+      <TemplatesModal
+        isOpen={showTemplatesModal}
+        onClose={() => setShowTemplatesModal(false)}
+        userProfile={userProfile}
+        section={section}
+      />
 
       {/* ── Success toast ──────────────────────────────────── */}
       <div
-        className={`fixed bottom-8 right-8 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${
-          showDeleteToast
+        className={`fixed left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(6.5rem+env(safe-area-inset-bottom))] lg:bottom-8 sm:left-auto sm:right-8 sm:w-[380px] ${showDeleteToast
             ? "translate-x-0 opacity-100 pointer-events-auto"
             : "translate-x-[120%] opacity-0 pointer-events-none"
-        }`}
+          }`}
         style={{
           width: "380px",
           minHeight: "76px",
@@ -3027,7 +3859,7 @@ export default function RepositoryFolderDetailPage() {
                 margin: 0,
               }}
             >
-              File deleted successfully.
+              File moved to recycle bin.
             </p>
           </div>
 
@@ -3041,90 +3873,78 @@ export default function RepositoryFolderDetailPage() {
         </div>
       </div>
 
-      {showFileRequestToast && (
+      {/* ── File Request Success Toast ───────────────────────── */}
+      <div
+        className={`fixed left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] bottom-[calc(6.5rem+env(safe-area-inset-bottom))] lg:bottom-8 sm:left-auto sm:right-8 sm:w-[380px] ${showFileRequestToast
+            ? "translate-x-0 opacity-100 pointer-events-auto"
+            : "translate-x-[120%] opacity-0 pointer-events-none"
+          }`}
+        style={{
+          minHeight: "76px",
+          borderRadius: "16px",
+          boxShadow: showFileRequestToast
+            ? "0 4px 24px rgba(16, 185, 129, 0.25), 0 1px 3px rgba(0,0,0,0.05)"
+            : "0 12px 30px rgba(0,0,0,0)",
+          fontFamily: "Poppins, sans-serif",
+          border: "1px solid rgba(241, 245, 249, 1)",
+        }}
+      >
+        <div className="absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r from-emerald-100/60 to-transparent" />
         <div
-          className="fixed top-6 right-6 z-50 flex bg-white overflow-hidden"
-          style={{
-            width: 360,
-            height: 72,
-            borderRadius: 12,
-            boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
-            fontFamily: "Poppins, sans-serif",
-          }}
+          className="flex items-center relative z-10 py-4 flex-1"
+          style={{ padding: "0 20px", gap: "16px", minHeight: "76px" }}
         >
           <div
-            style={{ width: 6, backgroundColor: "#43D45B", flexShrink: 0 }}
-          />
-          <div
-            className="flex items-center flex-1 relative"
-            style={{ padding: "0 14px", gap: 12 }}
+            className="flex items-center justify-center shrink-0 bg-white rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.06),_0_1px_3px_rgba(0,0,0,0.03)]"
+            style={{ width: "42px", height: "42px" }}
           >
-            <div
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: "50%",
-                backgroundColor: "#43D45B",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#fff"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </div>
-            <div>
-              <p
-                style={{
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: "#1F1F2E",
-                  lineHeight: 1.2,
-                  margin: 0,
-                }}
-              >
-                Success
-              </p>
-              <p
-                style={{
-                  fontSize: 12.5,
-                  fontWeight: 500,
-                  color: "#666",
-                  marginTop: 2,
-                  margin: 0,
-                }}
-              >
-                File request submitted.
-              </p>
-            </div>
-            <button
-              onClick={() => setShowFileRequestToast(false)}
-              className="absolute top-2 right-2.5"
-              style={{
-                color: "#666",
-                background: "none",
-                border: "none",
-                fontSize: 16,
-                lineHeight: 1,
-                cursor: "pointer",
-              }}
-            >
-              ×
-            </button>
+            <CheckCircle
+              size={22}
+              className="text-emerald-500"
+              strokeWidth={2.5}
+            />
           </div>
+          <div className="flex flex-col justify-center flex-1 min-w-0">
+            <p
+              style={{
+                fontSize: "15px",
+                fontWeight: 700,
+                color: "#0F172A",
+                lineHeight: 1.2,
+                margin: 0,
+              }}
+            >
+              Success
+            </p>
+            <p
+              style={{
+                fontSize: "13px",
+                fontWeight: 500,
+                color: "#64748B",
+                marginTop: "3px",
+                margin: 0,
+              }}
+            >
+              File request submitted.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowFileRequestToast(false)}
+            className="absolute top-1/2 -translate-y-1/2 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-md hover:bg-slate-100"
+            aria-label="Close notification"
+          >
+            <X size={18} strokeWidth={2.5} />
+          </button>
         </div>
-      )}
+      </div>
+      {/* ── Bulk Delete Confirm Modal ───────────────────────── */}
+      <BulkDeleteConfirmModal
+        isOpen={bulkDeletePending}
+        onClose={() => setBulkDeletePending(false)}
+        onConfirm={confirmBulkDelete}
+        count={deletableSelectedFiles.length}
+        isDeleting={isBulkDeleting}
+      />
     </div>
   );
 }

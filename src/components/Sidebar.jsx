@@ -9,6 +9,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   CalendarRange,
+  LayoutTemplate,
 } from "lucide-react";
 import iconSvg from "../assets/one_data-icon-v3.svg";
 import { useUser } from "../contexts/UserContext"; // adjust path as needed
@@ -58,14 +59,21 @@ const navItems = [
     icon: CalendarRange,
     roles: [ROLES.ADMIN],
   },
+  {
+    label: "Templates",
+    path: "/templates",
+    icon: LayoutTemplate,
+    roles: [ROLES.ADMIN, ROLES.DIVISION_FOCAL],
+  },
 ];
 
 /**
  * Sidebar — Desktop collapsible navigation. Hidden on mobile
  * in favor of MobileBottomNav. Items are filtered by the
- * logged-in user's role: admins see everything, everyone else
- * (division focal, section focal, section personnel) only sees
- * Dashboard, Repository, and Upload Files.
+ * logged-in user's role: admins see everything, division focal
+ * persons additionally see Templates, and everyone else (section
+ * focal, section personnel) only sees Dashboard, Repository, and
+ * Upload Files.
  */
 export function Sidebar({ collapsed = false, onToggle }) {
   const location = useLocation();

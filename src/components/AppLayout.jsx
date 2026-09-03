@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabaseClient";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import { ChangePasswordModal } from "./Modals/ChangePasswordModal";
+import DataPrivacyModal from "./Modals/DataPrivacyModal";
 
 function LayoutPageFallback() {
   return (
@@ -24,6 +25,7 @@ export function AppLayout() {
   const { userProfile, setUserProfile } = useUser();
 
   const mustChange = userProfile?.must_change_password === true;
+  const needsPrivacyAccept = mustChange && userProfile?.accepted_data_privacy !== true;
 
   useEffect(() => {
     if (!showPasswordToast) return;
@@ -44,6 +46,12 @@ export function AppLayout() {
     setShowPasswordToast(true);
   }
 
+  function handlePrivacyAccept() {
+    const updated = { ...userProfile, accepted_data_privacy: true };
+    setUserProfile(updated);
+    localStorage.setItem("userProfile", JSON.stringify(updated));
+  }
+
   function handleLogout() {
     supabase.auth.signOut();
     localStorage.removeItem("userProfile");
@@ -58,6 +66,10 @@ export function AppLayout() {
       style={{ background: "#f0f4f9" }}
     >
       <div className="app-shell-inner flex w-full min-h-dvh lg:h-full lg:min-h-0">
+        <DataPrivacyModal
+          isOpen={needsPrivacyAccept}
+          onSuccess={handlePrivacyAccept}
+        />
         <ChangePasswordModal
           isOpen={mustChange}
           onSuccess={handlePasswordChange}

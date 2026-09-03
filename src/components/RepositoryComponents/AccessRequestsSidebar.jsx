@@ -3,7 +3,9 @@
 // the Repository folder detail page. Visible only to section_focal,
 // division_focal, and admin — scope is enforced server-side in
 // accessRequestsApi.fetchScopedRequests, this component just renders
-// whatever comes back.
+// whatever comes back. For admins, that scope is narrowed to the section
+// folder currently being viewed (see `sectionId` prop below) rather than
+// showing every request system-wide.
 //
 // UI note: when the same person has requested access to several files,
 // their requests are grouped under a single "requester" card instead of
@@ -479,7 +481,7 @@ function RequesterGroupCard({ requests, onApprove, onDeny, onRevoke }) {
 // ── Main sidebar ────────────────────────────────────────────────────
 const SIDEBAR_TRANSITION_MS = 280;
 
-export default function AccessRequestsSidebar({ isOpen, onClose, userProfile }) {
+export default function AccessRequestsSidebar({ isOpen, onClose, userProfile, sectionId }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("pending"); // pending | all | granted
@@ -524,7 +526,7 @@ export default function AccessRequestsSidebar({ isOpen, onClose, userProfile }) 
   async function load() {
     setLoading(true);
     try {
-      const data = await fetchScopedRequests(userProfile);
+      const data = await fetchScopedRequests(userProfile, sectionId);
       setRequests(data);
     } catch (err) {
       console.error(err);
@@ -536,7 +538,7 @@ export default function AccessRequestsSidebar({ isOpen, onClose, userProfile }) 
   useEffect(() => {
     if (isOpen) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, sectionId]);
 
   const pending = useMemo(() => requests.filter((r) => r.status === "pending"), [requests]);
   const granted = useMemo(() => requests.filter((r) => r.status === "approved"), [requests]);

@@ -156,8 +156,8 @@ export function TopHeader({
               setDropdownOpen(false);
             }}
             className={`relative flex h-9 w-9 items-center justify-center rounded-[10px] transition-all cursor-pointer ${notificationsOpen
-                ? "bg-blue-50 text-blue-600"
-                : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+              ? "bg-blue-50 text-blue-600"
+              : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
               }`}
             aria-label="Notifications"
           >
@@ -235,8 +235,8 @@ export function TopHeader({
           {/* Dropdown / profile details card */}
           <div
             className={`absolute right-0 top-full mt-2 w-64 rounded-xl bg-white py-1 z-50 overflow-hidden transition-all duration-300 origin-top-right ${dropdownOpen
-                ? "opacity-100 scale-100 visible pointer-events-auto"
-                : "opacity-0 scale-95 invisible pointer-events-none"
+              ? "opacity-100 scale-100 visible pointer-events-auto"
+              : "opacity-0 scale-95 invisible pointer-events-none"
               }`}
             style={{
               border: "1px solid rgba(203,213,225,0.6)",

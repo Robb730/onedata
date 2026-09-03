@@ -1,8 +1,12 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Database, LayoutDashboard, ShieldCheck, Search } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import logo from "../../assets/one_data-icon-v3.svg";
 import sdoLogo from "../../assets/sdo-logo.png";
+import baliwagHenyoAbout from "../../assets/baliwag-henyo-about.png";
+
+const PANEL_DISPLAY  = 3000;  // ms text is shown
+const PANEL_TRANSITION = 1100; // ms cross-fade
 
 const pillars = [
   {
@@ -32,6 +36,39 @@ const pillars = [
 ];
 
 export function AboutSection() {
+  const [showHenyo, setShowHenyo] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const timerRef    = useRef(null);
+  const transRef    = useRef(null);
+
+  // Detect desktop
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 768);
+    check();
+    window.addEventListener("resize", check, { passive: true });
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // Animation loop — desktop only
+  useEffect(() => {
+    if (!isDesktop) return;
+    const cycle = () => {
+      setTransitioning(true);
+      transRef.current = setTimeout(() => {
+        setShowHenyo((prev) => !prev);
+        setTransitioning(false);
+      }, PANEL_TRANSITION);
+    };
+    timerRef.current = setInterval(cycle, PANEL_DISPLAY + PANEL_TRANSITION);
+    return () => { clearInterval(timerRef.current); clearTimeout(transRef.current); };
+  }, [isDesktop]);
+
+  const TR = `${PANEL_TRANSITION}ms cubic-bezier(0.4,0,0.2,1)`;
+  const textOut   = showHenyo  && transitioning;
+  const henyoOut  = !showHenyo && transitioning;
+  const textOpacity  = showHenyo  ? (henyoOut  ? 1 : 0) : (textOut  ? 0 : 1);
+  const henyoOpacity = showHenyo  ? (henyoOut  ? 0 : 1) : (textOut  ? 1 : 0);
   return (
     <section
       id="about"
@@ -84,6 +121,7 @@ export function AboutSection() {
               animationDelay: "0.08s",
             }}
           >
+            {/* Ambient glow blobs */}
             <div
               className="pointer-events-none absolute -top-10 -right-8 h-40 w-40 rounded-full blur-[50px] opacity-40"
               style={{ background: "#3b82f6" }}
@@ -93,7 +131,17 @@ export function AboutSection() {
               style={{ background: "#10b981" }}
             />
 
-            <div className="relative">
+            {/* ── Text state ── */}
+            <div
+              className="relative"
+              style={{
+                opacity: textOpacity,
+                filter: textOpacity > 0.5 ? "blur(0px)" : "blur(6px)",
+                transform: textOpacity > 0.5 ? "scale(1)" : "scale(0.96)",
+                transition: `opacity ${TR}, filter ${TR}, transform ${TR}`,
+                pointerEvents: showHenyo ? "none" : "auto",
+              }}
+            >
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 mb-5">
                 <img src={sdoLogo} alt="" className="h-5 w-5 rounded-full object-cover" />
                 <span className="text-[0.62rem] font-bold uppercase tracking-[0.14em] text-slate-300">
@@ -107,6 +155,26 @@ export function AboutSection() {
                 <br />
                 <span className="about-onedata-gradient">OneData.</span>
               </p>
+            </div>
+
+            {/* ── Baliwag-Henyo artwork state ── */}
+            <div
+              className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none"
+              style={{
+                opacity: henyoOpacity,
+                transition: `opacity ${TR}`,
+              }}
+            >
+              <img
+                src={baliwagHenyoAbout}
+                alt="Baliwag Henyo"
+                className="w-full h-full object-contain drop-shadow-2xl"
+                style={{
+                  transform: henyoOpacity > 0.5 ? "scale(1)" : "scale(0.92)",
+                  filter: henyoOpacity > 0.5 ? "blur(0px)" : "blur(10px)",
+                  transition: `transform ${TR}, filter ${TR}`,
+                }}
+              />
             </div>
           </div>
         </div>

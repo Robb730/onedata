@@ -4,14 +4,14 @@ import {
   canApproveDivisionAccessRequests,
 } from "../../utils/divisionAccessRequestsApi";
 
-export default function FloatingDivisionAccessRequestsButton({ userProfile, onClick, refreshKey }) {
+export default function FloatingDivisionAccessRequestsButton({ userProfile, divisionId, onClick, refreshKey }) {
   const [pendingCount, setPendingCount] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     if (!canApproveDivisionAccessRequests(userProfile)) return;
     let cancelled = false;
-    fetchScopedDivisionRequests(userProfile)
+    fetchScopedDivisionRequests(userProfile, divisionId)
       .then((data) => {
         if (!cancelled) setPendingCount(data.filter((r) => r.status === "pending").length);
       })
@@ -20,7 +20,7 @@ export default function FloatingDivisionAccessRequestsButton({ userProfile, onCl
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userProfile, refreshKey]);
+  }, [userProfile, divisionId, refreshKey]);
 
   if (!canApproveDivisionAccessRequests(userProfile)) return null;
 

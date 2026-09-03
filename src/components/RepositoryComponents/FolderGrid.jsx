@@ -17,11 +17,7 @@ export function FolderGrid({
 }) {
   return (
     <>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <p className="text-sm text-slate-500">
-          Showing <span className="font-semibold text-slate-900">{folders.length}</span> folders
-        </p>
-      </div>
+
 
       {folders.length === 0 ? (
         <div className="rounded-[28px] border border-white/70 bg-white/85 p-12 text-center shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">

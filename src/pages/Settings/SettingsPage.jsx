@@ -9,6 +9,7 @@ import {
   Shield,
   Hash,
   Send,
+  Clock,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
@@ -73,6 +74,25 @@ export default function SettingsPage() {
 
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+
+  const [lastLogin, setLastLogin] = useState(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      const ts = data?.user?.last_sign_in_at;
+      if (ts) {
+        setLastLogin(
+          new Date(ts).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          })
+        );
+      }
+    });
+  }, []);
 
   // NEW: debounced lookup against the users table whenever newEmail changes.
   useEffect(() => {
@@ -251,6 +271,14 @@ export default function SettingsPage() {
                   {userProfile?.id_number ?? "—"}
                 </span>
               </div>
+              {lastLogin && (
+                <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 sm:col-span-3">
+                  <Clock size={13} className="shrink-0 text-emerald-500" />
+                  <span className="truncate text-[0.72rem] font-semibold text-slate-600">
+                    Last login: {lastLogin}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

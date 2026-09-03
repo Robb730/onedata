@@ -31,7 +31,7 @@ function LogDetailsCard({ log, hasFile }) {
             <span className="font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase tracking-wider">
               {log.action}
             </span>
-            {log.status === "Success" || log.status === "Verified" ? (
+            {log.status === "Success" || log.status === "Verified" || log.status === "Login Success" ? (
               <span className="inline-flex items-center gap-0.5 text-emerald-600 font-medium bg-emerald-50 px-1.5 py-0.5 rounded">
                 <CheckCircle2 size={9} /> {log.status}
               </span>

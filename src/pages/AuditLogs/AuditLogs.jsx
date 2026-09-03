@@ -14,6 +14,8 @@ export default function AuditLogs() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterAction, setFilterAction] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
 
@@ -28,6 +30,7 @@ export default function AuditLogs() {
     "Role Change",
     "Access Request",
     "Access Grant",
+    "Login Success",
     "Login Failed",
     "Security Alert",
   ];
@@ -38,11 +41,11 @@ export default function AuditLogs() {
     const rows = auditLogs.map((log) => {
       const { date, time } = formatPerformedOn(log.performedOn);
       const statusColor =
-        log.status === "Success" ? "#059669" :
+        log.status === "Success" || log.status === "Login Success" ? "#059669" :
           log.status === "Failed" ? "#dc2626" :
             "#d97706";
       const statusBg =
-        log.status === "Success" ? "#ecfdf5" :
+        log.status === "Success" || log.status === "Login Success" ? "#ecfdf5" :
           log.status === "Failed" ? "#fef2f2" :
             "#fffbeb";
       return `
@@ -56,7 +59,7 @@ export default function AuditLogs() {
       </tr>`;
     }).join("");
 
-    const successCount = auditLogs.filter((l) => l.status === "Success").length;
+    const successCount = auditLogs.filter((l) => l.status === "Success" || l.status === "Login Success").length;
     const failedCount = auditLogs.filter((l) => l.status === "Failed").length;
     const pendingCount = auditLogs.filter((l) => l.status === "Pending").length;
 
@@ -296,7 +299,7 @@ export default function AuditLogs() {
   // Reset to page 1 whenever filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterAction, filterStatus]);
+  }, [searchQuery, filterAction, filterStatus, dateFrom, dateTo]);
 
   const queryClient = useQueryClient();
   const { data: auditLogsData } = useQuery({
@@ -309,7 +312,7 @@ export default function AuditLogs() {
         .limit(200);
 
       if (error) throw error;
-      
+
       return data.map((row) => ({
         id: row.id,
         action: row.action,
@@ -364,72 +367,72 @@ export default function AuditLogs() {
   // then marks the alert as resolved (Success) so it stops standing out
   // as Pending.
   // ─── Handle "Review" action on a Security Alert row ───────
-// Security Alert logs store the offending account's email in
-// `performed_by`. With auto-deactivation now handling the lockout
-// itself at login time, this button is a fallback/review action:
-// it deactivates the account only if it isn't already inactive,
-// then marks the alert as reviewed so it stops standing out as Pending.
-async function handleDeactivateFromAlert(log) {
-  const confirmed = window.confirm(
-    `Review security alert for ${log.performedBy}? If the account is still active, it will be deactivated until an administrator reactivates it.`
-  );
-  if (!confirmed) return;
+  // Security Alert logs store the offending account's email in
+  // `performed_by`. With auto-deactivation now handling the lockout
+  // itself at login time, this button is a fallback/review action:
+  // it deactivates the account only if it isn't already inactive,
+  // then marks the alert as reviewed so it stops standing out as Pending.
+  async function handleDeactivateFromAlert(log) {
+    const confirmed = window.confirm(
+      `Review security alert for ${log.performedBy}? If the account is still active, it will be deactivated until an administrator reactivates it.`
+    );
+    if (!confirmed) return;
 
-  const { data: userRow, error: lookupError } = await supabase
-    .from("users")
-    .select("id, full_name, role, is_active")
-    .eq("email", log.performedBy)
-    .maybeSingle();
+    const { data: userRow, error: lookupError } = await supabase
+      .from("users")
+      .select("id, full_name, role, is_active")
+      .eq("email", log.performedBy)
+      .maybeSingle();
 
-  if (lookupError || !userRow) {
-    alert(
-      "Could not find a matching user account for " +
+    if (lookupError || !userRow) {
+      alert(
+        "Could not find a matching user account for " +
         log.performedBy +
         (lookupError ? `: ${lookupError.message}` : "."),
-    );
-    return;
-  }
-
-  // Only deactivate if it isn't already locked (e.g. auto-lockout already handled it)
-  if (userRow.is_active) {
-    const { error: updateError } = await supabase
-      .from("users")
-      .update({ is_active: false })
-      .eq("id", userRow.id);
-
-    if (updateError) {
-      alert("Error deactivating user: " + updateError.message);
+      );
       return;
     }
 
-    await supabase.from("audit_logs").insert({
-      action: "Edit",
-      file_name: userRow.full_name,
-      details: `Deactivated user account (${log.performedBy}) in response to a security alert.`,
-      performed_by: "Administrator",
-      role: userRow.role,
-      status: "Success",
-    });
+    // Only deactivate if it isn't already locked (e.g. auto-lockout already handled it)
+    if (userRow.is_active) {
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ is_active: false })
+        .eq("id", userRow.id);
+
+      if (updateError) {
+        alert("Error deactivating user: " + updateError.message);
+        return;
+      }
+
+      await supabase.from("audit_logs").insert({
+        action: "Edit",
+        file_name: userRow.full_name,
+        details: `Deactivated user account (${log.performedBy}) in response to a security alert.`,
+        performed_by: "Administrator",
+        role: userRow.role,
+        status: "Success",
+      });
+    }
+
+    // Mark the alert itself as reviewed
+    const resolutionNote = userRow.is_active
+      ? " — Account deactivated."
+      : " — Reviewed (account already deactivated).";
+
+    await supabase
+      .from("audit_logs")
+      .update({ status: "Success", details: `${log.details}${resolutionNote}` })
+      .eq("id", log.id);
+
+    queryClient.setQueryData(["auditLogs"], (prev) =>
+      (prev || []).map((l) =>
+        l.id === log.id
+          ? { ...l, status: "Success", details: `${l.details}${resolutionNote}` }
+          : l,
+      ),
+    );
   }
-
-  // Mark the alert itself as reviewed
-  const resolutionNote = userRow.is_active
-    ? " — Account deactivated."
-    : " — Reviewed (account already deactivated).";
-
-  await supabase
-    .from("audit_logs")
-    .update({ status: "Success", details: `${log.details}${resolutionNote}` })
-    .eq("id", log.id);
-
-  queryClient.setQueryData(["auditLogs"], (prev) =>
-    (prev || []).map((l) =>
-      l.id === log.id
-        ? { ...l, status: "Success", details: `${l.details}${resolutionNote}` }
-        : l,
-    ),
-  );
-}
 
   const filteredLogs = auditLogs.filter((log) => {
     const matchesSearch =
@@ -438,7 +441,23 @@ async function handleDeactivateFromAlert(log) {
       log.details.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesAction = filterAction === "All" || log.action === filterAction;
     const matchesStatus = filterStatus === "All" || log.status === filterStatus;
-    return matchesSearch && matchesAction && matchesStatus;
+
+    let matchesDate = true;
+    if (dateFrom || dateTo) {
+      const logDate = new Date(log.performedOn);
+      if (dateFrom) {
+        const from = new Date(dateFrom);
+        from.setHours(0, 0, 0, 0);
+        if (logDate < from) matchesDate = false;
+      }
+      if (dateTo && matchesDate) {
+        const to = new Date(dateTo);
+        to.setHours(23, 59, 59, 999);
+        if (logDate > to) matchesDate = false;
+      }
+    }
+
+    return matchesSearch && matchesAction && matchesStatus && matchesDate;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredLogs.length / rowsPerPage));
@@ -472,6 +491,12 @@ async function handleDeactivateFromAlert(log) {
           onFilterStatusChange={setFilterStatus}
           actions={actions}
           statuses={statuses}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateRangeChange={(range) => {
+            setDateFrom(range.startDate);
+            setDateTo(range.endDate);
+          }}
         />
 
         <AuditLogsTable

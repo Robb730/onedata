@@ -8,14 +8,14 @@ import { pushNotification } from "./notifications.js";
 
 export function canApproveDivisionAccessRequests(userProfile) {
   return (
-    userProfile?.role === "division_focal" || userProfile?.role === "admin"
+    userProfile?.role === "division_focal" || userProfile?.role === "administrator"
   );
 }
 
 // Returns requests scoped to what this user is allowed to review.
 // division_focal -> only their own division_id
 // admin -> all divisions
-export async function fetchScopedDivisionRequests(userProfile) {
+export async function fetchScopedDivisionRequests(userProfile, divisionId) {
   if (!canApproveDivisionAccessRequests(userProfile)) return [];
 
   let query = supabase
@@ -34,6 +34,8 @@ export async function fetchScopedDivisionRequests(userProfile) {
 
   if (userProfile.role === "division_focal") {
     query = query.eq("division_id", userProfile.division_id);
+  } else if (userProfile.role === "administrator" && divisionId != null) {
+    query = query.eq("division_id", divisionId);
   }
 
   const { data, error } = await query;

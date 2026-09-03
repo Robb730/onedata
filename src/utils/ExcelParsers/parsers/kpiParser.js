@@ -29,6 +29,13 @@ export async function parseKpiFile(file) {
           const sheet = workbook.Sheets[sheetName];
           const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
 
+          if (rawRows.length > 0) {
+            const row0 = rawRows[0] || [];
+            if (!String(row0[0] || "").toUpperCase().includes("DEPARTMENT OF EDUCATION")) {
+              throw new Error(`Invalid layout in sheet "${sheetName}". Columns appear to be missing or shifted.`);
+            }
+          }
+
           let baliwagTotalRowIdx = -1;
           let headers1 = [];
           let headers2 = [];
@@ -84,6 +91,10 @@ export async function parseKpiFile(file) {
             });
           }
         });
+
+        if (records.length === 0) {
+          return reject(new Error(`Invalid Performance Indicators file. No valid data found for City of Baliwag.`));
+        }
 
         resolve({ records, errors });
       } catch (err) {

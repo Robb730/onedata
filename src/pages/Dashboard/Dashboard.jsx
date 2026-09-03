@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 import {
   TrendingUp,
   Info,
@@ -18,6 +18,7 @@ import {
   X,
   Clock,
   CheckCircle,
+  Search,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../../lib/supabaseClient";
@@ -95,16 +96,6 @@ import { DEFAULT_CESPES_DATA } from "../../data/cespesTemplateData";
 import { getAllSchoolYearsForSelector } from "../../utils/schoolYearsApi"; // adjust path as needed
 import { useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../../contexts/UserContext";
-
-// ─── Sample data ────────────────────────────────────────────
-// In production this would come from Supabase or context/store.
-
-const enrollmentTrendStatic = [
-  { year: "22-2023", public: 25200, private: 12100 },
-  { year: "23-2024", public: 26800, private: 12900 },
-  { year: "24-2025", public: 27646, private: 13569 },
-  { year: "25-2026*", public: 9200, private: 4100 },
-];
 
 // ─── Helper: compute enrollment totals from raw rows ─────────
 // Extracted so both the primary-year fetch and the compare-year
@@ -447,6 +438,59 @@ export default function Dashboard() {
 
   const [activeCespesTab, setActiveCespesTab] = useState("Operations");
 
+  // ── Dashboard Search
+  const [dashboardSearch, setDashboardSearch] = useState("");
+
+  // ── Search keyword matching ────────────────────────────────
+  const searchQ = dashboardSearch.toLowerCase().trim();
+
+  const matchesPerformance = !searchQ ||
+    ["enrollment", "public", "private", "male", "female", "total", "by level",
+      "elementary", "junior high", "senior high", "jhs", "shs", "kinder",
+      "dropout", "promotion", "cohort", "survival", "performance", "indicator", "trend"]
+      .some((kw) => kw.includes(searchQ));
+
+  const matchesCespes = !searchQ ||
+    ["cespes", "operations", "support", "general admin", "admin", "individual",
+      "innovation", "intervention", "evaluation", "effectiveness"]
+      .some((kw) => kw.includes(searchQ));
+
+  const matchesResources = !searchQ ||
+    ["teachers", "teacher", "classrooms", "classroom", "seats", "seat",
+      "textbooks", "textbook", "shortage", "resources", "inventory", "needs"]
+      .some((kw) => kw.includes(searchQ));
+
+  const matchesInstitutional = !searchQ ||
+    ["aip", "qbedp", "quality basic education", "accomplishment", "report",
+      "plans", "institutional"]
+      .some((kw) => kw.includes(searchQ));
+
+  const visibleSections = [matchesPerformance, matchesCespes, matchesResources, matchesInstitutional]
+    .filter(Boolean).length;
+
+  // Auto-select sub-views when search query matches specific keywords
+  useEffect(() => {
+    if (!searchQ) return;
+    // Performance — enrollment sub-views
+    if (["by level", "elementary", "junior high", "senior high", "jhs", "shs", "kinder"].some((kw) => kw.includes(searchQ))) {
+      setEnrollmentView("By Level");
+    } else if (["enrollment", "public", "private", "male", "female", "total"].some((kw) => kw.includes(searchQ))) {
+      setEnrollmentView("Summary");
+    }
+    // Performance — rate sub-views
+    if (["cohort", "survival"].some((kw) => kw.includes(searchQ))) setRateView("Cohort");
+    else if (["promotion"].some((kw) => kw.includes(searchQ))) setRateView("Promotion");
+    else if (["dropout"].some((kw) => kw.includes(searchQ))) setRateView("Dropout");
+    // CESPES tabs
+    if (["innovation", "intervention"].some((kw) => kw.includes(searchQ))) setActiveCespesTab("Innovation & Intervention");
+    else if (["individual"].some((kw) => kw.includes(searchQ))) setActiveCespesTab("Individual Performance");
+    else if (["general admin"].some((kw) => kw.includes(searchQ))) setActiveCespesTab("General Admin");
+    else if (["support"].some((kw) => kw.includes(searchQ))) setActiveCespesTab("Support to Operations");
+    else if (["operations"].some((kw) => kw.includes(searchQ))) setActiveCespesTab("Operations");
+    // Resources sub-views
+    if (["inventory", "needs", "charts"].some((kw) => kw.includes(searchQ))) setResourceView("Charts");
+  }, [searchQ]);
+
   // --- useQuery logic replaces all the fetching useEffects ---
   const { data: yearData, isLoading: yearsLoading } = useQuery({
     queryKey: ["schoolYears"],
@@ -492,7 +536,7 @@ export default function Dashboard() {
       const { data: allEnrollment } = await supabase
         .from("enrollment_data")
         .select("school_year, category, grand_total");
-      let trendData = enrollmentTrendStatic;
+      let trendData = [];
       if (allEnrollment) {
         const trendYears = [
           ...new Set(allEnrollment.map((d) => d.school_year)),
@@ -569,7 +613,7 @@ export default function Dashboard() {
     male: { total: 0, public: 0, private: 0 },
     female: { total: 0, public: 0, private: 0 },
   };
-  const enrollmentTrend = enrollmentObj?.trend || enrollmentTrendStatic;
+  const enrollmentTrend = enrollmentObj?.trend || [];
 
   const loading = isEnrollmentLoading || !selectedYear;
   const error = enrollmentError?.message || null;
@@ -976,41 +1020,41 @@ export default function Dashboard() {
   const dropoutTrend =
     kpiYears.length > 0
       ? kpiYears.map((year) => {
-          const yData = kpiData.filter((d) => d.school_year === year);
-          const elem = getKpiRate(
-            yData,
-            "G1toG6 SLR_DR",
-            "Ave. School Leaver Rate",
-          );
-          const jhs = getKpiRate(
-            yData,
-            "JHS School Leaver Rate",
-            "Ave. School Leaver Rate",
-          );
-          const shs = getKpiRate(
-            yData,
-            " JHS to SHS SLR_DR",
-            "Ave. School Leaver Rate",
-          );
-          return {
-            year,
-            overall: parseFloat(((elem + jhs + shs) / 3).toFixed(2)),
-            elementary: parseFloat(elem.toFixed(2)),
-            jhs: parseFloat(jhs.toFixed(2)),
-          };
-        })
+        const yData = kpiData.filter((d) => d.school_year === year);
+        const elem = getKpiRate(
+          yData,
+          "G1toG6 SLR_DR",
+          "Ave. School Leaver Rate",
+        );
+        const jhs = getKpiRate(
+          yData,
+          "JHS School Leaver Rate",
+          "Ave. School Leaver Rate",
+        );
+        const shs = getKpiRate(
+          yData,
+          " JHS to SHS SLR_DR",
+          "Ave. School Leaver Rate",
+        );
+        return {
+          year,
+          overall: parseFloat(((elem + jhs + shs) / 3).toFixed(2)),
+          elementary: parseFloat(elem.toFixed(2)),
+          jhs: parseFloat(jhs.toFixed(2)),
+        };
+      })
       : [{ year: selectedYear, overall: 0, elementary: 0, jhs: 0 }];
 
   const cohortTrend =
     kpiYears.length > 0
       ? kpiYears.map((year) => {
-          const yData = kpiData.filter((d) => d.school_year === year);
-          const elemCsr = getKpiRate(yData, "G1toG6 CSR & CompR", "CSR");
-          return {
-            year,
-            rate: parseFloat(elemCsr.toFixed(2)),
-          };
-        })
+        const yData = kpiData.filter((d) => d.school_year === year);
+        const elemCsr = getKpiRate(yData, "G1toG6 CSR & CompR", "CSR");
+        return {
+          year,
+          rate: parseFloat(elemCsr.toFixed(2)),
+        };
+      })
       : [{ year: selectedYear, rate: 0 }];
 
   const elemCsrCurrent = getKpiRate(currentKpi, "G1toG6 CSR & CompR", "CSR");
@@ -1031,21 +1075,86 @@ export default function Dashboard() {
     jhsDropoutTrend: "—",
   };
 
+  // ── Search data index: maps query terms to specific data values ──
+  const searchResults = useMemo(() => {
+    if (!searchQ || searchQ.length < 2) return [];
+    const results = [];
+    const q = searchQ;
+
+    const addIf = (keywords, label, value, section, icon) => {
+      if (keywords.some((kw) => kw.includes(q))) {
+        results.push({ label, value, section, icon });
+      }
+    };
+
+    // Enrollment data
+    addIf(["male", "men", "boy", "boys", "man"], "Male Enrollment", (genderSummary.male.total || 0).toLocaleString(), "Performance Indicators", Users);
+    addIf(["female", "women", "girl", "girls", "woman"], "Female Enrollment", (genderSummary.female.total || 0).toLocaleString(), "Performance Indicators", Users);
+    addIf(["enrollment", "enrolled", "students", "total", "population"], "Total Enrollment", (enrollmentSummary.total || 0).toLocaleString(), "Performance Indicators", Users);
+    addIf(["public", "government"], "Public Schools", (enrollmentSummary.public || 0).toLocaleString(), "Performance Indicators", School);
+    addIf(["private"], "Private Schools", (enrollmentSummary.private || 0).toLocaleString(), "Performance Indicators", School);
+
+    // KPI rates
+    addIf(["dropout", "drop out", "drop-out", "retention"], "Overall Dropout Rate", overviewData.overallDropout, "Performance Indicators", TrendingUp);
+    addIf(["promotion", "promoted", "passing"], "Elem Promotion Rate", overviewData.elemPromotion, "Performance Indicators", TrendingUp);
+    addIf(["cohort", "survival", "survival rate"], "Cohort Survival Rate", (elemCsrCurrent || 0).toFixed(2) + "%", "Performance Indicators", TrendingUp);
+    addIf(["jhs dropout", "junior dropout"], "JHS Dropout Rate", overviewData.jhsDropout, "Performance Indicators", TrendingUp);
+
+    // Level-specific enrollment
+    addIf(["elementary", "elem", "grade school"], "Elementary Enrollment", (() => {
+      const total = enrollmentRows.reduce((sum, r) => {
+        const ed = r.elementary_data;
+        return sum + (ed?.total?.m || 0) + (ed?.total?.f || 0);
+      }, 0);
+      return total.toLocaleString();
+    })(), "Performance Indicators", GraduationCap);
+    addIf(["junior high", "jhs"], "JHS Enrollment", (() => {
+      const total = enrollmentRows.reduce((sum, r) => {
+        const jd = r.junior_high_data;
+        return sum + (jd?.total?.m || 0) + (jd?.total?.f || 0);
+      }, 0);
+      return total.toLocaleString();
+    })(), "Performance Indicators", GraduationCap);
+    addIf(["senior high", "shs"], "SHS Enrollment", (() => {
+      const total = enrollmentRows.reduce((sum, r) => {
+        const s1 = r.senior_high_s1_data;
+        const s2 = r.senior_high_s2_data;
+        return sum + (s1?.total?.m || 0) + (s1?.total?.f || 0) + (s2?.total?.m || 0) + (s2?.total?.f || 0);
+      }, 0);
+      return total.toLocaleString();
+    })(), "Performance Indicators", GraduationCap);
+    addIf(["kinder", "kindergarten"], "Kinder Enrollment", (() => {
+      const total = enrollmentRows.reduce((sum, r) => {
+        const ed = r.elementary_data;
+        return sum + (ed?.kinder?.m || 0) + (ed?.kinder?.f || 0);
+      }, 0);
+      return total.toLocaleString();
+    })(), "Performance Indicators", GraduationCap);
+
+    // Resources
+    addIf(["teacher", "teachers", "faculty", "staff"], "Total Teachers", (resources.teachers.total || 0).toLocaleString(), "Crucial Resources", School);
+    addIf(["classroom", "classrooms", "room", "rooms"], "Total Classrooms", (resources.classrooms.total || 0).toLocaleString(), "Crucial Resources", School);
+    addIf(["seat", "seats", "chair", "chairs", "capacity"], "Total Seats", (resources.seats.total || 0).toLocaleString(), "Crucial Resources", School);
+    addIf(["textbook", "textbooks", "book", "books", "shortage"], "Textbook Shortage", (resources.textbooks.needs || 0).toLocaleString(), "Crucial Resources", BookOpen);
+
+    return results.slice(0, 6);
+  }, [searchQ, genderSummary, enrollmentSummary, overviewData, elemCsrCurrent, enrollmentRows, resources]);
+
   // Passed to DashboardOverview only while actively comparing.
   const compareOverviewData =
     compareMode && compareYear
       ? {
-          totalEnrollment: compareEnrollmentSummary.total,
-          overallDropout: compareHasData
-            ? overallDropoutCompare.toFixed(2) + "%"
-            : "N/A",
-          elemPromotion: compareHasData
-            ? kToElemPromoCompare.toFixed(2) + "%"
-            : "N/A",
-          jhsDropout: compareHasData
-            ? jhsDropoutCompare.toFixed(2) + "%"
-            : "N/A",
-        }
+        totalEnrollment: compareEnrollmentSummary.total,
+        overallDropout: compareHasData
+          ? overallDropoutCompare.toFixed(2) + "%"
+          : "N/A",
+        elemPromotion: compareHasData
+          ? kToElemPromoCompare.toFixed(2) + "%"
+          : "N/A",
+        jhsDropout: compareHasData
+          ? jhsDropoutCompare.toFixed(2) + "%"
+          : "N/A",
+      }
       : null;
 
   const isComparing = compareMode && !!compareYear;
@@ -1054,11 +1163,10 @@ export default function Dashboard() {
     <div className="min-h-full bg-slate-50/40">
       {/* ── Welcome toast (top-right) ─────────────────────── */}
       <div
-        className={`fixed top-4 left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] sm:left-auto sm:right-8 sm:w-[380px] ${
-          showWelcomeToast
-            ? "translate-x-0 opacity-100 pointer-events-auto"
-            : "translate-x-[120%] opacity-0 pointer-events-none"
-        }`}
+        className={`fixed top-4 left-4 right-4 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] sm:left-auto sm:right-8 sm:w-[380px] ${showWelcomeToast
+          ? "translate-x-0 opacity-100 pointer-events-auto"
+          : "translate-x-[120%] opacity-0 pointer-events-none"
+          }`}
         style={{
           minHeight: "76px",
           borderRadius: "16px",
@@ -1123,11 +1231,11 @@ export default function Dashboard() {
       </div>
 
       {showTransitionBanner && scheduledTransition && (
-  <div className="mb-5 flex items-center gap-3 rounded-2xl border border-orange-100 bg-orange-50/70 px-4 py-3">
-    {/* Local styles for the marquee — scoped via unique class names,
+        <div className="mb-5 flex items-center gap-3 rounded-2xl border border-orange-100 bg-orange-50/70 px-4 py-3">
+          {/* Local styles for the marquee — scoped via unique class names,
         safe to leave inline since this banner is the only place
         that uses them. */}
-    <style>{`
+          <style>{`
       @keyframes marqueeScrollTransitionBanner {
         0%   { transform: translateX(0); }
         100% { transform: translateX(-50%); }
@@ -1151,64 +1259,64 @@ export default function Dashboard() {
         }
       }
     `}</style>
- 
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100">
-      <Clock size={14} className="text-orange-600" />
-    </div>
- 
-    {/* ── Desktop / tablet: static, truncated single line ── */}
-    <p className="hidden min-w-0 flex-1 truncate text-[0.8rem] text-slate-600 sm:block">
-      <span className="font-bold text-orange-700">
-        S.Y. {scheduledTransition.label} transition{" "}
-        {getDaysUntilLabel(scheduledTransition.activation_date)}
-      </span>{" "}
-      <span className="text-slate-300">—</span>{" "}
-      <span className="font-semibold text-slate-700">
-        {formatTransitionDate(scheduledTransition.activation_date)}
-      </span>
-    </p>
- 
-    {/* ── Mobile: auto-scrolling marquee ── */}
-    <div className="transition-banner-marquee-wrap relative min-w-0 flex-1 overflow-hidden sm:hidden">
-      {/* edge fades so the scrolling text doesn't look clipped */}
-      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-orange-50/70 to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l from-orange-50/70 to-transparent" />
- 
-      <div className="transition-banner-marquee-track flex whitespace-nowrap">
-        {[0, 1].map((i) => (
-          <p
-            key={i}
-            className="flex shrink-0 items-center pr-8 text-[0.78rem] text-slate-600"
-          >
+
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100">
+            <Clock size={14} className="text-orange-600" />
+          </div>
+
+          {/* ── Desktop / tablet: static, truncated single line ── */}
+          <p className="hidden min-w-0 flex-1 truncate text-[0.8rem] text-slate-600 sm:block">
             <span className="font-bold text-orange-700">
               S.Y. {scheduledTransition.label} transition{" "}
               {getDaysUntilLabel(scheduledTransition.activation_date)}
-            </span>
-            <span className="mx-1.5 text-slate-300">—</span>
+            </span>{" "}
+            <span className="text-slate-300">—</span>{" "}
             <span className="font-semibold text-slate-700">
               {formatTransitionDate(scheduledTransition.activation_date)}
             </span>
           </p>
-        ))}
-      </div>
-    </div>
- 
-    <div className="flex shrink-0 items-center gap-1.5">
-      <button
-        onClick={dismissTransitionBanner}
-        title="Dismiss"
-        className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-orange-100/60 hover:text-orange-600 transition-colors"
-      >
-        <X size={14} />
-      </button>
-    </div>
-  </div>
-)}
+
+          {/* ── Mobile: auto-scrolling marquee ── */}
+          <div className="transition-banner-marquee-wrap relative min-w-0 flex-1 overflow-hidden sm:hidden">
+            {/* edge fades so the scrolling text doesn't look clipped */}
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-orange-50/70 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l from-orange-50/70 to-transparent" />
+
+            <div className="transition-banner-marquee-track flex whitespace-nowrap">
+              {[0, 1].map((i) => (
+                <p
+                  key={i}
+                  className="flex shrink-0 items-center pr-8 text-[0.78rem] text-slate-600"
+                >
+                  <span className="font-bold text-orange-700">
+                    S.Y. {scheduledTransition.label} transition{" "}
+                    {getDaysUntilLabel(scheduledTransition.activation_date)}
+                  </span>
+                  <span className="mx-1.5 text-slate-300">—</span>
+                  <span className="font-semibold text-slate-700">
+                    {formatTransitionDate(scheduledTransition.activation_date)}
+                  </span>
+                </p>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              onClick={dismissTransitionBanner}
+              title="Dismiss"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-orange-100/60 hover:text-orange-600 transition-colors"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
       <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 py-5 sm:py-8">
         {/* ── Page header ─────────────────────────────────── */}
         <div className="flex flex-col gap-4 mb-6 sm:mb-7 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <h1 className="text-[1.4rem] sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
+            <h1 className="text-xl sm:text-[1.65rem] font-black text-slate-800 tracking-[-0.02em]">
               Dashboard
             </h1>
             <p className="hidden lg:block text-[0.78rem] text-slate-400 font-medium mt-1">
@@ -1233,9 +1341,8 @@ export default function Dashboard() {
                 <ChevronDown
                   size={14}
                   strokeWidth={2.5}
-                  className={`text-slate-400 pointer-events-none absolute right-3 transition-transform duration-200 ${
-                    isYearDropdownOpen ? "rotate-180" : ""
-                  }`}
+                  className={`text-slate-400 pointer-events-none absolute right-3 transition-transform duration-200 ${isYearDropdownOpen ? "rotate-180" : ""
+                    }`}
                 />
               </button>
 
@@ -1254,13 +1361,12 @@ export default function Dashboard() {
                           setSelectedYear(year);
                           setIsYearDropdownOpen(false);
                         }}
-                        className={`w-full flex items-center px-3.5 py-2 text-[0.82rem] font-semibold transition-colors ${
-                          isSelected
-                            ? "bg-blue-50 text-blue-700"
-                            : isDisabled
-                              ? "text-slate-300 cursor-not-allowed"
-                              : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
-                        }`}
+                        className={`w-full flex items-center px-3.5 py-2 text-[0.82rem] font-semibold transition-colors ${isSelected
+                          ? "bg-blue-50 text-blue-700"
+                          : isDisabled
+                            ? "text-slate-300 cursor-not-allowed"
+                            : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                          }`}
                       >
                         {year}
                         {isSelected && (
@@ -1296,9 +1402,8 @@ export default function Dashboard() {
                     <ChevronDown
                       size={14}
                       strokeWidth={2.5}
-                      className={`text-orange-400 pointer-events-none absolute right-3 transition-transform duration-200 ${
-                        isCompareYearDropdownOpen ? "rotate-180" : ""
-                      }`}
+                      className={`text-orange-400 pointer-events-none absolute right-3 transition-transform duration-200 ${isCompareYearDropdownOpen ? "rotate-180" : ""
+                        }`}
                     />
                   </button>
 
@@ -1316,13 +1421,12 @@ export default function Dashboard() {
                               setCompareYear(year);
                               setIsCompareYearDropdownOpen(false);
                             }}
-                            className={`w-full flex items-center gap-1.5 px-3.5 py-2 text-[0.82rem] font-semibold transition-colors ${
-                              isSelected
-                                ? "bg-orange-50 text-orange-700"
-                                : isDisabled
-                                  ? "text-slate-300 cursor-not-allowed"
-                                  : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
-                            }`}
+                            className={`w-full flex items-center gap-1.5 px-3.5 py-2 text-[0.82rem] font-semibold transition-colors ${isSelected
+                              ? "bg-orange-50 text-orange-700"
+                              : isDisabled
+                                ? "text-slate-300 cursor-not-allowed"
+                                : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                              }`}
                           >
                             {year}
                             {isOngoing(year) && (
@@ -1421,6 +1525,114 @@ export default function Dashboard() {
           compareData={compareOverviewData}
         />
 
+        {/* ── Data Categories header + Search ─────────────── */}
+        <div className="mt-8 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-[0.9rem] font-bold text-slate-700">
+                Data Categories
+              </h3>
+              <p className="text-[0.7rem] text-slate-400 mt-0.5">
+                {dashboardSearch
+                  ? `${visibleSections} of 4 sections`
+                  : "Expand a section to view detailed reports"}
+              </p>
+            </div>
+            {dashboardSearch && (
+              <button
+                onClick={() => setDashboardSearch("")}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[0.72rem] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+              >
+                <X size={13} />
+                Clear
+              </button>
+            )}
+          </div>
+          <div className="relative">
+            <Search
+              size={15}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+            />
+            <input
+              type="text"
+              value={dashboardSearch}
+              onChange={(e) => setDashboardSearch(e.target.value)}
+              placeholder="Search sections… e.g. enrollment, teachers, CESPES"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-[0.82rem] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+            />
+          </div>
+
+          {/* ── Quick results panel ────────────────────────── */}
+          {searchQ.length >= 2 && searchResults.length > 0 && (
+            <div className="mt-2 rounded-xl border border-slate-200 bg-white shadow-[0_4px_16px_rgba(15,23,42,0.06)] overflow-hidden">
+              <div className="px-3.5 py-2 border-b border-slate-100">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  Quick results
+                </p>
+              </div>
+              <div className="divide-y divide-slate-50">
+                {searchResults.map((result, i) => {
+                  const Icon = result.icon;
+                  const sectionColor =
+                    result.section === "Performance Indicators"
+                      ? "bg-indigo-50 text-indigo-600"
+                      : result.section === "Crucial Resources"
+                      ? "bg-amber-50 text-amber-600"
+                      : "bg-rose-50 text-rose-600";
+                  return (
+                    <button
+                      key={`${result.label}-${i}`}
+                      onClick={() => {
+                        const el =
+                          result.section === "Performance Indicators"
+                            ? performanceSectionRef.current
+                            : result.section === "Crucial Resources"
+                            ? resourcesSectionRef.current
+                            : null;
+                        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 hover:bg-slate-50/80 transition-colors text-left"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
+                        <Icon size={15} className="text-slate-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-medium text-slate-600 truncate">
+                          {result.label}
+                        </p>
+                      </div>
+                      <span className="text-[13px] font-bold text-slate-800 tabular-nums shrink-0">
+                        {result.value}
+                      </span>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${sectionColor}`}>
+                        {result.section === "Performance Indicators"
+                          ? "Performance"
+                          : result.section === "Crucial Resources"
+                          ? "Resources"
+                          : "CESPES"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {dashboardSearch && visibleSections === 0 && (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <div className="mb-3 text-slate-300">
+                <Search size={32} strokeWidth={1.5} />
+              </div>
+              <p className="text-[0.82rem] font-semibold text-slate-400">
+                No sections match "{dashboardSearch}"
+              </p>
+              <p className="text-[0.7rem] text-slate-300 mt-1">
+                Try a different keyword like enrollment, teachers, or CESPES
+              </p>
+            </div>
+          )}
+        </div>
+
         <Suspense
           fallback={
             <div className="mt-8">
@@ -1428,22 +1640,8 @@ export default function Dashboard() {
             </div>
           }
         >
-          {/* ── Data Categories header ──────────────────────── */}
-          <div className="flex items-baseline justify-between mt-8 mb-4">
-            <div>
-              <h3 className="text-[0.9rem] font-bold text-slate-700">
-                Data Categories
-              </h3>
-              <p className="text-[0.7rem] text-slate-400 mt-0.5">
-                Expand a section to view detailed reports
-              </p>
-            </div>
-            <span className="text-[0.72rem] font-medium text-slate-400">
-              4 sections
-            </span>
-          </div>
-
           {/* ── Performance Indicators ─────────────────────── */}
+          {matchesPerformance && (
           <div ref={performanceSectionRef} className="scroll-mt-24">
             <DashboardAccordion
               icon={
@@ -1455,10 +1653,33 @@ export default function Dashboard() {
               subtitle="Enrollment · Dropout · Promotion · Cohort Survival"
               subtitleColor="#4f7df5"
               accentBg="rgba(239,246,255,0.7)"
+              badge={
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    printPerformanceReport({
+                      selectedYear,
+                      currentKpi,
+                      dropoutByLevel,
+                      promotionByLevel,
+                      cohortTrend,
+                      enrollmentSummary,
+                      genderSummary,
+                      enrollmentRows,
+                    });
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[0.72rem] font-bold transition-all cursor-pointer border border-indigo-200/60"
+                  title="Export Performance Indicators Data"
+                >
+                  <Download size={12} className="text-indigo-600" />
+                  <span className="hidden sm:inline">Export</span>
+                </button>
+              }
             >
               {!loading &&
-              enrollmentSummary.total === 0 &&
-              !(isComparing && compareEnrollmentSummary.total > 0) ? (
+                enrollmentSummary.total === 0 &&
+                !(isComparing && compareEnrollmentSummary.total > 0) ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="mb-3 opacity-25 text-indigo-400">
                     <BarChart3 size={36} strokeWidth={1.5} />
@@ -1738,10 +1959,12 @@ export default function Dashboard() {
               )}
             </DashboardAccordion>
           </div>
+          )}
 
           <div className="mt-3" />
 
           {/* ── CESPES (Single Accordion with Tabs) ────── */}
+          {matchesCespes && (
           <DashboardAccordion
             icon={
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50">
@@ -1750,6 +1973,20 @@ export default function Dashboard() {
             }
             title="CESPES"
             subtitle="Comprehensive Evaluation of Schools' Performance and Effectiveness"
+            badge={
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  printCespesReport({ selectedYear, cespes });
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-[0.72rem] font-bold transition-all cursor-pointer border border-rose-200/60"
+                title="Export CESPES Data"
+              >
+                <Download size={12} className="text-rose-600" />
+                <span className="hidden sm:inline">Export</span>
+              </button>
+            }
           >
             {cespes.loading || (isComparing && compareCespes.loading) ? (
               <div className="flex items-center justify-center py-10 text-slate-400 text-[0.8rem]">
@@ -1769,11 +2006,10 @@ export default function Dashboard() {
                     <button
                       key={tab}
                       onClick={() => setActiveCespesTab(tab)}
-                      className={`whitespace-nowrap px-4 py-2 text-[0.75rem] font-semibold rounded-t-lg transition-colors ${
-                        activeCespesTab === tab
-                          ? "text-blue-600 bg-blue-50/50 border-b-2 border-blue-500"
-                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                      }`}
+                      className={`whitespace-nowrap px-4 py-2 text-[0.75rem] font-semibold rounded-t-lg transition-colors ${activeCespesTab === tab
+                        ? "text-blue-600 bg-blue-50/50 border-b-2 border-blue-500"
+                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                        }`}
                     >
                       {tab}
                     </button>
@@ -2021,6 +2257,7 @@ export default function Dashboard() {
               </>
             )}
           </DashboardAccordion>
+          )}
 
           <div className="mt-3" />
 
@@ -2052,6 +2289,7 @@ export default function Dashboard() {
           <div className="mt-3" />
 
           {/* ── Crucial Resources ─────────────────────────── */}
+          {matchesResources && (
           <div ref={resourcesSectionRef} className="scroll-mt-24">
             <DashboardAccordion
               icon={
@@ -2063,15 +2301,29 @@ export default function Dashboard() {
               subtitle="No. of Teachers · Classrooms · Seats · Textbooks"
               subtitleColor="#d97706"
               accentBg="rgba(255,251,235,0.7)"
+              badge={
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    printResourcesReport({ selectedYear, resources });
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 text-[0.72rem] font-bold transition-all cursor-pointer border border-amber-200/60"
+                  title="Export Crucial Resources Data"
+                >
+                  <Download size={12} className="text-amber-600" />
+                  <span className="hidden sm:inline">Export</span>
+                </button>
+              }
             >
               {!resources.teachers.loading &&
-              resources.teachers.total === 0 &&
-              resources.classrooms.total === 0 &&
-              !(
-                isComparing &&
-                (compareResources.teachers.total > 0 ||
-                  compareResources.classrooms.total > 0)
-              ) ? (
+                resources.teachers.total === 0 &&
+                resources.classrooms.total === 0 &&
+                !(
+                  isComparing &&
+                  (compareResources.teachers.total > 0 ||
+                    compareResources.classrooms.total > 0)
+                ) ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="mb-3 opacity-25 text-amber-500">
                     <School size={36} strokeWidth={1.5} />
@@ -2169,8 +2421,8 @@ export default function Dashboard() {
                             resources.classrooms.loading
                               ? "..."
                               : (
-                                  resources.classrooms.total || 0
-                                ).toLocaleString()
+                                resources.classrooms.total || 0
+                              ).toLocaleString()
                           }
                           change={
                             resources.classrooms.needs > 0
@@ -2203,8 +2455,8 @@ export default function Dashboard() {
                             resources.textbooks.loading
                               ? "..."
                               : (
-                                  resources.textbooks.needs || 0
-                                ).toLocaleString()
+                                resources.textbooks.needs || 0
+                              ).toLocaleString()
                           }
                           change="Current total gap"
                           direction={
@@ -2379,11 +2631,14 @@ export default function Dashboard() {
               )}
             </DashboardAccordion>
           </div>
+          )}
 
           <div className="mt-3" />
 
           {/* ── Institutional Plans & Reports ──────────────── */}
+          {matchesInstitutional && (
           <InstitutionalPlansCard selectedYear={selectedYear} />
+          )}
 
           {/* Footer spacing */}
           <div className="h-8" />
@@ -2392,6 +2647,7 @@ export default function Dashboard() {
     </div>
   );
 }
+
 
 // ─── Sub-component: Comparison Row ──────────────────────────
 // Shared inline row used to compare a single metric between two
@@ -2406,9 +2662,8 @@ function ComparisonRow({ label, primary, secondary, bold, suffix = "" }) {
   return (
     <div className="flex items-center justify-between rounded-[10px] bg-slate-50/70 px-4 py-3">
       <span
-        className={`text-[0.8rem] ${
-          bold ? "font-bold text-slate-700" : "font-semibold text-slate-600"
-        }`}
+        className={`text-[0.8rem] ${bold ? "font-bold text-slate-700" : "font-semibold text-slate-600"
+          }`}
       >
         {label}
       </span>
@@ -2421,9 +2676,8 @@ function ComparisonRow({ label, primary, secondary, bold, suffix = "" }) {
           {fmt(secondary)}
         </span>
         <span
-          className={`flex items-center gap-0.5 text-[0.72rem] font-semibold ${
-            deltaUp ? "text-emerald-600" : "text-rose-500"
-          }`}
+          className={`flex items-center gap-0.5 text-[0.72rem] font-semibold ${deltaUp ? "text-emerald-600" : "text-rose-500"
+            }`}
         >
           {deltaUp ? "↗" : "↘"} {Math.abs(delta).toLocaleString()}
           {suffix}
@@ -2487,12 +2741,12 @@ function CespesYearPanel({
     const source = hasRows
       ? rows
       : {
-          Operations: DEFAULT_CESPES_DATA.operations,
-          "Support to Operations": DEFAULT_CESPES_DATA.supportOperations,
-          "General Admin": DEFAULT_CESPES_DATA.generalAdmin,
-          "Individual Performance": DEFAULT_CESPES_DATA.individualPerformance,
-          "Innovation & Intervention": DEFAULT_CESPES_DATA.innovation,
-        }[tab];
+        Operations: DEFAULT_CESPES_DATA.operations,
+        "Support to Operations": DEFAULT_CESPES_DATA.supportOperations,
+        "General Admin": DEFAULT_CESPES_DATA.generalAdmin,
+        "Individual Performance": DEFAULT_CESPES_DATA.individualPerformance,
+        "Innovation & Intervention": DEFAULT_CESPES_DATA.innovation,
+      }[tab];
 
     switch (tab) {
       case "Operations":
@@ -2563,14 +2817,12 @@ function CespesProgramRow({ program }) {
     <div className="rounded-[10px] border border-slate-100/80 overflow-hidden">
       <button
         onClick={() => hasRows && setOpen((v) => !v)}
-        className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
-          hasRows ? "hover:bg-slate-50/50 cursor-pointer" : "cursor-default"
-        }`}
+        className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${hasRows ? "hover:bg-slate-50/50 cursor-pointer" : "cursor-default"
+          }`}
       >
         <span
-          className={`h-2 w-2 rounded-full shrink-0 ${
-            isComplete ? "bg-emerald-400" : "bg-blue-400"
-          }`}
+          className={`h-2 w-2 rounded-full shrink-0 ${isComplete ? "bg-emerald-400" : "bg-blue-400"
+            }`}
         />
         <div className="flex-1 min-w-0">
           <p className="text-[0.78rem] font-semibold text-slate-700 truncate">
@@ -2581,19 +2833,17 @@ function CespesProgramRow({ program }) {
           </p>
         </div>
         <span
-          className={`text-[0.7rem] font-semibold px-2.5 py-1 rounded-full ${
-            isComplete
-              ? "bg-emerald-50 text-emerald-600"
-              : "bg-blue-50 text-blue-600"
-          }`}
+          className={`text-[0.7rem] font-semibold px-2.5 py-1 rounded-full ${isComplete
+            ? "bg-emerald-50 text-emerald-600"
+            : "bg-blue-50 text-blue-600"
+            }`}
         >
           {program.reported} reported
         </span>
         {hasRows && (
           <svg
-            className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
-              open ? "rotate-180" : ""
-            }`}
+            className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""
+              }`}
             viewBox="0 0 20 20"
             fill="currentColor"
           >
@@ -2653,11 +2903,10 @@ function CespesProgramRow({ program }) {
                   <td className="px-4 py-3">
                     <div className="flex items-start gap-2">
                       <span
-                        className={`mt-0.5 shrink-0 text-[0.6rem] font-bold px-1.5 py-0.5 rounded ${
-                          row.type === "OUTCOME"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-blue-100 text-blue-700"
-                        }`}
+                        className={`mt-0.5 shrink-0 text-[0.6rem] font-bold px-1.5 py-0.5 rounded ${row.type === "OUTCOME"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-blue-100 text-blue-700"
+                          }`}
                       >
                         {row.type}
                       </span>
@@ -2966,18 +3215,27 @@ function InstitutionalPlansCard({ selectedYear }) {
     </svg>
   );
 
-  const getPublicUrl = (path) => {
+  // Must stay in sync with STRUCTURED_UPLOAD_TYPES in UploadFilesPage.jsx.
+  const EXCEL_BUCKET_TYPES = new Set([
+    "enrollment", "classrooms", "seats", "teachers_inventory",
+    "textbook_inventory", "cespes", "performance_indicators",
+    "aip_school", "aip_sdo", "qbedp", "accomplishment_report",
+  ]);
+  const getDashboardBucket = (category) =>
+    EXCEL_BUCKET_TYPES.has(category) ? "excel-files" : "repository-files";
+
+  const getPublicUrl = (path, category) => {
     if (!path) return "#";
     const { data } = supabase.storage
-      .from("repository-files")
+      .from(getDashboardBucket(category))
       .getPublicUrl(path);
     return data.publicUrl;
   };
 
-  const downloadFile = async (path, filename) => {
+  const downloadFile = async (path, filename, category) => {
     if (!path) return;
     const { data, error } = await supabase.storage
-      .from("repository-files")
+      .from(getDashboardBucket(category))
       .download(path);
     if (error) {
       console.error("Error downloading file:", error);
@@ -2992,6 +3250,7 @@ function InstitutionalPlansCard({ selectedYear }) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
 
   const renderSection = (id, title, categoryType) => {
     const isOpen = expandedSection === id;
@@ -3011,9 +3270,8 @@ function InstitutionalPlansCard({ selectedYear }) {
           </div>
           <ChevronDown
             size={16}
-            className={`text-slate-400 transition-transform duration-200 ${
-              isOpen ? "rotate-180" : ""
-            }`}
+            className={`text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""
+              }`}
           />
         </button>
 
@@ -3048,7 +3306,7 @@ function InstitutionalPlansCard({ selectedYear }) {
                     >
                       <td className="px-4 py-3">
                         <a
-                          href={getPublicUrl(file.file_path)}
+                          href={getPublicUrl(file.file_path, file.data_category)}
                           target="_blank"
                           rel="noreferrer"
                           className="flex items-center gap-2 cursor-pointer group"
@@ -3190,4 +3448,425 @@ function CespesInnovationTable({ rows }) {
       </table>
     </div>
   );
+}
+
+// ─── Shared print-report shell (matches AuditLogs export style) ──
+
+function buildReportShell({ title, subtitle, badgeText, bodyHtml }) {
+  return `
+  <html>
+    <head>
+      <title>OneData: ${title}</title>
+      <style>
+        * { box-sizing: border-box; }
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          background: #f1f5f9;
+          color: #1e293b;
+          padding: 36px;
+          margin: 0;
+        }
+        .header {
+          background: linear-gradient(135deg, #3b82f6, #6366f1);
+          border-radius: 16px;
+          padding: 28px 32px;
+          color: #ffffff;
+          margin-bottom: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+        .header-left h1 {
+          font-size: 22px;
+          margin: 0 0 4px 0;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+        }
+        .header-left p {
+          font-size: 12.5px;
+          margin: 0;
+          color: #e0e7ff;
+          font-weight: 500;
+        }
+        .header-right .badge {
+          display: inline-block;
+          background: rgba(255,255,255,0.18);
+          border: 1px solid rgba(255,255,255,0.3);
+          border-radius: 999px;
+          padding: 5px 14px;
+          font-size: 11.5px;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+        .section {
+          background: #ffffff;
+          border-radius: 14px;
+          overflow: hidden;
+          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+          border: 1px solid #f1f5f9;
+          margin-bottom: 18px;
+        }
+        .section-title {
+          padding: 14px 18px 10px 18px;
+          font-size: 13px;
+          font-weight: 800;
+          color: #0f172a;
+          border-bottom: 1px solid #f1f5f9;
+        }
+        .section-empty {
+          padding: 18px;
+          font-size: 12px;
+          color: #94a3b8;
+          font-style: italic;
+        }
+        .summary-row {
+          display: flex;
+          gap: 14px;
+          margin-bottom: 20px;
+          flex-wrap: wrap;
+        }
+        .summary-card {
+          flex: 1;
+          min-width: 140px;
+          background: #ffffff;
+          border-radius: 12px;
+          padding: 14px 16px;
+          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+          border: 1px solid #f1f5f9;
+        }
+        .summary-card .value {
+          font-size: 20px;
+          font-weight: 800;
+          color: #0f172a;
+          line-height: 1;
+        }
+        .summary-card .label {
+          font-size: 10.5px;
+          font-weight: 700;
+          color: #94a3b8;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-top: 5px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: auto;
+        }
+        thead th {
+          background: #0f172a;
+          color: #ffffff;
+          font-size: 10px;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          padding: 10px 12px;
+          text-align: left;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+        tbody td {
+          padding: 10px 12px;
+          font-size: 11.5px;
+          color: #334155;
+          border-bottom: 1px solid #f1f5f9;
+          vertical-align: middle;
+        }
+        tbody tr:nth-child(even) {
+          background: #f8fafc;
+        }
+        .pill {
+          display: inline-block;
+          padding: 3px 10px;
+          border-radius: 999px;
+          font-size: 10.5px;
+          font-weight: 700;
+        }
+        .pill-blue { background: #eff6ff; color: #2563eb; }
+        .pill-orange { background: #fff7ed; color: #d97706; }
+        .pill-amber { background: #fffbeb; color: #d97706; }
+        .table-scroll {
+          overflow-x: auto;
+        }
+        .footer {
+          margin-top: 8px;
+          font-size: 11px;
+          color: #94a3b8;
+          text-align: right;
+          font-weight: 500;
+        }
+        @page { size: landscape; margin: 14mm; }
+        @media print {
+          body { background: #ffffff; padding: 14px; }
+          .header, thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .summary-card, .pill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .section { break-inside: avoid; }
+          tbody tr { break-inside: avoid; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="header-left">
+          <h1>OneData: ${title}</h1>
+          <p>${subtitle}</p>
+        </div>
+        <div class="header-right">
+          <span class="badge">${badgeText}</span>
+        </div>
+      </div>
+      ${bodyHtml}
+      <div class="footer">OneData: Confidential Report</div>
+    </body>
+  </html>`;
+}
+
+function renderTable(headers, rows) {
+  if (!rows || rows.length === 0) {
+    return `<div class="section-empty">No data available.</div>`;
+  }
+  const headHtml = headers.map((h) => `<th>${h}</th>`).join("");
+  const bodyHtml = rows
+    .map(
+      (row) =>
+        `<tr>${row.map((cell) => `<td>${cell ?? "—"}</td>`).join("")}</tr>`,
+    )
+    .join("");
+  return `
+    <div class="table-scroll">
+      <table>
+        <thead><tr>${headHtml}</tr></thead>
+        <tbody>${bodyHtml}</tbody>
+      </table>
+    </div>`;
+}
+
+function printReport(html) {
+  const printWindow = window.open("", "_blank");
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.onload = () => printWindow.print();
+}
+
+// ─── Performance Indicators report ──
+
+function printPerformanceReport({
+  selectedYear,
+  currentKpi,
+  dropoutByLevel,
+  promotionByLevel,
+  cohortTrend,
+  enrollmentSummary,
+  genderSummary,
+  enrollmentRows,
+}) {
+  const summaryCards = `
+    <div class="summary-row">
+      <div class="summary-card"><div class="value">${(enrollmentSummary.public || 0).toLocaleString()}</div><div class="label">Public</div></div>
+      <div class="summary-card"><div class="value">${(enrollmentSummary.private || 0).toLocaleString()}</div><div class="label">Private</div></div>
+      <div class="summary-card"><div class="value">${(enrollmentSummary.total || 0).toLocaleString()}</div><div class="label">Total Enrollment</div></div>
+      <div class="summary-card"><div class="value">${(genderSummary.male.total || 0).toLocaleString()}</div><div class="label">Male</div></div>
+      <div class="summary-card"><div class="value">${(genderSummary.female.total || 0).toLocaleString()}</div><div class="label">Female</div></div>
+    </div>`;
+
+  const dropoutTable = renderTable(
+    ["Level", "Rate"],
+    dropoutByLevel.map((d) => [d.label, d.display]),
+  );
+
+  const promotionTable = renderTable(
+    ["Level", "Rate (%)"],
+    promotionByLevel.map((p) => [p.level, `${p.rate.toFixed(2)}%`]),
+  );
+
+  const cohortTable = renderTable(
+    ["Year", "Rate (%)"],
+    cohortTrend.map((c) => [c.year, `${c.rate}%`]),
+  );
+
+  const kpiSheetsHtml = (currentKpi || [])
+    .map((sheet) => {
+      const headers = (sheet.headers_main || []).map((h) => String(h ?? ""));
+      const totalRow = (sheet.total_row || []).map((v) => String(v ?? ""));
+      return `
+        <div class="section">
+          <div class="section-title">${sheet.sheet_name || "Untitled Sheet"}</div>
+          ${renderTable(headers, totalRow.length ? [totalRow] : [])}
+        </div>`;
+    })
+    .join("");
+
+  const enrollmentRowsTable = renderTable(
+    ["School Name", "Category", "Grand Total"],
+    (enrollmentRows || []).map((r) => [
+      r.school_name || "",
+      r.category || "",
+      (r.grand_total ?? 0).toLocaleString(),
+    ]),
+  );
+
+  const bodyHtml = `
+    ${summaryCards}
+    <div class="section"><div class="section-title">Dropout Rate by Level</div>${dropoutTable}</div>
+    <div class="section"><div class="section-title">Promotion Rate by Level</div>${promotionTable}</div>
+    <div class="section"><div class="section-title">Cohort Survival Rate (Elementary Trend)</div>${cohortTable}</div>
+    ${kpiSheetsHtml}
+    <div class="section"><div class="section-title">Enrollment by School (Full Data)</div>${enrollmentRowsTable}</div>
+  `;
+
+  const html = buildReportShell({
+    title: "Performance Indicators Report",
+    subtitle: `SY ${selectedYear || "N/A"} · Exported ${new Date().toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" })}`,
+    badgeText: `SY ${selectedYear || "N/A"}`,
+    bodyHtml,
+  });
+
+  printReport(html);
+}
+
+// ─── CESPES report ──
+
+function printCespesReport({ selectedYear, cespes }) {
+  const opsRows = (cespes.operations || []).map((r) => [
+    r.program,
+    r.indicator_type,
+    r.indicator,
+    r.sem1_target,
+    r.sem1_accomplishment,
+    r.sem2_target,
+    r.sem2_accomplishment,
+  ]);
+  const opsTable = renderTable(
+    ["Program", "Indicator Type", "Indicator", "Sem1 Target", "Sem1 Accomplishment", "Sem2 Target", "Sem2 Accomplishment"],
+    opsRows,
+  );
+
+  const supportRows = (cespes.supportOperations || []).map((r) => [
+    r.service_activity, r.indicator, r.sem1_target, r.sem1_accomplishment, r.sem2_target, r.sem2_accomplishment, r.person_involved,
+  ]);
+  const supportTable = renderTable(
+    ["Service/Activity", "Indicator", "Sem1 Target", "Sem1 Accomplishment", "Sem2 Target", "Sem2 Accomplishment", "Person Involved"],
+    supportRows,
+  );
+
+  const adminRows = (cespes.generalAdmin || []).map((r) => [
+    r.service_activity, r.indicator, r.sem1_target, r.sem1_accomplishment, r.sem2_target, r.sem2_accomplishment, r.person_involved,
+  ]);
+  const adminTable = renderTable(
+    ["Service/Activity", "Indicator", "Sem1 Target", "Sem1 Accomplishment", "Sem2 Target", "Sem2 Accomplishment", "Person Involved"],
+    adminRows,
+  );
+
+  const perfRows = (cespes.individualPerformance || []).map((r) => [
+    r.program_output, r.process_output, r.performance_indicator, r.target, r.accomplishment, r.rating,
+  ]);
+  const perfTable = renderTable(
+    ["Program Output", "Process Output", "Performance Indicator", "Target", "Accomplishment", "Rating"],
+    perfRows,
+  );
+
+  const innovRows = (cespes.innovation || []).map((r) => [
+    r.output_outcomes, r.quality, r.quantity, r.timeliness, r.average,
+  ]);
+  const innovTable = renderTable(
+    ["Output/Outcomes", "Quality", "Quantity", "Timeliness", "Average"],
+    innovRows,
+  );
+
+  const bodyHtml = `
+    <div class="section"><div class="section-title">Operations</div>${opsTable}</div>
+    <div class="section"><div class="section-title">Support to Operations</div>${supportTable}</div>
+    <div class="section"><div class="section-title">General Admin</div>${adminTable}</div>
+    <div class="section"><div class="section-title">Individual Performance</div>${perfTable}</div>
+    <div class="section"><div class="section-title">Innovation & Intervention</div>${innovTable}</div>
+  `;
+
+  const html = buildReportShell({
+    title: "CESPES Report",
+    subtitle: `SY ${selectedYear || "N/A"} · Exported ${new Date().toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" })}`,
+    badgeText: `SY ${selectedYear || "N/A"}`,
+    bodyHtml,
+  });
+
+  printReport(html);
+}
+
+// ─── Crucial Resources report ──
+
+function printResourcesReport({ selectedYear, resources }) {
+  const summaryTable = renderTable(
+    ["Resource", "Total Inventory", "Total Needs"],
+    [
+      ["Teachers", (resources.teachers.total || 0).toLocaleString(), (resources.teachers.needs || 0).toLocaleString()],
+      ["Classrooms", (resources.classrooms.total || 0).toLocaleString(), (resources.classrooms.needs || 0).toLocaleString()],
+      ["Seats", (resources.seats.total || 0).toLocaleString(), (resources.seats.needs || 0).toLocaleString()],
+      ["Textbooks (Shortage)", "—", (resources.textbooks.needs || 0).toLocaleString()],
+    ],
+  );
+
+  const resourceTypes = [
+    { key: "teachers", label: "Teachers" },
+    { key: "classrooms", label: "Classrooms" },
+    { key: "seats", label: "Seats" },
+    { key: "textbooks", label: "Textbooks" },
+  ];
+
+  const breakdownHtml = resourceTypes
+    .map((rt) => {
+      const resData = resources[rt.key];
+      const breakdown = resData?.breakdown || {};
+      const needsBreakdown = resData?.needsBreakdown || {};
+      const rows = Object.entries(breakdown).map(([level, val]) => [
+        level,
+        String(val),
+        rt.key === "textbooks" ? "—" : String(needsBreakdown[level] || 0),
+      ]);
+      return `
+        <div class="section">
+          <div class="section-title">${rt.label} — Breakdown by Level</div>
+          ${renderTable(["Level", "Inventory", "Needs"], rows)}
+        </div>`;
+    })
+    .join("");
+
+  const rawDataHtml = resourceTypes
+    .map((rt) => {
+      const resData = resources[rt.key];
+      const dataByLevel = resData?.data || {};
+      return Object.entries(dataByLevel)
+        .map(([level, rows]) => {
+          if (!rows || rows.length === 0) return "";
+          const allKeys = Array.from(
+            rows.reduce((set, row) => {
+              Object.keys(row).forEach((k) => set.add(k));
+              return set;
+            }, new Set()),
+          );
+          const tableRows = rows.map((row) => allKeys.map((k) => row[k]));
+          return `
+            <div class="section">
+              <div class="section-title">${rt.label} — ${level} (Full Raw Data)</div>
+              ${renderTable(allKeys, tableRows)}
+            </div>`;
+        })
+        .join("");
+    })
+    .join("");
+
+  const bodyHtml = `
+    <div class="section"><div class="section-title">Summary</div>${summaryTable}</div>
+    ${breakdownHtml}
+    ${rawDataHtml}
+  `;
+
+  const html = buildReportShell({
+    title: "Crucial Resources Report",
+    subtitle: `SY ${selectedYear || "N/A"} · Exported ${new Date().toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" })}`,
+    badgeText: `SY ${selectedYear || "N/A"}`,
+    bodyHtml,
+  });
+
+  printReport(html);
 }

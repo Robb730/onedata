@@ -257,11 +257,42 @@ export async function parseCespesFile(file) {
     innovation:        innovationName ? "found" : "missing",
   };
 
-  const operations         = parseOperationsSheet(getRows(workbook, operationsName));
-  const supportOperations  = parseSupportOperationsSheet(getRows(workbook, supportOpsName));
-  const generalAdmin       = parseGeneralAdminSheet(getRows(workbook, generalAdminName));
-  const individualPerformance = parseIndividualPerformanceSheet(getRows(workbook, individualPerfName));
-  const innovation         = parseInnovationSheet(getRows(workbook, innovationName));
+  if (!operationsName && !supportOpsName && !generalAdminName && !individualPerfName && !innovationName) {
+    throw new Error(`Invalid CESPES file. Expected CESPES sheets. Found: ${names.join(", ")}`);
+  }
+
+  function checkCESPESLayout(allRows, sheetName) {
+    if (!allRows || allRows.length === 0) return;
+    
+    if (/OPERATIONS/i.test(sheetName) || /GENERAL/i.test(sheetName) || /GERAL/i.test(sheetName)) {
+      const row1 = allRows[1] || [];
+      if (!String(row1[2]).includes("Target") || !String(row1[4]).includes("Target")) {
+        throw new Error(`Invalid layout in sheet "${sheetName}". Columns appear to be missing or shifted.`);
+      }
+    } else if (/INDIVIDUAL/i.test(sheetName)) {
+      const row0 = allRows[0] || [];
+      if (!String(row0[3]).includes("Target") || !String(row0[4]).includes("Accomplishment")) {
+        throw new Error(`Invalid layout in sheet "${sheetName}". Columns appear to be missing or shifted.`);
+      }
+    } else if (/INNOVAT/i.test(sheetName)) {
+      const row0 = allRows[0] || [];
+      if (!String(row0[1]).includes("Quality") || !String(row0[2]).includes("Quantity")) {
+        throw new Error(`Invalid layout in sheet "${sheetName}". Columns appear to be missing or shifted.`);
+      }
+    }
+  }
+
+  const getAndCheckRows = (sheetName) => {
+    const rows = getRows(workbook, sheetName);
+    if (rows.length > 0) checkCESPESLayout(rows, sheetName);
+    return rows;
+  };
+
+  const operations         = parseOperationsSheet(getAndCheckRows(operationsName));
+  const supportOperations  = parseSupportOperationsSheet(getAndCheckRows(supportOpsName));
+  const generalAdmin       = parseGeneralAdminSheet(getAndCheckRows(generalAdminName));
+  const individualPerformance = parseIndividualPerformanceSheet(getAndCheckRows(individualPerfName));
+  const innovation         = parseInnovationSheet(getAndCheckRows(innovationName));
 
   return {
     operations,

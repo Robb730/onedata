@@ -29,6 +29,8 @@ const ACTION_META = {
   "Role Change": { icon: RefreshCcw, color: "purple", label: "Role Change" },
   "Access Grant": { icon: UserPlus, color: "blue", label: "Access Grant" },
   "Access Request": { icon: Shield, color: "yellow", label: "Access Request" },
+  "Login Success": { icon: CheckCircle, color: "green", label: "Login Success" },
+  "Login Failed": { icon: XCircle, color: "red", label: "Login Failed" },
 };
 const DEFAULT_META = { icon: Activity, color: "slate", label: "Other" };
 

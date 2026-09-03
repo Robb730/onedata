@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, FileText, Calendar, MessageSquare } from "lucide-react";
 import ModalPortal from "../Modals/ModalPortal";
+import { CustomDatePicker } from "../SchoolYearComponents/CustomDatePicker";
 
 export default function FileRequestModal({
   isOpen,
@@ -50,7 +51,7 @@ export default function FileRequestModal({
         aria-label="Close"
         onClick={handleClose}
       />
-      <div className="relative z-10 w-full max-w-md max-h-[92dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
+      <div className="relative z-10 w-full max-w-md max-h-[92dvh] overflow-visible rounded-t-2xl sm:rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100">
           <div>
             <h2 className="text-lg font-bold text-slate-900">Request a File</h2>
@@ -80,16 +81,15 @@ export default function FileRequestModal({
             />
           </div>
 
-          <div>
+          <div className="relative z-[60]">
             <label className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-600 mb-1.5">
               <Calendar size={13} /> Deadline
             </label>
-            <input
-              type="date"
+            <CustomDatePicker
               value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              min={todayStr}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+              onChange={setDeadline}
+              placeholder="Select a date"
+              minDate={todayStr}
             />
           </div>
 

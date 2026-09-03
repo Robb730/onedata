@@ -5,21 +5,22 @@ import { useUser } from "../contexts/UserContext.jsx";
 import { ShieldCheck, CalendarClock, UploadCloud, AlertTriangle } from "lucide-react";
 
 const TYPE_META = {
-  verification:  { icon: ShieldCheck, iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
+  verification: { icon: ShieldCheck, iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
   file_verified: { icon: ShieldCheck, iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
-  reminder:      { icon: CalendarClock, iconBg: "bg-blue-100", iconColor: "text-blue-600" },
-  upload:        { icon: UploadCloud, iconBg: "bg-purple-100", iconColor: "text-purple-600" },
+  reminder: { icon: CalendarClock, iconBg: "bg-blue-100", iconColor: "text-blue-600" },
+  upload: { icon: UploadCloud, iconBg: "bg-purple-100", iconColor: "text-purple-600" },
   file_uploaded: { icon: UploadCloud, iconBg: "bg-purple-100", iconColor: "text-purple-600" },
-  alert:                          { icon: AlertTriangle, iconBg: "bg-amber-100", iconColor: "text-amber-600" },
-  file_unverified:                { icon: AlertTriangle, iconBg: "bg-amber-100", iconColor: "text-amber-600" },
-  file_deleted:                   { icon: AlertTriangle, iconBg: "bg-rose-100",  iconColor: "text-rose-600" },
-  file_access_request:            { icon: AlertTriangle, iconBg: "bg-blue-100",  iconColor: "text-blue-600" },
-  division_access_request:        { icon: AlertTriangle, iconBg: "bg-indigo-100", iconColor: "text-indigo-600" },
-  access_request_approved:        { icon: ShieldCheck,   iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
-  access_request_denied:          { icon: AlertTriangle, iconBg: "bg-rose-100",  iconColor: "text-rose-600" },
-  access_request_revoked:         { icon: AlertTriangle, iconBg: "bg-rose-100",  iconColor: "text-rose-600" },
+  alert: { icon: AlertTriangle, iconBg: "bg-amber-100", iconColor: "text-amber-600" },
+  file_unverified: { icon: AlertTriangle, iconBg: "bg-amber-100", iconColor: "text-amber-600" },
+  file_deleted: { icon: AlertTriangle, iconBg: "bg-rose-100", iconColor: "text-rose-600" },
+  file_access_request: { icon: AlertTriangle, iconBg: "bg-blue-100", iconColor: "text-blue-600" },
+  file_request_completed: { icon: UploadCloud, iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
+  division_access_request: { icon: AlertTriangle, iconBg: "bg-indigo-100", iconColor: "text-indigo-600" },
+  access_request_approved: { icon: ShieldCheck, iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
+  access_request_denied: { icon: AlertTriangle, iconBg: "bg-rose-100", iconColor: "text-rose-600" },
+  access_request_revoked: { icon: AlertTriangle, iconBg: "bg-rose-100", iconColor: "text-rose-600" },
   division_access_request_approved: { icon: ShieldCheck, iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
-  division_access_request_denied:   { icon: AlertTriangle, iconBg: "bg-rose-100", iconColor: "text-rose-600" },
+  division_access_request_denied: { icon: AlertTriangle, iconBg: "bg-rose-100", iconColor: "text-rose-600" },
 };
 
 function getGroup(createdAt) {
@@ -110,31 +111,51 @@ export function useNotifications() {
     await supabase.from("notifications").update({ is_read: true }).eq("id", id);
   };
 
-  const removeNotification = async (id) => {
-  const prev = notificationsList;
-  setNotificationsList((p) => p.filter((n) => n.id !== id));
+  const markAllAsRead = async () => {
+    const unreadIds = notificationsList
+      .filter((n) => n.unread)
+      .map((n) => n.id);
+    if (!unreadIds.length) return;
 
-  const { error } = await supabase.from("notifications").delete().eq("id", id);
-  if (error) {
-    console.error("removeNotification failed:", error.message, error.code, error.details, error.hint);
-    setNotificationsList(prev);
-  }
-};
+    const prev = notificationsList;
+    setNotificationsList((p) => p.map((n) => ({ ...n, unread: false })));
+
+    const { error } = await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .in("id", unreadIds);
+
+    if (error) {
+      console.error("markAllAsRead failed:", error.message);
+      setNotificationsList(prev);
+    }
+  };
+
+  const removeNotification = async (id) => {
+    const prev = notificationsList;
+    setNotificationsList((p) => p.filter((n) => n.id !== id));
+
+    const { error } = await supabase.from("notifications").delete().eq("id", id);
+    if (error) {
+      console.error("removeNotification failed:", error.message, error.code, error.details, error.hint);
+      setNotificationsList(prev);
+    }
+  };
 
   const clearAll = async () => {
-  const ids = notificationsList.map((n) => n.id);
-  if (!ids.length) return;
+    const ids = notificationsList.map((n) => n.id);
+    if (!ids.length) return;
 
-  const prev = notificationsList;
-  setNotificationsList([]); // optimistic
+    const prev = notificationsList;
+    setNotificationsList([]); // optimistic
 
-  const { error } = await supabase.from("notifications").delete().in("id", ids);
+    const { error } = await supabase.from("notifications").delete().in("id", ids);
 
-  if (error) {
-    console.error("clearAll failed:", error.message, error.code, error.details, error.hint);
-    setNotificationsList(prev); // roll back so the UI doesn't lie
-  }
-};
+    if (error) {
+      console.error("clearAll failed:", error.message, error.code, error.details, error.hint);
+      setNotificationsList(prev); // roll back so the UI doesn't lie
+    }
+  };
 
-  return { notificationsList, loading, markAsRead, removeNotification, clearAll };
+  return { notificationsList, loading, markAsRead, markAllAsRead, removeNotification, clearAll };
 }

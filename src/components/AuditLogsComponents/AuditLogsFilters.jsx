@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, ChevronDown } from "lucide-react";
+import { Search, ChevronDown, CalendarDays, X } from "lucide-react";
+import { CustomDateRangePicker } from "./CustomDateRangePicker";
 
 function CustomDropdown({ value, options, onChange, ariaLabel, placeholderPrefix = "" }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -79,6 +80,9 @@ export default function AuditLogsFilters({
   onFilterStatusChange,
   actions = [],
   statuses = [],
+  dateFrom = "",
+  dateTo = "",
+  onDateRangeChange,
 }) {
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-3.5 mb-5 sm:mb-8 flex flex-col gap-3 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
@@ -97,7 +101,7 @@ export default function AuditLogsFilters({
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:flex lg:items-center">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:flex lg:items-center lg:flex-wrap">
         <div className="flex items-center gap-2 min-w-0 z-20">
           <span className="hidden sm:inline text-[0.78rem] font-semibold text-slate-500 shrink-0">
             Action:
@@ -121,6 +125,16 @@ export default function AuditLogsFilters({
             onChange={onFilterStatusChange}
             ariaLabel="Filter by status"
             placeholderPrefix="All Statuses"
+          />
+        </div>
+
+        {/* Date filter */}
+        <div className="flex items-center gap-2 col-span-full lg:col-span-1 min-w-[240px]">
+          <CustomDateRangePicker
+            startDate={dateFrom}
+            endDate={dateTo}
+            onChange={onDateRangeChange}
+            placeholder="Filter by Date Range..."
           />
         </div>
       </div>
