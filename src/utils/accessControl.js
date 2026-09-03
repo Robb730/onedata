@@ -79,7 +79,8 @@ export async function getSectionAccessLevel(userProfile, section) {
   if (role === ROLES.SECTION_FOCAL || role === ROLES.PERSONNEL) {
     if (section_id != null) {
       if (sameId(section_id, section.id)) return "full";
-      return "locked"; // unchanged: these roles already get "locked" elsewhere
+      if (sameId(division_id, section.division_id)) return "view_download";
+      return "locked";
     }
     if (!sameId(division_id, section.division_id)) {
       const granted = await hasApprovedDivisionAccess(userProfile.id, section.division_id);

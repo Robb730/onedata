@@ -1439,7 +1439,7 @@ export default function RepositoryFolderDetailPage() {
   };
 
   function hasFileAccess(file) {
-    return canEdit || fileAccessMap[file.id] === "approved";
+    return canEdit || accessLevel === "view_download" || fileAccessMap[file.id] === "approved";
   }
   function fileRequestStatus(file) {
     return fileAccessMap[file.id];
@@ -2880,6 +2880,13 @@ export default function RepositoryFolderDetailPage() {
               are limited to your assigned section.
             </div>
           )}
+          {accessLevel === "view_download" && (
+            <div className="mb-5 flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-700 repo-morph-banner">
+              <Lock size={14} className="shrink-0" />
+              You can view and download files in this section, but editing and
+              deleting are limited to your assigned section.
+            </div>
+          )}
 
           {/* ── Search / Sort / View Toggle ────────────────── */}
           <div className="mt-3 mb-2 rounded-xl sm:rounded-[24px] border border-slate-200/60 sm:border-white/70 bg-white p-3 sm:p-4 shadow-[0_8px_30px_rgba(15,23,42,0.04)] repo-morph-search">
@@ -3020,25 +3027,36 @@ export default function RepositoryFolderDetailPage() {
                           <span className="text-[11px] font-semibold text-blue-600 mr-1">
                             {selectedIds.size} selected
                           </span>
-                          <button
-                            onClick={() => {
-                              const files = filtered.filter(
-                                (f) =>
-                                  selectedIds.has(f.id) &&
-                                  !hasFileAccess(f) &&
-                                  fileRequestStatus(f) !== "pending",
-                              );
-                              if (files.length > 0) openRequestModal(files);
-                              else
-                                alert(
-                                  "The selected files are already granted or have a pending request.",
+                          {accessLevel === "view_download" ? (
+                            <button
+                              onClick={handleBulkDownload}
+                              disabled={bulkDownloading}
+                              className="p-1.5 rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50 transition-colors"
+                              title="Download Selected"
+                            >
+                              <Download size={14} />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                const files = filtered.filter(
+                                  (f) =>
+                                    selectedIds.has(f.id) &&
+                                    !hasFileAccess(f) &&
+                                    fileRequestStatus(f) !== "pending",
                                 );
-                            }}
-                            className="p-1.5 rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                            title="Request Access"
-                          >
-                            <Lock size={14} />
-                          </button>
+                                if (files.length > 0) openRequestModal(files);
+                                else
+                                  alert(
+                                    "The selected files are already granted or have a pending request.",
+                                  );
+                              }}
+                              className="p-1.5 rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                              title="Request Access"
+                            >
+                              <Lock size={14} />
+                            </button>
+                          )}
                         </>
                       )}
                     </div>
