@@ -12,47 +12,52 @@ const UserContext = createContext(null);
 // section-scoped roles), which TopHeader's getScopeLabel already accounts
 // for by picking the right one based on role.
 const PROFILE_SELECT =
-  "id, email, full_name, id_number, role, division_id, section_id, must_change_password, division:divisions(id, name), section:sections(name)";
+  "id, email, full_name, id_number, role, division_id, section_id, must_change_password, accepted_data_privacy, division:divisions(id, name), section:sections(name)";
 
 export function UserProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const hasLoadedOnce = useRef(false);
   const userIdRef = useRef(null);
+  const profileRequestRef = useRef(0);
 
   const loadProfile = useCallback(async (showLoading = true) => {
-  if (showLoading) setLoading(true);
+    const requestId = ++profileRequestRef.current;
+    if (showLoading) setLoading(true);
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    setUserProfile(null);
-    userIdRef.current = null;
-    setLoading(false);
-    return;
-  }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (requestId !== profileRequestRef.current) return;
+    if (!user) {
+      setUserProfile(null);
+      userIdRef.current = null;
+      setLoading(false);
+      return;
+    }
 
-  userIdRef.current = user.id;
+    userIdRef.current = user.id;
 
-  const { data, error } = await supabase
-    .from("users")
-    .select(PROFILE_SELECT)
-    .eq("id", user.id)
-    .single();
+    const { data, error } = await supabase
+      .from("users")
+      .select(PROFILE_SELECT)
+      .eq("id", user.id)
+      .single();
 
-  if (!error) {
-    setUserProfile((prev) => {
-      // Skip the update entirely if nothing actually changed —
-      // avoids triggering re-renders/effects on every tab refocus.
-      if (prev && JSON.stringify(prev) === JSON.stringify(data)) {
-        return prev;
-      }
-      localStorage.setItem("userProfile", JSON.stringify(data));
-      return data;
-    });
-  }
-  setLoading(false);
-  hasLoadedOnce.current = true;
-}, []);
+    if (!error && requestId === profileRequestRef.current) {
+      setUserProfile((prev) => {
+        // Skip the update entirely if nothing actually changed —
+        // avoids triggering re-renders/effects on every tab refocus.
+        if (prev && JSON.stringify(prev) === JSON.stringify(data)) {
+          return prev;
+        }
+        localStorage.setItem("userProfile", JSON.stringify(data));
+        return data;
+      });
+    }
+    if (requestId === profileRequestRef.current) {
+      setLoading(false);
+      hasLoadedOnce.current = true;
+    }
+  }, []);
 
   // Exposed so any screen (e.g. a self-edit form) can force a refresh
   // without waiting on Realtime.
@@ -73,57 +78,57 @@ export function UserProvider({ children }) {
 
   // ── Realtime: react the moment an admin edits this user's row ──
   useEffect(() => {
-  let cancelled = false;
-  let channel = null;
+    let cancelled = false;
+    let channel = null;
 
-  async function subscribe() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || cancelled) return;
+    async function subscribe() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
 
-    const topic = `users-row-${user.id}`;
+      const topic = `users-row-${user.id}`;
 
-    // Defensive: if a channel with this topic is already registered
-    // (e.g. from a StrictMode double-invoke or HMR reload), tear it
-    // down first so .on() below never lands on an already-subscribed
-    // channel instance.
-    const existing = supabase
-      .getChannels()
-      .find((c) => c.topic === `realtime:${topic}`);
-    if (existing) {
-      await supabase.removeChannel(existing);
+      // Defensive: if a channel with this topic is already registered
+      // (e.g. from a StrictMode double-invoke or HMR reload), tear it
+      // down first so .on() below never lands on an already-subscribed
+      // channel instance.
+      const existing = supabase
+        .getChannels()
+        .find((c) => c.topic === `realtime:${topic}`);
+      if (existing) {
+        await supabase.removeChannel(existing);
+      }
+
+      if (cancelled) return;
+
+      channel = supabase
+        .channel(topic)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "users",
+            filter: `id=eq.${user.id}`,
+          },
+          () => {
+            // payload.new is the raw `users` row only — it can't contain the
+            // embedded divisions/sections name, so re-fetch through the same
+            // joined query instead of setting state from the payload
+            // directly. Otherwise a realtime-triggered update would wipe
+            // out division/section names until the next full reload.
+            loadProfile(false);
+          },
+        )
+        .subscribe();
     }
 
-    if (cancelled) return;
+    subscribe();
 
-    channel = supabase
-      .channel(topic)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "users",
-          filter: `id=eq.${user.id}`,
-        },
-        () => {
-          // payload.new is the raw `users` row only — it can't contain the
-          // embedded divisions/sections name, so re-fetch through the same
-          // joined query instead of setting state from the payload
-          // directly. Otherwise a realtime-triggered update would wipe
-          // out division/section names until the next full reload.
-          loadProfile(false);
-        },
-      )
-      .subscribe();
-  }
-
-  subscribe();
-
-  return () => {
-    cancelled = true;
-    if (channel) supabase.removeChannel(channel);
-  };
-}, [loadProfile]);
+    return () => {
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [loadProfile]);
 
   // ── Safety net: refetch on tab refocus in case Realtime dropped ──
   useEffect(() => {

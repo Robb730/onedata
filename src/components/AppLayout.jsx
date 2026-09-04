@@ -6,6 +6,8 @@ import { supabase } from "../lib/supabaseClient";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import { ChangePasswordModal } from "./Modals/ChangePasswordModal";
+import DataPrivacyModal from "./Modals/DataPrivacyModal";
+import { CheckCircle, X } from "lucide-react";
 
 function LayoutPageFallback() {
   return (
@@ -21,9 +23,10 @@ export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isAnimating, setIsAnimating] = useState(false);
-  const { userProfile, setUserProfile } = useUser();
+  const { userProfile, setUserProfile, refreshProfile } = useUser();
 
   const mustChange = userProfile?.must_change_password === true;
+  const needsPrivacyAccept = mustChange && userProfile?.accepted_data_privacy !== true;
 
   useEffect(() => {
     if (!showPasswordToast) return;
@@ -37,11 +40,18 @@ export function AppLayout() {
     return () => clearTimeout(timer);
   }, [location.pathname]);
 
-  function handlePasswordChange() {
+  async function handlePasswordChange() {
     const updated = { ...userProfile, must_change_password: false };
     setUserProfile(updated);
     localStorage.setItem("userProfile", JSON.stringify(updated));
+    await refreshProfile();
     setShowPasswordToast(true);
+  }
+
+  function handlePrivacyAccept() {
+    const updated = { ...userProfile, accepted_data_privacy: true };
+    setUserProfile(updated);
+    localStorage.setItem("userProfile", JSON.stringify(updated));
   }
 
   function handleLogout() {
@@ -58,6 +68,10 @@ export function AppLayout() {
       style={{ background: "#f0f4f9" }}
     >
       <div className="app-shell-inner flex w-full min-h-dvh lg:h-full lg:min-h-0">
+        <DataPrivacyModal
+          isOpen={needsPrivacyAccept}
+          onSuccess={handlePrivacyAccept}
+        />
         <ChangePasswordModal
           isOpen={mustChange}
           onSuccess={handlePasswordChange}
@@ -87,92 +101,66 @@ export function AppLayout() {
           </main>
         </div>
 
-        {showPasswordToast && (
+        <div
+          className={`fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-4 right-4 z-50 flex flex-col overflow-hidden bg-white transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] lg:bottom-8 sm:left-auto sm:right-6 sm:w-[380px] ${showPasswordToast
+            ? "translate-x-0 opacity-100 pointer-events-auto"
+            : "translate-x-[120%] opacity-0 pointer-events-none"
+            }`}
+          style={{
+            minHeight: "76px",
+            borderRadius: "16px",
+            boxShadow: showPasswordToast
+              ? "0 4px 24px rgba(16, 185, 129, 0.25), 0 1px 3px rgba(0,0,0,0.05)"
+              : "0 12px 30px rgba(0,0,0,0)",
+            fontFamily: "Poppins, sans-serif",
+            border: "1px solid rgba(241, 245, 249, 1)",
+          }}
+        >
+          <div className="absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r from-emerald-100/60 to-transparent" />
+
           <div
-            className="fixed top-4 left-4 right-4 z-50 flex bg-white overflow-hidden animate-toast-in sm:left-auto sm:right-6 sm:w-[360px]"
-            style={{
-              height: "72px",
-              borderRadius: "12px",
-              boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
-              fontFamily: "Poppins, sans-serif",
-            }}
+            className="flex items-center relative z-10 py-4 flex-1"
+            style={{ padding: "0 20px", gap: "16px", minHeight: "76px" }}
           >
             <div
-              style={{
-                width: "6px",
-                backgroundColor: "#43D45B",
-                flexShrink: 0,
-              }}
-            />
-
-            <div
-              className="flex items-center flex-1 relative"
-              style={{ padding: "0 14px", gap: "12px" }}
+              className="flex items-center justify-center shrink-0 bg-white rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.06),_0_1px_3px_rgba(0,0,0,0.03)]"
+              style={{ width: "42px", height: "42px" }}
             >
-              <div
-                className="flex items-center justify-center shrink-0"
-                style={{
-                  width: "34px",
-                  height: "34px",
-                  borderRadius: "50%",
-                  backgroundColor: "#43D45B",
-                }}
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#FFFFFF"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              </div>
-
-              <div className="flex flex-col justify-center">
-                <p
-                  style={{
-                    fontSize: "15px",
-                    fontWeight: 700,
-                    color: "#1F1F2E",
-                    lineHeight: 1.2,
-                    margin: 0,
-                  }}
-                >
-                  Success
-                </p>
-                <p
-                  style={{
-                    fontSize: "12.5px",
-                    fontWeight: 500,
-                    color: "#666666",
-                    marginTop: "2px",
-                    margin: 0,
-                  }}
-                >
-                  Password updated successfully.
-                </p>
-              </div>
-
-              <button
-                onClick={() => setShowPasswordToast(false)}
-                className="absolute top-2 right-2.5 cursor-pointer"
-                style={{
-                  color: "#666666",
-                  background: "none",
-                  border: "none",
-                  fontSize: "16px",
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
+              <CheckCircle size={22} className="text-emerald-500" strokeWidth={2.5} />
             </div>
+            <div className="flex flex-col justify-center flex-1">
+              <p
+                style={{
+                  fontSize: "15px",
+                  fontWeight: 700,
+                  color: "#0F172A",
+                  lineHeight: 1.2,
+                  margin: 0,
+                }}
+              >
+                Success
+              </p>
+              <p
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  color: "#64748B",
+                  marginTop: "3px",
+                  margin: 0,
+                }}
+              >
+                Password updated successfully.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowPasswordToast(false)}
+              className="absolute top-1/2 -translate-y-1/2 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-md hover:bg-slate-100"
+              aria-label="Close notification"
+            >
+              <X size={18} strokeWidth={2.5} />
+            </button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

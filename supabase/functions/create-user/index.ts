@@ -47,6 +47,7 @@ Deno.serve(async (req) => {
       section_id,
       is_active: true,
       must_change_password: true,
+      accepted_data_privacy: false,
     });
     if (dbError) {
       return new Response(JSON.stringify({ error: dbError.message }), {

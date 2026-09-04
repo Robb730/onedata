@@ -1357,8 +1357,8 @@ export default function UploadFilesPage() {
         {/* Header */}
         <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
-              <FileText size={17} className="text-blue-600" />
+            <div className="w-9 h-9 rounded-xl bg-[#2B7FFF]/10 border border-[#2B7FFF]/20 flex items-center justify-center shrink-0">
+              <FileText size={17} className="text-[#2B7FFF]" />
             </div>
             <div className="min-w-0">
               <h3 className="text-sm sm:text-[1rem] font-bold text-slate-800 tracking-tight leading-tight">
@@ -1380,7 +1380,7 @@ export default function UploadFilesPage() {
                   type="button"
                   onClick={() => setFileRequestFilter(f)}
                   className={`flex flex-col items-center justify-center gap-0.5 min-w-[4.5rem] flex-1 py-2 px-2 rounded-xl text-[10.5px] font-bold transition-colors shrink-0 ${isActive
-                    ? "bg-blue-600 text-white shadow-sm"
+                    ? "bg-[#2B7FFF] text-white shadow-sm"
                     : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100"
                     }`}
                 >
@@ -1426,85 +1426,80 @@ export default function UploadFilesPage() {
               return (
                 <div
                   key={req.id}
-                  className="relative flex rounded-xl sm:rounded-2xl border border-slate-100 overflow-hidden bg-white hover:border-slate-200 hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)] transition-all"
+                  className="flex flex-col rounded-xl border border-slate-200/60 bg-white p-3.5 hover:border-slate-300 hover:shadow-sm transition-all"
                 >
-                  <div className={`w-[3px] shrink-0 ${accent}`} />
-                  <div className="flex-1 p-3.5 sm:p-4 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                          <FileText size={13} className="text-blue-500" />
-                        </div>
-                        <p className="text-[13px] font-bold text-slate-800 truncate leading-tight">
-                          {req.fileName}
-                        </p>
-                      </div>
-                      <span
-                        className={`shrink-0 text-[9.5px] font-bold px-2 py-1 rounded-full ${getRequestStatusStyle(req.status)}`}
-                      >
-                        {req.status}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2.5 mb-3">
+                  {/* Requester Info */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2 min-w-0">
                       <div
-                        className={`w-7 h-7 ${avatarBg} rounded-full flex items-center justify-center shrink-0`}
+                        className={`w-6 h-6 ${avatarBg} rounded-full flex items-center justify-center shrink-0`}
                       >
-                        <span className="text-[9.5px] font-bold text-white">
+                        <span className="text-[9px] font-bold text-white tracking-wider">
                           {getInitials(req.requestedBy)}
                         </span>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[11.5px] font-semibold text-slate-700 truncate leading-tight">
-                          {req.requestedBy}
-                        </p>
-                        <p className="text-[10px] text-slate-400 leading-tight mt-0.5 truncate">
-                          {req.requesterRole} ·{" "}
-                          {formatRelative(req.requestedOn)}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0 pl-2 border-l border-slate-100">
-                        <p className="text-[8.5px] font-bold uppercase tracking-wide text-slate-400">
-                          Due
-                        </p>
-                        <p
-                          className={`text-[11px] font-bold ${isOverdue ? "text-red-600" : "text-slate-600"}`}
-                        >
-                          {req.dueDate}
+                        <p className="text-[11px] font-medium text-slate-600 truncate">
+                          <span className="text-slate-800 font-semibold">{req.requestedBy}</span> requested
                         </p>
                       </div>
                     </div>
-
-                    {req.message && (
-                      <div className="flex items-start gap-1.5 bg-slate-50 rounded-lg px-2.5 py-2 mb-3">
-                        <span className="text-slate-300 text-[13px] leading-none mt-px">
-                          &ldquo;
-                        </span>
-                        <p className="text-[11px] text-slate-500 italic leading-snug line-clamp-2">
-                          {req.message}
-                        </p>
-                      </div>
-                    )}
-
-                    {!isDone && (
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleRequestUpload(req)}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-[10px] bg-blue-500 px-3 py-2 text-[11.5px] font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer"
-                        >
-                          <Upload size={12} /> Upload File
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleLinkRequest(req)}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-[10px] border border-slate-200 px-3 py-2 text-[11.5px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-                        >
-                          <Link2 size={12} /> Link Existing
-                        </button>
-                      </div>
-                    )}
+                    <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">
+                      {formatRelative(req.requestedOn)}
+                    </span>
                   </div>
+
+                  {/* File Info */}
+                  <div className="flex items-start gap-2.5 mb-3 bg-slate-50/50 p-2.5 rounded-lg border border-slate-100/50">
+                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200/60 flex items-center justify-center shrink-0 shadow-sm">
+                      <FileText size={14} className="text-[#2B7FFF]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12.5px] font-bold text-slate-800 truncate mb-1">
+                        {req.fileName}
+                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${getRequestStatusStyle(req.status)}`}
+                        >
+                          {req.status}
+                        </span>
+                        <span className="text-[10px] text-slate-300">&bull;</span>
+                        <span className={`text-[10px] font-medium ${isOverdue ? "text-red-500" : "text-slate-500"}`}>
+                          Due {req.dueDate}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Message */}
+                  {req.message && (
+                    <div className="mb-3 px-1">
+                      <p className="text-[11px] text-slate-500 italic line-clamp-2">
+                        &ldquo;{req.message}&rdquo;
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  {!isDone && (
+                    <div className="flex items-center gap-2 mt-auto pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleRequestUpload(req)}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#2B7FFF] px-3 py-2 text-[11px] font-semibold text-white hover:bg-[#206ce6] transition-colors shadow-sm cursor-pointer"
+                      >
+                        <Upload size={12} /> Upload
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleLinkRequest(req)}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                      >
+                        <Link2 size={12} /> Link Existing
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })
