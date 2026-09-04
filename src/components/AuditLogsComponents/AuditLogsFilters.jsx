@@ -85,7 +85,7 @@ export default function AuditLogsFilters({
   onDateRangeChange,
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-3.5 mb-5 sm:mb-8 flex flex-col gap-3 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+    <div className="relative z-40 rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-3.5 mb-5 sm:mb-8 flex flex-col gap-3 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
       <div className="relative min-w-0 w-full">
         <Search
           size={15}
@@ -102,7 +102,7 @@ export default function AuditLogsFilters({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:flex lg:items-center lg:flex-wrap">
-        <div className="flex items-center gap-2 min-w-0 z-20">
+        <div className="relative flex items-center gap-2 min-w-0 z-30">
           <span className="hidden sm:inline text-[0.78rem] font-semibold text-slate-500 shrink-0">
             Action:
           </span>
@@ -115,7 +115,7 @@ export default function AuditLogsFilters({
           />
         </div>
 
-        <div className="flex items-center gap-2 min-w-0 z-10">
+        <div className="relative flex items-center gap-2 min-w-0 z-20">
           <span className="hidden sm:inline text-[0.78rem] font-semibold text-slate-500 shrink-0">
             Status:
           </span>
@@ -129,7 +129,7 @@ export default function AuditLogsFilters({
         </div>
 
         {/* Date filter */}
-        <div className="flex items-center gap-2 col-span-full lg:col-span-1 min-w-[240px]">
+        <div className="relative flex items-center gap-2 col-span-full lg:col-span-1 min-w-[240px] z-10">
           <CustomDateRangePicker
             startDate={dateFrom}
             endDate={dateTo}

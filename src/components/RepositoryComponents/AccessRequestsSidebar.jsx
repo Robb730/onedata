@@ -594,27 +594,21 @@ export default function AccessRequestsSidebar({ isOpen, onClose, userProfile, se
         <div className="lg:hidden flex justify-center pt-2.5 pb-1 shrink-0">
           <div className="h-1 w-10 rounded-full bg-slate-200" />
         </div>
-        <div className="hidden lg:block h-1.5 w-full bg-blue-600 shrink-0" />
-
-        <div className="flex items-center justify-between gap-3 px-4 pt-2 pb-3 lg:px-6 lg:pt-7 lg:pb-5 border-b border-slate-100 shrink-0 bg-gradient-to-b from-slate-50/80 to-white relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-blue-100/50 via-transparent to-transparent pointer-events-none" />
-          
-          <div className="flex items-center gap-3 lg:gap-4 relative z-10 min-w-0">
-            <div className="relative w-10 h-10 lg:w-[52px] lg:h-[52px] rounded-xl lg:rounded-2xl bg-white shadow-[0_8px_24px_rgba(37,99,235,0.12)] border border-blue-50 flex items-center justify-center shrink-0">
-              <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full" />
-              
+        <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-4 lg:px-6 lg:pt-6 lg:pb-5 border-b border-slate-100 shrink-0 bg-white">
+          <div className="flex items-center gap-3 lg:gap-4 min-w-0">
+            <div className="w-10 h-10 lg:w-11 lg:h-11 rounded-xl bg-[#2B7FFF]/10 border border-[#2B7FFF]/20 flex items-center justify-center shrink-0">
               <lord-icon
                 src="/wired-outline-966-file-policy-in-reveal.json"
                 trigger="in"
                 delay="100"
                 stroke="bold"
                 state="in-reveal"
-                colors="primary:#2563eb,secondary:#2563eb"
-                style={{ width: "28px", height: "28px", zIndex: 1 }}
+                colors="primary:#2B7FFF,secondary:#2B7FFF"
+                style={{ width: "24px", height: "24px" }}
               ></lord-icon>
             </div>
             <div className="min-w-0">
-              <h2 className="text-[1rem] lg:text-[1.15rem] font-black text-slate-800 tracking-[-0.02em] leading-tight drop-shadow-sm">
+              <h2 className="text-[1rem] lg:text-[1.1rem] font-bold text-slate-800 tracking-tight leading-tight">
                 Access Requests
               </h2>
               {pending.length > 0 && (
