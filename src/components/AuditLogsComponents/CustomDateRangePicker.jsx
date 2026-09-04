@@ -87,7 +87,7 @@ export function CustomDateRangePicker({
   };
 
   return (
-    <div className="relative w-full z-[50]" ref={containerRef}>
+    <div className="relative w-full" ref={containerRef}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
