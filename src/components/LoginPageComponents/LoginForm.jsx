@@ -4,6 +4,7 @@ import { LoginFormInput } from "./LoginFormInput";
 import { LoginButton } from "./LoginButton";
 import { LoginCheckbox } from "./LoginCheckbox";
 import { supabase } from "../../lib/supabaseClient";
+import { notifyDeactivation } from "../../utils/deactivationEmail";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../contexts/UserContext";
 import ForgotPasswordModal from "./ForgotPasswordModal";
@@ -97,6 +98,14 @@ export function LoginForm() {
     return count;
   }
 
+  // Neutral copy shown whenever the account is inactive (already locked
+  // before this attempt, or locked by this attempt). Deliberately reveals
+  // nothing about whether the email exists or the account is deactivated.
+  const DEACTIVATED_NEUTRAL_MESSAGE =
+    "We couldn't sign you in. Check your email and password, or try again later.";
+
+  // Returns whether the account was already inactive before this attempt
+  // or was just locked by it, so the caller can show the neutral toast.
   async function handleFailedLogin(emailValue, reason) {
     await logLoginAudit({
       action: "Login Failed",
@@ -115,22 +124,42 @@ export function LoginForm() {
         .eq("email", emailValue)
         .maybeSingle();
 
-      // Only act if the account exists and isn't already locked/inactive
-      if (userRow?.is_active) {
-        await supabase
-          .from("users")
-          .update({ is_active: false })
-          .eq("id", userRow.id);
+      if (!userRow) return { wasAlreadyLocked: false, justLocked: false };
+      if (!userRow.is_active) return { wasAlreadyLocked: true, justLocked: false };
 
-        await logLoginAudit({
-          action: "Security Alert",
-          details: `Account automatically locked after ${consecutiveFailures} consecutive failed login attempts. Review before reactivating.`,
-          performedBy: emailValue,
-          role: userRow.role,
-          status: "Pending",
-        });
-      }
+      // Only act if the account exists and isn't already locked/inactive
+      await supabase
+        .from("users")
+        .update({ is_active: false })
+        .eq("id", userRow.id);
+
+      await logLoginAudit({
+        action: "Security Alert",
+        details: `Account automatically locked after ${consecutiveFailures} consecutive failed login attempts. Review before reactivating.`,
+        performedBy: emailValue,
+        role: userRow.role,
+        status: "Pending",
+      });
+
+      // Fire-and-forget: tell the user their account was locked. A
+      // failed email must never undo the lockout.
+      notifyDeactivation({
+        email: emailValue,
+        full_name: userRow.full_name,
+        reason: "security",
+      });
+      return { wasAlreadyLocked: false, justLocked: true };
     }
+
+    // Below threshold: still report pre-existing lockout (wrong password
+    // on an already-deactivated account never reaches the success path).
+    const { data: existing } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", emailValue)
+      .eq("is_active", false)
+      .maybeSingle();
+    return { wasAlreadyLocked: !!existing, justLocked: false };
   }
 
   const handleLogin = async (e) => {
@@ -179,9 +208,11 @@ export function LoginForm() {
 
       const reason =
         authError.message || "Failed to log in. Please check your credentials.";
-      await handleFailedLogin(trimmedEmail, reason);
+      const { wasAlreadyLocked, justLocked } = await handleFailedLogin(trimmedEmail, reason);
 
-      if (
+      if (wasAlreadyLocked || justLocked) {
+        triggerError(DEACTIVATED_NEUTRAL_MESSAGE);
+      } else if (
         authError.message.toLowerCase().includes("invalid login credentials")
       ) {
         triggerError(
@@ -218,9 +249,7 @@ export function LoginForm() {
         role: userData.role,
         status: "Failed",
       });
-      triggerError(
-        "This account has been deactivated. Please contact your administrator.",
-      );
+      triggerError(DEACTIVATED_NEUTRAL_MESSAGE);
       setEmailError(true);
       setPasswordError(true);
       setLoading(false);
