@@ -6,8 +6,7 @@ import logo from "../../assets/one_data-icon-v3.svg";
 const navItems = [
   { label: "Home", href: "#home" },
   { label: "About", href: "#about" },
-  { label: "Analytics", href: "#analytics" },
-  { label: "Contact", href: "#contact" },
+  { label: "Analytics", href: "#analytics" }
 ];
 
 export function Navbar() {
@@ -69,12 +68,37 @@ export function Navbar() {
             </button>
           ))}
 
+          <style>{`
+            .nav-login-btn { position: relative; overflow: hidden; }
+            .nav-login-btn::after {
+              content: "";
+              position: absolute;
+              inset: 0;
+              background: linear-gradient(110deg, transparent 25%, rgba(255,255,255,0.28) 50%, transparent 75%);
+              transform: translateX(-100%);
+              transition: none;
+            }
+            .nav-login-btn:hover::after {
+              animation: navLoginShine 0.6s ease-out forwards;
+            }
+            @keyframes navLoginShine {
+              to { transform: translateX(100%); }
+            }
+          `}</style>
+
           <Link
             to="/login"
-            className={`hover-flare ml-3 inline-flex items-center gap-1.5 rounded-[10px] px-5 py-[7px] text-[0.8rem] font-semibold transition-all duration-300 no-underline ${solid
-              ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-[0_2px_10px_rgba(99,102,241,0.3)]"
-              : "bg-white/12 text-white border border-white/20"
-              }`}
+            className="nav-login-btn ml-3 inline-flex items-center gap-1.5 rounded-[10px] px-5 py-[7px] text-[0.8rem] font-semibold text-white no-underline transition-all duration-300 hover:-translate-y-[1px]"
+            style={solid ? {
+              background: "linear-gradient(135deg, #1a6fe0 0%, #2986e8 50%, #2078d4 100%)",
+              boxShadow: "0 2px 8px rgba(26,111,224,0.22)",
+            } : {
+              background: "rgba(255,255,255,0.10)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              border: "1px solid rgba(255,255,255,0.22)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15), 0 1px 4px rgba(0,0,0,0.10)",
+            }}
           >
             Log in <ArrowRight size={14} />
           </Link>
