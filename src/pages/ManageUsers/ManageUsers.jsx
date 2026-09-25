@@ -21,11 +21,13 @@ import EditUserModal from "../../components/ManageUsersComponents/EditUserModal"
 import DeleteConfirmationModal from "../../components/ManageUsersComponents/DeleteConfirmationModal";
 import UserLogsModal from "../../components/ManageUsersComponents/UserLogsModal";
 import AddNewUserModal from "../../components/ManageUsersComponents/AddNewUserModal";
+import UserCreateErrorModal from "../../components/ManageUsersComponents/UserCreateErrorModal";
 import SuccessModal from "../../components/ManageUsersComponents/SuccessModal";
 import DeactivateConfirmationModal from "../../components/ManageUsersComponents/DeactivateConfirmationModal";
 import ActivateConfirmationModal from "../../components/ManageUsersComponents/ActivateConfirmationModal";
 import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
+import { notifyDeactivation } from "../../utils/deactivationEmail";
 
 export default function ManageUsers() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,6 +41,10 @@ export default function ManageUsers() {
   const [deletingUser, setDeletingUser] = useState(null);
   const [viewingLogsUser, setViewingLogsUser] = useState(null);
   const [addingNewUser, setAddingNewUser] = useState(false);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [createError, setCreateError] = useState(null);
+  const [focusEmailKey, setFocusEmailKey] = useState(0);
   const [successEmail, setSuccessEmail] = useState("");
   const [deactivatingUser, setDeactivatingUser] = useState(null);
   const [activatingUser, setActivatingUser] = useState(null);
@@ -220,8 +226,9 @@ export default function ManageUsers() {
   };
 
   const handleDeleteUser = async () => {
-    if (!deletingUser) return;
-
+    if (!deletingUser || isDeletingUser) return;
+    setIsDeletingUser(true);
+    try {
     const res = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
       {
@@ -235,7 +242,17 @@ export default function ManageUsers() {
 
     const data = await res.json();
     if (!res.ok) {
-      alert("Error deleting user: " + data.error);
+      const detail = data.blockedBy
+        ? `${data.error} (blocked by ${data.blockedBy})`
+        : data.error;
+      setCreateError({
+        type: "generic",
+        email: deletingUser.email,
+        message: detail,
+        title: "Couldn't delete user",
+        confirmLabel: "Close",
+        emailLabel: "User account",
+      });
       await logAuditEvent({
         action: "Delete",
         fileName: deletingUser.name,
@@ -259,9 +276,15 @@ export default function ManageUsers() {
     setToastMessage("User deleted successfully.");
     setShowToast(true);
     refetch();
+    } finally {
+      setIsDeletingUser(false);
+    }
   };
 
   const handleAddNewUser = async (newUserData) => {
+    if (isCreatingUser) return;
+    setIsCreatingUser(true);
+    try {
     const res = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
       {
@@ -283,7 +306,23 @@ export default function ManageUsers() {
 
     const data = await res.json();
     if (!res.ok) {
-      alert("Error: " + data.error);
+      const serverMessage = data.error || "Failed to create user.";
+      const isDuplicate =
+        /already.*(registered|exists|in use)|duplicate|unique constraint|email.*exists/i.test(
+          serverMessage,
+        );
+      setCreateError({
+        type: isDuplicate ? "duplicate" : "generic",
+        email: newUserData.email,
+        message: serverMessage,
+      });
+      await logAuditEvent({
+        action: "Other",
+        fileName: newUserData.name,
+        details: `Failed to create user account (${newUserData.email}): ${serverMessage}`,
+        role: newUserData.role,
+        status: "Failed",
+      });
       return;
     }
 
@@ -298,10 +337,15 @@ export default function ManageUsers() {
     setAddingNewUser(false);
     setSuccessEmail(newUserData.email);
     refetch();
+    } finally {
+      setIsCreatingUser(false);
+    }
   };
 
-  const handleDeactivateUser = async () => {
+  const handleDeactivateUser = async (reason) => {
     if (!deactivatingUser) return;
+
+    const trimmedReason = reason?.trim() || null;
 
     const { error } = await supabase
       .from("users")
@@ -323,7 +367,9 @@ export default function ManageUsers() {
     await logAuditEvent({
       action: "Edit",
       fileName: deactivatingUser.name,
-      details: `Deactivated user account (${deactivatingUser.email})`,
+      details: trimmedReason
+        ? `Deactivated user account (${deactivatingUser.email}) — Reason: ${trimmedReason}`
+        : `Deactivated user account (${deactivatingUser.email})`,
       role: deactivatingUser.role,
       status: "Success",
     });
@@ -332,6 +378,14 @@ export default function ManageUsers() {
     setToastMessage("User deactivated successfully.");
     setShowToast(true);
     refetch();
+
+    // Fire-and-forget: tell the user their account was deactivated.
+    notifyDeactivation({
+      email: deactivatingUser.email,
+      full_name: deactivatingUser.name,
+      reason: "admin",
+      detail: trimmedReason,
+    });
   };
 
   const handleActivateUser = async () => {
@@ -635,9 +689,12 @@ export default function ManageUsers() {
           {deletingUser && (
             <DeleteConfirmationModal
               isOpen={!!deletingUser}
-              onClose={() => setDeletingUser(null)}
+              onClose={() => {
+                if (!isDeletingUser) setDeletingUser(null);
+              }}
               onConfirm={handleDeleteUser}
               userName={deletingUser.name}
+              isSubmitting={isDeletingUser}
             />
           )}
           {viewingLogsUser && (
@@ -650,8 +707,32 @@ export default function ManageUsers() {
           {addingNewUser && (
             <AddNewUserModal
               isOpen={addingNewUser}
-              onClose={() => setAddingNewUser(false)}
+              onClose={() => {
+                if (!isCreatingUser) setAddingNewUser(false);
+              }}
               onAdd={handleAddNewUser}
+              isSubmitting={isCreatingUser}
+              focusEmailKey={focusEmailKey}
+            />
+          )}
+          {createError && (
+            <UserCreateErrorModal
+              isOpen={!!createError}
+              onClose={() => {
+                setCreateError(null);
+                // Creation errors return to the filled form with the email
+                // field focused. Deletion errors just close (the confirm
+                // modal is still open behind).
+                if (createError.type === "duplicate" || !createError.title) {
+                  setFocusEmailKey((k) => k + 1);
+                }
+              }}
+              variant={createError.type}
+              email={createError.email}
+              message={createError.message}
+              title={createError.title}
+              confirmLabel={createError.confirmLabel}
+              emailLabel={createError.emailLabel}
             />
           )}
 

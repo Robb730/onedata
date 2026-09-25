@@ -9,6 +9,7 @@ import {
   AuditLogsFooter,
 } from "../../components/AuditLogsComponents";
 import { supabase } from "../../lib/supabaseClient";
+import { notifyDeactivation } from "../../utils/deactivationEmail";
 
 export default function AuditLogs() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -412,6 +413,13 @@ export default function AuditLogs() {
         performed_by: "Administrator",
         role: userRow.role,
         status: "Success",
+      });
+
+      // Fire-and-forget: tell the user their account was deactivated.
+      notifyDeactivation({
+        email: log.performedBy,
+        full_name: userRow.full_name,
+        reason: "admin",
       });
     }
 

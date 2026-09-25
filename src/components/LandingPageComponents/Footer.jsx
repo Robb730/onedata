@@ -336,10 +336,7 @@ export function Footer() {
           <p className="text-[0.7rem] text-slate-500 font-medium m-0 text-center sm:text-left">
             © {new Date().getFullYear()} OneData · DepEd Baliwag Division
           </p>
-          <span className="inline-flex items-center gap-1.5 text-[0.7rem] text-slate-500 font-medium">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" style={{ boxShadow: "0 0 8px rgba(52,211,153,0.85)" }} />
-            System online
-          </span>
+          
         </div>
       </div>
     </footer>
