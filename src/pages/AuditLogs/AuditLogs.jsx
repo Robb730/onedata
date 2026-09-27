@@ -11,6 +11,8 @@ import {
 import { supabase } from "../../lib/supabaseClient";
 import { notifyDeactivation } from "../../utils/deactivationEmail";
 import { exportAuditLogsPdf } from "../../utils/exportAuditLogsPdf";
+import { SkeletonCards, SkeletonTable } from "../../components/ui/Skeleton";
+import { FadeSwap } from "../../components/ui/FadeIn";
 
 export default function AuditLogs() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,7 +47,7 @@ export default function AuditLogs() {
   }, [searchQuery, filterAction, filterStatus, dateFrom, dateTo]);
 
   const queryClient = useQueryClient();
-  const { data: auditLogsData } = useQuery({
+  const { data: auditLogsData, isLoading: logsLoading } = useQuery({
     queryKey: ["auditLogs"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -251,7 +253,12 @@ export default function AuditLogs() {
       <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 py-5 sm:py-8">
         <AuditLogsHeader onExport={handleExport} isExporting={isExporting} />
 
-        <AuditLogsStats actionCounts={actionCounts} />
+        <FadeSwap
+          loading={logsLoading}
+          skeleton={<SkeletonCards count={4} />}
+        >
+          <AuditLogsStats actionCounts={actionCounts} />
+        </FadeSwap>
 
         <AuditLogsFilters
           searchQuery={searchQuery}
@@ -270,15 +277,20 @@ export default function AuditLogs() {
           }}
         />
 
-        <AuditLogsTable
-          logs={paginatedLogs}
-          filteredCount={filteredLogs.length}
-          totalCount={auditLogs.length}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-          onDeactivateFromAlert={handleDeactivateFromAlert}
-        />
+        <FadeSwap
+          loading={logsLoading}
+          skeleton={<SkeletonTable rows={8} columns={6} />}
+        >
+          <AuditLogsTable
+            logs={paginatedLogs}
+            filteredCount={filteredLogs.length}
+            totalCount={auditLogs.length}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            onDeactivateFromAlert={handleDeactivateFromAlert}
+          />
+        </FadeSwap>
 
         <AuditLogsFooter
           shownCount={filteredLogs.length}

@@ -7,11 +7,12 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import { ChangePasswordModal } from "./Modals/ChangePasswordModal";
 import DataPrivacyModal from "./Modals/DataPrivacyModal";
+import { PageSkeleton } from "./ui/Skeleton";
 
 function LayoutPageFallback() {
   return (
-    <div className="flex min-h-[40vh] items-center justify-center text-sm font-medium text-slate-400">
-      Loading…
+    <div className="min-h-full">
+      <PageSkeleton cards={4} rows={8} columns={5} />
     </div>
   );
 }

@@ -28,6 +28,7 @@ import ActivateConfirmationModal from "../../components/ManageUsersComponents/Ac
 import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
 import { notifyDeactivation } from "../../utils/deactivationEmail";
+import { Skeleton, SkeletonCards, SkeletonTable } from "../../components/ui/Skeleton";
 
 export default function ManageUsers() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -478,10 +479,17 @@ export default function ManageUsers() {
   // ─── UI ──────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-full bg-slate-50/40 flex items-center justify-center py-16">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-500 border-t-transparent" />
-          <p className="text-[0.78rem] font-semibold text-slate-400">Loading users...</p>
+      <div className="min-h-full overflow-x-hidden bg-slate-50/40">
+        <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 py-5 sm:py-8 space-y-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-2">
+              <Skeleton className="h-7 w-48" rounded="rounded-lg" label="Loading users" />
+              <Skeleton className="h-3.5 w-72 max-w-full" rounded="rounded-md" />
+            </div>
+            <Skeleton className="h-10 w-32 shrink-0" rounded="rounded-[10px]" />
+          </div>
+          <SkeletonCards count={4} />
+          <SkeletonTable rows={6} columns={4} />
         </div>
       </div>
     );
