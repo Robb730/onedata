@@ -38,6 +38,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
+import { SkeletonList } from "../../components/ui/Skeleton";
 import RepositoryBackButton from "../../components/RepositoryComponents/RepositoryBackButton";
 import FileEditModal from "../../components/RepositoryComponents/FileEditModal";
 import LockedActionButton from "../../components/RepositoryComponents/LockedActionButton";
@@ -3070,11 +3071,8 @@ export default function RepositoryFolderDetailPage() {
         <div id="repo-file-list-anchor" className="scroll-mt-6" />
         {/* ── File list / grid ──────────────────────────────── */}
         {loading ? (
-          <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
-            <div className="inline-flex items-center gap-2 text-sm text-slate-400">
-              <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-              Loading files…
-            </div>
+          <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 shadow-sm">
+            <SkeletonList rows={6} />
           </div>
         ) : filtered.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">

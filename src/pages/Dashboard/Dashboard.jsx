@@ -91,9 +91,11 @@ const ResourcesByLevel = lazy(() =>
 );
 
 function ChartFallback() {
-  return <div className="h-[220px] animate-pulse rounded-xl bg-slate-100/80" />;
+  return <Skeleton className="h-[220px] w-full" rounded="rounded-xl" label="Loading chart" />;
 }
 import { DEFAULT_CESPES_DATA } from "../../data/cespesTemplateData";
+import { Skeleton, SkeletonCards, SkeletonTable } from "../../components/ui/Skeleton";
+import { FadeSwap } from "../../components/ui/FadeIn";
 import { getAllSchoolYearsForSelector } from "../../utils/schoolYearsApi"; // adjust path as needed
 import {
   exportPerformancePdf,
@@ -1617,12 +1619,17 @@ export default function Dashboard() {
         )}
 
         {/* ── Overview KPIs ───────────────────────────────── */}
-        <DashboardOverview
-          data={overviewData}
-          selectedYear={selectedYear}
-          compareYear={isComparing ? compareYear : null}
-          compareData={compareOverviewData}
-        />
+        <FadeSwap
+          loading={loading}
+          skeleton={<SkeletonCards count={4} />}
+        >
+          <DashboardOverview
+            data={overviewData}
+            selectedYear={selectedYear}
+            compareYear={isComparing ? compareYear : null}
+            compareData={compareOverviewData}
+          />
+        </FadeSwap>
 
         {/* ── Data Categories header + Search ─────────────── */}
         <div className="mt-8 mb-4">
@@ -2089,9 +2096,7 @@ export default function Dashboard() {
             }
           >
             {cespes.loading || (isComparing && compareCespes.loading) ? (
-              <div className="flex items-center justify-center py-10 text-slate-400 text-[0.8rem]">
-                Loading CESPES data…
-              </div>
+              <SkeletonTable rows={6} columns={5} />
             ) : (
               <>
                 {/* Tab Navigation */}
@@ -2421,7 +2426,9 @@ export default function Dashboard() {
                 </button>
               }
             >
-              {!resources.teachers.loading &&
+              {resources.teachers.loading ? (
+                <SkeletonCards count={4} />
+              ) : !resources.teachers.loading &&
                 resources.teachers.total === 0 &&
                 resources.classrooms.total === 0 &&
                 !(
