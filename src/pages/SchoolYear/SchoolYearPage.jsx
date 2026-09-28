@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
 import { CheckCircle, X as XIcon } from "lucide-react";
@@ -27,6 +27,13 @@ export default function SchoolYearPage() {
   const { userProfile } = useUser();
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const queryClient = useQueryClient();
+
+  function invalidateTransitionQueries() {
+    queryClient.invalidateQueries({ queryKey: ["scheduledTransition"] });
+    queryClient.invalidateQueries({ queryKey: ["schoolYearData"] });
+    queryClient.invalidateQueries({ queryKey: ["schoolYears"] });
+  }
 
   const { data: schoolYearData, isLoading: loading, error: queryError, refetch: loadData } = useQuery({
     queryKey: ["schoolYearData"],
@@ -92,6 +99,7 @@ export default function SchoolYearPage() {
       await scheduleSchoolYear(formValues);
       closeCreateDialog();
       await loadData();
+      invalidateTransitionQueries();
       showSuccessToast(`School year "${formValues.label}" scheduled successfully.`);
       await logAuditEvent({
         action: "Other",
@@ -117,6 +125,7 @@ export default function SchoolYearPage() {
       await updateScheduledSchoolYear(formValues);
       closeEditDialog();
       await loadData();
+      invalidateTransitionQueries();
       showSuccessToast(`School year "${formValues.label}" updated successfully.`);
       await logAuditEvent({
         action: "Other",
@@ -139,9 +148,16 @@ export default function SchoolYearPage() {
 
   const handleCancelTransition = async () => {
     if (!scheduledYear) return;
+    const cancelledId = scheduledYear.id;
     try {
       await cancelScheduledTransition(scheduledYear.id);
       await loadData();
+      invalidateTransitionQueries();
+      try {
+        sessionStorage.removeItem(`transitionBannerDismissed:${cancelledId}`);
+      } catch {
+        /* sessionStorage unavailable — ignore */
+      }
       showSuccessToast(`Scheduled transition for "${scheduledYear.label}" cancelled.`);
       await logAuditEvent({
         action: "Other",
@@ -166,6 +182,7 @@ export default function SchoolYearPage() {
     try {
       await forceSchoolYearTransition();
       await loadData();
+      invalidateTransitionQueries();
       showSuccessToast("School year transition forced successfully.");
       await logAuditEvent({
         action: "Other",
@@ -191,6 +208,7 @@ export default function SchoolYearPage() {
     try {
       await reopenSchoolYear(yearId);
       await loadData();
+      invalidateTransitionQueries();
       showSuccessToast(`School year "${year?.label ?? yearId}" reopened successfully.`);
       await logAuditEvent({
         action: "Other",
@@ -216,6 +234,7 @@ export default function SchoolYearPage() {
     try {
       await closeReopenedSchoolYear(yearId);
       await loadData();
+      invalidateTransitionQueries();
       showSuccessToast(`School year "${year?.label ?? yearId}" closed successfully.`);
       await logAuditEvent({
         action: "Other",

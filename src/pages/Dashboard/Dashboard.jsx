@@ -791,6 +791,8 @@ export default function Dashboard() {
         .maybeSingle();
       return data;
     },
+    staleTime: 30 * 1000,
+    refetchOnMount: "always",
   });
 
   const [showTransitionBanner, setShowTransitionBanner] = useState(false);
@@ -799,7 +801,12 @@ export default function Dashboard() {
       const dismissedKey = `transitionBannerDismissed:${scheduledTransitionObj.id}`;
       if (sessionStorage.getItem(dismissedKey) !== "1") {
         setShowTransitionBanner(true);
+      } else {
+        setShowTransitionBanner(false);
       }
+    } else {
+      // No scheduled transition (e.g. cancelled / forced) — auto-remove banner.
+      setShowTransitionBanner(false);
     }
   }, [scheduledTransitionObj]);
 
