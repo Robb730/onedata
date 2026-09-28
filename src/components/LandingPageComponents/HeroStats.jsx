@@ -16,6 +16,7 @@ import {
 import { useLandingStats } from "../../hooks/useLandingStats";
 import { SectionHeader } from "./SectionHeader";
 import { ResourcesByLevel } from "../DashboardComponents/ResourcesByLevel";
+import { ErrorBoundary } from "../ErrorBoundary";
 import { Skeleton } from "../ui/Skeleton";
 
 function useMdUp() {
@@ -884,13 +885,15 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
 
                 <DetailsPanel open={teachersDetailsOpen}>
                   {teachers.total + teachers.totalNeeds > 0 && (
-                    <ResourcesByLevel
-                      key="teachers-detail"
-                      resources={{ teachers, classrooms }}
-                      initialType="Teachers"
-                      allowedTypes={["Teachers"]}
-                      colorOverride={{ color: "#10b981", bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100" }}
-                    />
+                    <ErrorBoundary name="teachers-details">
+                      <ResourcesByLevel
+                        key="teachers-detail"
+                        resources={{ teachers, classrooms }}
+                        initialType="Teachers"
+                        allowedTypes={["Teachers"]}
+                        colorOverride={{ color: "#10b981", bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100" }}
+                      />
+                    </ErrorBoundary>
                   )}
                 </DetailsPanel>
               </ChartCard>
@@ -922,7 +925,9 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
 
                 <DetailsPanel open={classroomsDetailsOpen}>
                   {classrooms.total + classrooms.totalNeeds > 0 && (
-                    <ResourcesByLevel key="classrooms-detail" resources={{ teachers, classrooms }} initialType="Classrooms" allowedTypes={["Classrooms"]} />
+                    <ErrorBoundary name="classrooms-details">
+                      <ResourcesByLevel key="classrooms-detail" resources={{ teachers, classrooms }} initialType="Classrooms" allowedTypes={["Classrooms"]} />
+                    </ErrorBoundary>
                   )}
                 </DetailsPanel>
               </ChartCard>
