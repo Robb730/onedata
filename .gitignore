@@ -27,5 +27,8 @@ src/assets/resources/*.xlsx
 
 
 # Environment files
-.env
+# NOTE: root .env is intentionally TRACKED — it holds only public VITE_
+# vars (baked into the JS bundle by Vite anyway) so Vercel builds from
+# `main` work without dashboard setup. NEVER commit server/.env
+# (service_role / API secrets).
 server/.env

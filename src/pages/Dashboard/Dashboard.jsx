@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../../lib/supabaseClient";
+import { ErrorBoundary } from "../../components/ErrorBoundary";
 import {
   DashboardOverview,
   DashboardFilters,
@@ -2655,30 +2656,33 @@ export default function Dashboard() {
                     ))}
 
                   {/* ── By Level view (Drill-down) ──────────────── */}
-                  {resourceView === "By Level" &&
-                    (isComparing ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-blue-600 mb-2">
-                            <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
-                            {selectedYear}
-                          </p>
-                          <ResourcesByLevel resources={resources} />
+                  {resourceView === "By Level" && (
+                    <ErrorBoundary name="resources-by-level">
+                      {isComparing ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-blue-600 mb-2">
+                              <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
+                              {selectedYear}
+                            </p>
+                            <ResourcesByLevel resources={resources} />
+                          </div>
+                          <div>
+                            <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600 mb-2">
+                              <span className="h-[6px] w-[6px] rounded-full bg-orange-500" />
+                              {compareYear}
+                              {isOngoing(compareYear) && (
+                                <Clock size={11} className="text-orange-400" />
+                              )}
+                            </p>
+                            <ResourcesByLevel resources={compareResources} />
+                          </div>
                         </div>
-                        <div>
-                          <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600 mb-2">
-                            <span className="h-[6px] w-[6px] rounded-full bg-orange-500" />
-                            {compareYear}
-                            {isOngoing(compareYear) && (
-                              <Clock size={11} className="text-orange-400" />
-                            )}
-                          </p>
-                          <ResourcesByLevel resources={compareResources} />
-                        </div>
-                      </div>
-                    ) : (
-                      <ResourcesByLevel resources={resources} />
-                    ))}
+                      ) : (
+                        <ResourcesByLevel resources={resources} />
+                      )}
+                    </ErrorBoundary>
+                  )}
 
                   {/* ── Breakdown view ──────────────────────────── */}
                   {resourceView === "Breakdown" && (

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { DashboardFilters } from "./DashboardFilters";
 
 // ── Inline icons (replaces lucide-react to avoid prod bundling bug) ──
@@ -156,8 +156,17 @@ export function ResourcesByLevel({ resources, initialType = "Teachers", allowedT
   const [search, setSearch] = useState("");
 
   const baseConfig = RESOURCE_CONFIGS[activeType];
+  if (!baseConfig) return null;
   const config = colorOverride ? { ...baseConfig, ...colorOverride, totalField: baseConfig.totalField, inventoryLabel: baseConfig.inventoryLabel } : baseConfig;
-  const resourceData = resources[activeType.toLowerCase()];
+  const resourceData = resources?.[activeType.toLowerCase()];
+
+  if (!resourceData?.data) {
+    return (
+      <div className="py-10 text-center text-slate-400 text-sm italic">
+        No {activeType.toLowerCase()} data available for this view yet.
+      </div>
+    );
+  }
 
   // Levels data (Elementary, JHS, SHS)
   const levels = ["Elementary", "JHS", "SHS"].map(lvl => {
