@@ -33,6 +33,7 @@ import {
   getTemplateDownloadUrl,
 } from "../../utils/templatesApi";
 import ModalPortal from "../../components/Modals/ModalPortal";
+import { SkeletonList } from "../../components/ui/Skeleton";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatDate(dateStr) {
@@ -1007,9 +1008,7 @@ export default function TemplatesPage() {
 
           <div className="p-4">
             {loading ? (
-              <div className="flex items-center justify-center py-16 text-sm text-slate-400">
-                Loading templates…
-              </div>
+              <SkeletonList rows={5} />
             ) : error ? (
               <div className="flex items-center justify-center py-16 text-sm text-red-500">{error}</div>
             ) : filtered.length === 0 ? (

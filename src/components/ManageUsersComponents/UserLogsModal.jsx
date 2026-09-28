@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import ModalPortal from "../Modals/ModalPortal";
+import { SkeletonList } from "../ui/Skeleton";
 
 // ─── Static config: one source of truth per action type ─────────
 const ACTION_META = {
@@ -447,17 +448,8 @@ function EmptyState({ icon: Icon, iconClass, title, subtitle }) {
 
 function LoadingSkeleton() {
   return (
-    <div className="px-4 sm:px-6 py-4 space-y-2 animate-pulse">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3 rounded-xl border border-slate-100 p-3">
-          <div className="h-9 w-9 rounded-full bg-slate-100 shrink-0" />
-          <div className="flex-1 space-y-2">
-            <div className="h-3 w-2/5 rounded bg-slate-100" />
-            <div className="h-2.5 w-3/5 rounded bg-slate-100" />
-          </div>
-          <div className="h-2.5 w-10 rounded bg-slate-100 shrink-0" />
-        </div>
-      ))}
+    <div className="px-4 sm:px-6 py-4">
+      <SkeletonList rows={6} />
     </div>
   );
 }

@@ -38,6 +38,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
+import { SkeletonList } from "../../components/ui/Skeleton";
 import RepositoryBackButton from "../../components/RepositoryComponents/RepositoryBackButton";
 import FileEditModal from "../../components/RepositoryComponents/FileEditModal";
 import LockedActionButton from "../../components/RepositoryComponents/LockedActionButton";
@@ -1548,7 +1549,7 @@ export default function RepositoryFolderDetailPage() {
     let cancelled = false;
     supabase
       .from("school_years")
-      .select("label, status")
+      .select("label, status, is_reopened")
       .order("label", { ascending: false })
       .then(({ data, error }) => {
         if (cancelled || error || !data) return;
@@ -1610,6 +1611,40 @@ export default function RepositoryFolderDetailPage() {
       !!section &&
       userProfile?.section_id === section.id);
 
+  const isAdmin = userProfile?.role === "administrator";
+
+  // ── Archived school-year read-only ──────────────────────────
+  // Archived (and NOT reopened) years are view + download only for every
+  // non-admin role. Admin keeps full rights. Reopened/active years restore
+  // normal role permissions. Checked per-file via file.school_year so mixed
+  // "All years" views stay correct.
+  function isYearArchived(yearLabel) {
+    if (!yearLabel) return false;
+    const row = schoolYears.find((y) => y.label === yearLabel);
+    if (!row) return false;
+    return row.status === "archived" && !row.is_reopened;
+  }
+
+  function isFileArchived(file) {
+    if (!file) return false;
+    return isYearArchived(file.school_year);
+  }
+
+  const isViewingArchived = isYearArchived(selectedSchoolYear);
+
+  function canEditFile(file) {
+    if (!canEdit || !file) return false;
+    if (isFileArchived(file) && !isAdmin) return false;
+    return true;
+  }
+
+  function canVerifyFile(file) {
+    if (!canVerify) return false;
+    if (!file) return false;
+    if (isFileArchived(file) && !isAdmin) return false;
+    return true;
+  }
+
   // ── Recycle Bin permissions ──────────────────────────────────
   // Full bin: sees every soft-deleted file in the section, can restore
   // AND permanently delete. Same trust tier as canVerify — admin, any
@@ -1632,15 +1667,21 @@ export default function RepositoryFolderDetailPage() {
     !!section &&
     userProfile?.section_id === section.id;
 
-  const canOpenRecycleBin = canViewRecycleBinFull || canViewOwnRecycleBin;
+  const canOpenRecycleBinBase = canViewRecycleBinFull || canViewOwnRecycleBin;
+  // Archived years: recycle bin (restore / purge) is admin-only. Non-admin
+  // viewing an archived year gets view + download only.
+  const canOpenRecycleBin =
+    isViewingArchived && !isAdmin ? false : canOpenRecycleBinBase;
   const recycleBinScope = canViewRecycleBinFull ? "full" : "own";
 
   // Section personnel get "full" edit access to their own section like
   // everyone else with canEdit — but unlike section_focal/division_focal/
   // admin, they may only delete files they personally uploaded, not
   // teammates' files in the same section. Preview/download stay unrestricted.
+  // Archived years: delete is admin-only (view + download for everyone else).
   function canDeleteFile(file) {
     if (!canEdit || !file) return false;
+    if (isFileArchived(file) && !isAdmin) return false;
     if (userProfile?.role === "section_personnel") {
       return file.uploaderId === userProfile?.id;
     }
@@ -1649,6 +1690,8 @@ export default function RepositoryFolderDetailPage() {
 
   function canViewFeedback(file) {
     if (!userProfile || !file || !section) return false;
+    // Archived years: commenting/feedback is admin-only.
+    if (isFileArchived(file) && !isAdmin) return false;
     if (userProfile.role === "administrator") return true;
     if (userProfile.role === "division_focal")
       return userProfile.division_id === section.division_id;
@@ -2116,6 +2159,11 @@ export default function RepositoryFolderDetailPage() {
   async function confirmVerify() {
     const file = verifyTarget;
     if (!file || isVerifying) return; // guard: one verification in flight per click, no double-submit
+    // Archived years: verify/unverify is admin-only.
+    if (!canVerifyFile(file)) {
+      setVerifyTarget(null);
+      return;
+    }
     setIsVerifying(true);
     try {
       const isCurrentlyVerified = file.status === "Verified";
@@ -2350,6 +2398,7 @@ export default function RepositoryFolderDetailPage() {
   async function confirmBulkDelete() {
     if (!canEdit) return;
     const filesToDelete = deletableSelectedFiles;
+    if (filesToDelete.length === 0) return;
     setIsBulkDeleting(true);
     const now = new Date().toISOString();
     for (const file of filesToDelete) {
@@ -2412,9 +2461,17 @@ export default function RepositoryFolderDetailPage() {
 
   // Files selected AND deletable by this user — used to gate/scope bulk
   // delete for section_personnel, who may only delete their own uploads.
+  // Archived years are admin-only for delete (view + download for others).
   const deletableSelectedFiles = useMemo(
     () => filtered.filter((f) => selectedIds.has(f.id) && canDeleteFile(f)),
-    [filtered, selectedIds, canEdit, userProfile?.id, userProfile?.role],
+    [
+      filtered,
+      selectedIds,
+      canEdit,
+      userProfile?.id,
+      userProfile?.role,
+      schoolYears,
+    ],
   );
 
   const yearFilteredFiles = selectedSchoolYear
@@ -2887,6 +2944,14 @@ export default function RepositoryFolderDetailPage() {
               deleting are limited to your assigned section.
             </div>
           )}
+          {isViewingArchived && (
+            <div className="mb-5 flex items-center gap-2 rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-xs text-slate-600 repo-morph-banner">
+              <Lock size={14} className="shrink-0" />
+              {isAdmin
+                ? `You are viewing archived ${selectedSchoolYear} — you keep full access as admin.`
+                : `You are viewing archived ${selectedSchoolYear} — view and download only. Only an admin can edit, comment, delete, or verify. Reopen the year to restore access.`}
+            </div>
+          )}
 
           {/* ── Search / Sort / View Toggle ────────────────── */}
           <div className="mt-3 mb-2 rounded-xl sm:rounded-[24px] border border-slate-200/60 sm:border-white/70 bg-white p-3 sm:p-4 shadow-[0_8px_30px_rgba(15,23,42,0.04)] repo-morph-search">
@@ -3070,11 +3135,8 @@ export default function RepositoryFolderDetailPage() {
         <div id="repo-file-list-anchor" className="scroll-mt-6" />
         {/* ── File list / grid ──────────────────────────────── */}
         {loading ? (
-          <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
-            <div className="inline-flex items-center gap-2 text-sm text-slate-400">
-              <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-              Loading files…
-            </div>
+          <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 shadow-sm">
+            <SkeletonList rows={6} />
           </div>
         ) : filtered.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
@@ -3101,9 +3163,9 @@ export default function RepositoryFolderDetailPage() {
                 <MobileFileListCard
                   key={file.id}
                   file={file}
-                  canEdit={canEdit}
+                  canEdit={canEditFile(file)}
                   canDelete={canDeleteFile(file)}
-                  canVerify={canVerify}
+                  canVerify={canVerifyFile(file)}
                   isVerifying={isVerifying}
                   isSelected={selectedIds.has(file.id)}
                   downloadingId={downloadingId}
@@ -3113,19 +3175,23 @@ export default function RepositoryFolderDetailPage() {
                   canViewFeedback={canViewFeedback(file)}
                   hasUnreadFeedback={!!feedbackUnread[file.id]}
                   onSelectOrVerify={() => {
-                    if (canVerify) {
+                    if (canVerifyFile(file)) {
                       if (isVerifying) return;
                       setVerifyTarget(file);
                     } else {
                       toggleSelect(file.id);
                     }
                   }}
-                  onVerify={() => setVerifyTarget(file)}
+                  onVerify={() => {
+                    if (!canVerifyFile(file)) return;
+                    setVerifyTarget(file);
+                  }}
                   onPreview={() => setEditingFile(file)}
                   onDownload={(e) => handleDownloadClick(e, file)}
                   onDelete={() => handleDeleteFile(file)}
                   onRequestAccess={() => openRequestModal(file)}
                   onOpenFeedback={() => {
+                    if (!canViewFeedback(file)) return;
                     setFeedbackTarget(file);
                     setFeedbackUnread((prev) => ({
                       ...prev,
@@ -3276,7 +3342,7 @@ export default function RepositoryFolderDetailPage() {
                             >
                               <FileInfoCard
                                 file={file}
-                                canEdit={canEdit}
+                                canEdit={canEditFile(file)}
                                 onPreview={() => {
                                   setHoveredFileId(null);
                                   setEditingFile(file);
@@ -3290,27 +3356,29 @@ export default function RepositoryFolderDetailPage() {
                           </div>
                         </td>
 
-                        {/* Status badge — clickable to open verify modal (verify-eligible roles only) */}
+                        {/* Status badge — clickable to open verify modal (verify-eligible roles only; admin-only on archived) */}
                         <td className="px-3 py-3.5 w-32">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (!canVerify || isVerifying) return;
+                              if (!canVerifyFile(file) || isVerifying) return;
                               setVerifyTarget(file);
                             }}
-                            disabled={!canVerify || isVerifying}
+                            disabled={!canVerifyFile(file) || isVerifying}
                             title={
-                              canVerify
+                              canVerifyFile(file)
                                 ? isVerified
                                   ? "Click to unverify"
                                   : "Click to verify"
-                                : undefined
+                                : isFileArchived(file) && !isAdmin
+                                  ? "Archived year — read-only"
+                                  : undefined
                             }
                             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${isVerified
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                 : "bg-slate-100 text-slate-500 border-slate-200"
-                              } ${canVerify
+                              } ${canVerifyFile(file)
                                 ? "cursor-pointer hover:brightness-95"
                                 : "cursor-default"
                               } disabled:opacity-60 disabled:cursor-not-allowed`}
@@ -3420,10 +3488,10 @@ export default function RepositoryFolderDetailPage() {
                           </div>
                         </td>
 
-                        {/* Actions */}
+                        {/* Actions — archived years: preview + download only for non-admin */}
                         <td className="px-3 py-3.5 pr-4 w-40">
                           <div className="flex items-center gap-0.5 transition-all duration-150">
-                            {canEdit ? (
+                            {canEditFile(file) ? (
                               <>
                                 <button
                                   onClick={() => setEditingFile(file)}
@@ -3492,6 +3560,7 @@ export default function RepositoryFolderDetailPage() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  if (!canViewFeedback(file)) return;
                                   setFeedbackTarget(file);
                                   setFeedbackUnread((prev) => ({
                                     ...prev,
@@ -3524,8 +3593,8 @@ export default function RepositoryFolderDetailPage() {
                 <MobileFileGridCard
                   key={file.id}
                   file={file}
-                  canEdit={canEdit}
-                  canVerify={canVerify}
+                  canEdit={canEditFile(file)}
+                  canVerify={canVerifyFile(file)}
                   canDelete={canDeleteFile(file)}
                   isVerifying={isVerifying}
                   isSelected={selectedIds.has(file.id)}
@@ -3536,19 +3605,23 @@ export default function RepositoryFolderDetailPage() {
                   canViewFeedback={canViewFeedback(file)}
                   hasUnreadFeedback={!!feedbackUnread[file.id]}
                   onSelectOrVerify={() => {
-                    if (canVerify) {
+                    if (canVerifyFile(file)) {
                       if (isVerifying) return;
                       setVerifyTarget(file);
                     } else {
                       toggleSelect(file.id);
                     }
                   }}
-                  onVerify={() => setVerifyTarget(file)}
+                  onVerify={() => {
+                    if (!canVerifyFile(file)) return;
+                    setVerifyTarget(file);
+                  }}
                   onPreview={() => setEditingFile(file)}
                   onDownload={(e) => handleDownloadClick(e, file)}
                   onDelete={() => handleDeleteFile(file)}
                   onRequestAccess={() => openRequestModal(file)}
                   onOpenFeedback={() => {
+                    if (!canViewFeedback(file)) return;
                     setFeedbackTarget(file);
                     setFeedbackUnread((prev) => ({
                       ...prev,
@@ -3589,7 +3662,7 @@ export default function RepositoryFolderDetailPage() {
         onClose={() => setEditingFile(null)}
         file={editingFile}
         uploaderName={editingFile?.uploader}
-        canEdit={canEdit}
+        canEdit={editingFile ? canEditFile(editingFile) : canEdit}
         schoolYears={schoolYears}
         onSaved={() => {
           setEditingFile(null);
@@ -3606,7 +3679,7 @@ export default function RepositoryFolderDetailPage() {
       />
 
       <VerifyConfirmModal
-        isOpen={!!verifyTarget}
+        isOpen={!!verifyTarget && canVerifyFile(verifyTarget)}
         onClose={() => setVerifyTarget(null)}
         onConfirm={confirmVerify}
         file={verifyTarget}
@@ -3661,6 +3734,10 @@ export default function RepositoryFolderDetailPage() {
           y={actionsMenuTarget.y}
           feedbackCount={feedbackCounts[actionsMenuTarget.file.id] || 0}
           onFeedback={() => {
+            if (!canViewFeedback(actionsMenuTarget.file)) {
+              setActionsMenuTarget(null);
+              return;
+            }
             setFeedbackTarget(actionsMenuTarget.file);
             setFeedbackUnread((prev) => ({
               ...prev,
@@ -3672,7 +3749,7 @@ export default function RepositoryFolderDetailPage() {
       )}
 
       <FileFeedbackModal
-        isOpen={!!feedbackTarget}
+        isOpen={!!feedbackTarget && (!isFileArchived(feedbackTarget) || isAdmin)}
         onClose={() => setFeedbackTarget(null)}
         file={feedbackTarget}
         section={section}

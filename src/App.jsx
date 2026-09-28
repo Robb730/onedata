@@ -12,6 +12,7 @@ import {
 import { supabase } from "./lib/supabaseClient.js";
 import { useUser } from "./contexts/UserContext.jsx";
 import { useIdleTimeout } from "./hooks/useIdleTimeout";
+import { MotionConfig } from "motion/react";
 
 import LandingPage from "./pages/LandingPage/LandingPage.jsx";
 import LoginPage from "./pages/Login/LoginPage.jsx";
@@ -19,6 +20,7 @@ import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import RoleProtectedRoute from "./components/RoleProtectedRoute.jsx";
 import NotFoundPage from "./pages/NotFound/NotFoundPage.jsx";
 import { ROLES } from "./utils/accessControl";
+import { PageSkeleton } from "./components/ui/Skeleton";
 
 const Dashboard = lazy(() => import("./pages/Dashboard/Dashboard.jsx"));
 const ManageUsers = lazy(() => import("./pages/ManageUsers/ManageUsers.jsx"));
@@ -50,8 +52,8 @@ const TemplatesPage = lazy(() => import("./pages/Templates/TemplatesPage.jsx"));
 
 function PageFallback() {
   return (
-    <div className="flex min-h-[40vh] items-center justify-center text-sm font-medium text-slate-400">
-      Loading…
+    <div className="min-h-full bg-slate-50/40">
+      <PageSkeleton cards={4} rows={8} columns={5} />
     </div>
   );
 }
@@ -133,7 +135,7 @@ function App() {
   if (loading) return null;
 
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -270,7 +272,7 @@ function App() {
           </div>
         </div>
       )}
-    </>
+    </MotionConfig>
   );
 }
 
