@@ -29,7 +29,7 @@ import {
   DashboardFilters,
   DashboardAccordion,
   DashboardGrid,
-  DataSummaryCard,
+  EnrollmentBreakdown,
   MetricProgress,
   InsightCard,
   SectionDivider,
@@ -1821,52 +1821,32 @@ export default function Dashboard() {
                     </div>
 
                     {isComparing ? (
-                      <div className="space-y-2">
-                        <ComparisonRow
-                          label="Public"
-                          primary={enrollmentSummary.public}
-                          secondary={compareEnrollmentSummary.public}
-                        />
-                        <ComparisonRow
-                          label="Private"
-                          primary={enrollmentSummary.private}
-                          secondary={compareEnrollmentSummary.private}
-                        />
-                        <ComparisonRow
-                          label="Total"
-                          primary={enrollmentSummary.total}
-                          secondary={compareEnrollmentSummary.total}
-                          bold
-                        />
-                      </div>
+                      <EnrollmentBreakdown
+                        publicCount={enrollmentSummary.public}
+                        privateCount={enrollmentSummary.private}
+                        total={enrollmentSummary.total}
+                        year={selectedYear}
+                        compare={{
+                          publicCount: compareEnrollmentSummary.public,
+                          privateCount: compareEnrollmentSummary.private,
+                          total: compareEnrollmentSummary.total,
+                          year: compareYear,
+                        }}
+                      />
                     ) : (
                       <>
                         {enrollmentView === "Summary" && (
                           <>
-                            <div className="grid grid-cols-3 gap-3">
-                              <DataSummaryCard
-                                label="Public"
-                                value={enrollmentSummary.public.toLocaleString()}
-                                accent="#4f7df5"
-                              />
-                              <DataSummaryCard
-                                label="Private"
-                                value={enrollmentSummary.private.toLocaleString()}
-                                accent="#10b981"
-                              />
-                              <DataSummaryCard
-                                label="Total"
-                                value={enrollmentSummary.total.toLocaleString()}
-                                accent="#334155"
-                              />
-                            </div>
+                            <EnrollmentBreakdown
+                              publicCount={enrollmentSummary.public}
+                              privateCount={enrollmentSummary.private}
+                              total={enrollmentSummary.total}
+                              year={selectedYear}
+                            />
 
                             <div className="mt-3">
-                              <p className="text-[0.62rem] font-medium text-slate-300 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                              <p className="text-[0.62rem] font-bold uppercase tracking-[0.08em] text-slate-400 mb-2">
                                 Gender
-                                <span className="normal-case tracking-normal font-normal text-slate-300">
-                                  · hover to see public / private split
-                                </span>
                               </p>
                               <div className="grid grid-cols-2 gap-3">
                                 <GenderCard
@@ -1879,7 +1859,6 @@ export default function Dashboard() {
                                     loading ? 0 : genderSummary.male.private
                                   }
                                   accent="#3b82f6"
-                                  hoverAccent="#60a5fa"
                                 />
                                 <GenderCard
                                   label="Female"
@@ -1893,7 +1872,6 @@ export default function Dashboard() {
                                     loading ? 0 : genderSummary.female.private
                                   }
                                   accent="#ec4899"
-                                  hoverAccent="#f472b6"
                                 />
                               </div>
                             </div>
