@@ -113,11 +113,12 @@
  */
 
 import * as XLSX from "xlsx";
+import { assertInventoryFileType } from "../validations/inventoryTypeGuard";
+import { assertInventorySheetLayout } from "../validations/inventoryLayout";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const DB_HEADER_ROW   = 4;   // 0-indexed
-const DB_DATA_START   = 5;
+const DB_DATA_START   = 5;   // Row 6 (header row is 5, data starts row 6)
 const BALIWAG_FILTER  = ["city of baliwag", "baliuag"];
 
 const KES_DATA_START  = 10;  // Row 11 (after headers, example, TOTAL)
@@ -396,21 +397,11 @@ export async function parseClassroomsFile(file) {
         const workbook  = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
         const available = workbook.SheetNames;
 
-        const result = { db: null, kes: null, jhs: null, shs: null, status: null, sheetSummary: [] };
+        // Refuse files that are actually a different inventory type
+        // (e.g. a Seats workbook uploaded as Classrooms).
+        assertInventoryFileType(workbook, "classrooms");
 
-        function checkMasterlistLayout(allRows, sheetName) {
-          let foundDivision = false;
-          for (let i = 0; i < Math.min(allRows.length, 15); i++) {
-            const row = allRows[i] || [];
-            if (String(row[3] || "").trim().toLowerCase() === "division") {
-              foundDivision = true;
-              break;
-            }
-          }
-          if (!foundDivision) {
-            throw new Error(`Invalid layout in sheet "${sheetName}". Columns appear to be missing or shifted.`);
-          }
-        }
+        const result = { db: null, kes: null, jhs: null, shs: null, status: null, sheetSummary: [] };
 
         // ── DB sheet (filter for Baliwag) ──
         if (available.includes(CLASSROOMS_SHEETS.DB)) {
@@ -418,7 +409,7 @@ export async function parseClassroomsFile(file) {
             workbook.Sheets[CLASSROOMS_SHEETS.DB],
             { header: 1, defval: "" }
           );
-          checkMasterlistLayout(rows, "DB");
+          assertInventorySheetLayout(rows, "DB");
           result.db = parseDBSheet(rows);
           result.sheetSummary.push({ sheet: "DB", count: result.db.records.length });
         }
@@ -429,7 +420,7 @@ export async function parseClassroomsFile(file) {
             workbook.Sheets[CLASSROOMS_SHEETS.KES],
             { header: 1, defval: "" }
           );
-          checkMasterlistLayout(rows, "KES");
+          assertInventorySheetLayout(rows, "KES");
           result.kes = parseKESSheet(rows);
           result.sheetSummary.push({ sheet: "KES", count: result.kes.records.length });
         }
@@ -440,7 +431,7 @@ export async function parseClassroomsFile(file) {
             workbook.Sheets[CLASSROOMS_SHEETS.JHS],
             { header: 1, defval: "" }
           );
-          checkMasterlistLayout(rows, "JHS");
+          assertInventorySheetLayout(rows, "JHS");
           result.jhs = parseJHSSheet(rows);
           result.sheetSummary.push({ sheet: "JHS", count: result.jhs.records.length });
         }
@@ -451,7 +442,7 @@ export async function parseClassroomsFile(file) {
             workbook.Sheets[CLASSROOMS_SHEETS.SHS],
             { header: 1, defval: "" }
           );
-          checkMasterlistLayout(rows, "SHS");
+          assertInventorySheetLayout(rows, "SHS");
           result.shs = parseSHSSheet(rows);
           result.sheetSummary.push({ sheet: "SHS", count: result.shs.records.length });
         }
@@ -477,6 +468,11 @@ export async function parseClassroomsFile(file) {
 
         resolve(result);
       } catch (err) {
+        // Type-mismatch errors already carry a user-facing message —
+        // don't bury it under a generic "failed to parse" prefix.
+        if (err?.code === "INVENTORY_TYPE_MISMATCH") {
+          return reject(err);
+        }
         reject(new Error(`Failed to parse classrooms file: ${err.message}`));
       }
     };
