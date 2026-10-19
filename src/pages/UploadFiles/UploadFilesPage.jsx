@@ -1416,19 +1416,16 @@ export default function UploadFilesPage() {
               const isDone =
                 req.status === "Completed" ||
                 req.status === "Completed Overdue";
-              const accent = isOverdue
-                ? "bg-red-400"
-                : isDone
-                  ? "bg-teal-400"
-                  : "bg-amber-400";
               const avatarBg = getAvatarColor(req.requestedBy);
 
               return (
                 <div
                   key={req.id}
-                  className="relative flex rounded-xl sm:rounded-2xl border border-slate-100 overflow-hidden bg-white hover:border-slate-200 hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)] transition-all"
+                  className={`relative flex rounded-xl sm:rounded-2xl border overflow-hidden bg-white hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)] transition-all ${isOverdue
+                    ? "border-red-300 hover:border-red-400"
+                    : "border-slate-200 hover:border-slate-300"
+                    }`}
                 >
-                  <div className={`w-[3px] shrink-0 ${accent}`} />
                   <div className="flex-1 p-3.5 sm:p-4 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div className="flex items-center gap-2 min-w-0">

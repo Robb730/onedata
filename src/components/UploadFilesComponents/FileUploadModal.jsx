@@ -148,8 +148,17 @@ const PDF_ONLY_TYPES = [
  * Returns an error string if any of the selected files violate the
  * format restriction for the given uploadType, otherwise returns null.
  */
+const BLOCKED_EXTENSIONS = ["pptx"];
+
 function getFileTypeError(files, uploadType) {
   if (!files || files.length === 0) return null;
+
+  const blocked = files.filter((f) =>
+    BLOCKED_EXTENSIONS.includes(f.name.split(".").pop().toLowerCase()),
+  );
+  if (blocked.length > 0) {
+    return `PowerPoint files (.pptx) are not allowed. Please remove: ${blocked.map((f) => f.name).join(", ")}`;
+  }
 
   if (EXCEL_ONLY_TYPES.includes(uploadType)) {
     const invalid = files.filter((f) => {

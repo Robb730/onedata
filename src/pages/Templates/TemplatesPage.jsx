@@ -33,6 +33,8 @@ import {
   getTemplateDownloadUrl,
 } from "../../utils/templatesApi";
 import ModalPortal from "../../components/Modals/ModalPortal";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "../../lib/supabaseClient";
 import { SkeletonList } from "../../components/ui/Skeleton";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -406,12 +408,17 @@ function UploadCard({ sections, divisions, groupByDivision, contextLabel, userId
     setUploading(true);
     try {
       const section = sections.find((s) => s.id === sectionId);
+      const uploadedInfo = {
+        templateName: name.trim(),
+        fileName: file.name,
+        sectionName: section?.name,
+      };
       await uploadTemplate({ name: name.trim(), sectionId, sectionName: section?.name, file, userId });
       setFile(null);
       setName("");
       setNameTouched(false);
       setSectionId(null);
-      onUploaded?.();
+      onUploaded?.(uploadedInfo);
     } catch (err) {
       setError(err.message || "Upload failed.");
     } finally {
@@ -718,6 +725,7 @@ function GroupHeader({ icon: Icon, label, count, collapsed, onToggle, tone }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function TemplatesPage() {
   const { userProfile } = useUser();
+  const queryClient = useQueryClient();
 
   const isAdmin = userProfile?.role === ROLES.ADMIN;
   const isDivisionFocal = userProfile?.role === ROLES.DIVISION_FOCAL;
@@ -748,6 +756,24 @@ export default function TemplatesPage() {
   const showToast = useCallback((msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  const [showUploadToast, setShowUploadToast] = useState(false);
+  const uploadToastTimer = useRef(null);
+
+  const showUploadSuccessToast = useCallback(() => {
+    clearTimeout(uploadToastTimer.current);
+    setShowUploadToast(true);
+    uploadToastTimer.current = setTimeout(() => setShowUploadToast(false), 4000);
+  }, []);
+
+  const [showDeleteToast, setShowDeleteToast] = useState(false);
+  const deleteToastTimer = useRef(null);
+
+  const showDeleteSuccessToast = useCallback(() => {
+    clearTimeout(deleteToastTimer.current);
+    setShowDeleteToast(true);
+    deleteToastTimer.current = setTimeout(() => setShowDeleteToast(false), 4000);
   }, []);
 
   const toggleGroup = (key) => {
@@ -860,9 +886,10 @@ export default function TemplatesPage() {
     setIsDeleting(true);
     try {
       await deleteTemplate(deletingTemplate.id, deletingTemplate.storage_path);
+      await logDelete(deletingTemplate);
       setTemplates((prev) => prev.filter((t) => t.id !== deletingTemplate.id));
       setDeletingTemplate(null);
-      showToast("Template deleted.");
+      showDeleteSuccessToast();
     } catch (err) {
       showToast(err.message || "Delete failed.", "error");
     } finally {
@@ -902,6 +929,40 @@ export default function TemplatesPage() {
     } finally {
       setDownloadingId(null);
     }
+  }
+
+  async function logUpload({ templateName, fileName, sectionName }) {
+    const { error } = await supabase.from("audit_logs").insert({
+      action: "Upload",
+      file_name: fileName,
+      details: `Uploaded template "${templateName}"${sectionName ? ` to section "${sectionName}"` : ""}.`,
+      performed_by: userProfile?.full_name || userProfile?.email || "Unknown",
+      role: userProfile?.role,
+      status: "Success",
+    });
+    if (error) {
+      console.error("Failed to write audit log:", error.message);
+      return;
+    }
+    // Makes the Audit Logs page refetch next time it opens
+    queryClient.invalidateQueries({ queryKey: ["auditLogs"] });
+  }
+
+  async function logDelete(template) {
+    const sectionName = template.section?.name;
+    const { error } = await supabase.from("audit_logs").insert({
+      action: "Delete",
+      file_name: template.file_name,
+      details: `Deleted template "${template.name}"${sectionName ? ` from section "${sectionName}"` : ""}.`,
+      performed_by: userProfile?.full_name || userProfile?.email || "Unknown",
+      role: userProfile?.role,
+      status: "Success",
+    });
+    if (error) {
+      console.error("Failed to write audit log:", error.message);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["auditLogs"] });
   }
 
   if (!canAccess) return <AccessRestricted />;
@@ -968,9 +1029,10 @@ export default function TemplatesPage() {
             contextLabel={isDivisionFocal ? "Only sections in your division are shown" : undefined}
             disabled={uploadDisabled}
             userId={userProfile?.id}
-            onUploaded={() => {
+            onUploaded={async (info) => {
+              await logUpload(info);
               loadData();
-              showToast("Template uploaded successfully!");
+              showUploadSuccessToast();
             }}
           />
         </div>
@@ -1113,6 +1175,108 @@ export default function TemplatesPage() {
         templateName={replacingTemplate?.name || ""}
         isReplacing={isReplacing}
       />
+
+      {/* ── Upload Success Toast ── */}
+      <div
+        className={`fixed bottom-8 right-8 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${
+          showUploadToast
+            ? "translate-x-0 opacity-100 pointer-events-auto"
+            : "translate-x-[120%] opacity-0 pointer-events-none"
+        }`}
+        style={{
+          width: "380px",
+          maxWidth: "calc(100vw - 2rem)",
+          minHeight: "76px",
+          borderRadius: "16px",
+          boxShadow: showUploadToast
+            ? "0 4px 24px rgba(16, 185, 129, 0.25), 0 1px 3px rgba(0,0,0,0.05)"
+            : "0 12px 30px rgba(0,0,0,0)",
+          fontFamily: "Poppins, sans-serif",
+          border: "1px solid rgba(241, 245, 249, 1)",
+        }}
+      >
+        <div className="absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r from-emerald-100/60 to-transparent" />
+
+        <div
+          className="flex items-center relative z-10 flex-1"
+          style={{ padding: "0 20px", gap: "16px", minHeight: "76px" }}
+        >
+          <div
+            className="flex items-center justify-center shrink-0 bg-white rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.06),_0_1px_3px_rgba(0,0,0,0.03)]"
+            style={{ width: "42px", height: "42px" }}
+          >
+            <CheckCircle size={22} className="text-emerald-500" strokeWidth={2.5} />
+          </div>
+
+          <div className="flex flex-col justify-center flex-1 pr-8">
+            <p style={{ fontSize: "15px", fontWeight: 700, color: "#0F172A", lineHeight: 1.2, margin: 0 }}>
+              Success
+            </p>
+            <p style={{ fontSize: "13px", fontWeight: 500, color: "#64748B", margin: "3px 0 0 0" }}>
+              File uploaded successfully.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowUploadToast(false)}
+            className="absolute top-1/2 -translate-y-1/2 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-md hover:bg-slate-100"
+            aria-label="Close notification"
+          >
+            <X size={18} strokeWidth={2.5} />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Delete Success Toast ── */}
+      <div
+        className={`fixed bottom-8 right-8 z-50 flex flex-col bg-white overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.27,1.55)] ${
+          showDeleteToast
+            ? "translate-x-0 opacity-100 pointer-events-auto"
+            : "translate-x-[120%] opacity-0 pointer-events-none"
+        }`}
+        style={{
+          width: "380px",
+          maxWidth: "calc(100vw - 2rem)",
+          minHeight: "76px",
+          borderRadius: "16px",
+          boxShadow: showDeleteToast
+            ? "0 4px 24px rgba(239, 68, 68, 0.25), 0 1px 3px rgba(0,0,0,0.05)"
+            : "0 12px 30px rgba(0,0,0,0)",
+          fontFamily: "Poppins, sans-serif",
+          border: "1px solid rgba(241, 245, 249, 1)",
+        }}
+      >
+        <div className="absolute top-0 left-0 bottom-0 w-32 pointer-events-none bg-gradient-to-r from-red-100/60 to-transparent" />
+
+        <div
+          className="flex items-center relative z-10 flex-1"
+          style={{ padding: "0 20px", gap: "16px", minHeight: "76px" }}
+        >
+          <div
+            className="flex items-center justify-center shrink-0 bg-white rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.06),_0_1px_3px_rgba(0,0,0,0.03)]"
+            style={{ width: "42px", height: "42px" }}
+          >
+            <Trash2 size={22} className="text-red-500" strokeWidth={2.5} />
+          </div>
+
+          <div className="flex flex-col justify-center flex-1 pr-8">
+            <p style={{ fontSize: "15px", fontWeight: 700, color: "#0F172A", lineHeight: 1.2, margin: 0 }}>
+              Deleted
+            </p>
+            <p style={{ fontSize: "13px", fontWeight: 500, color: "#64748B", margin: "3px 0 0 0" }}>
+              Template deleted successfully.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowDeleteToast(false)}
+            className="absolute top-1/2 -translate-y-1/2 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-md hover:bg-slate-100"
+            aria-label="Close notification"
+          >
+            <X size={18} strokeWidth={2.5} />
+          </button>
+        </div>
+      </div>
 
       {/* ── Toast ── */}
       <div
