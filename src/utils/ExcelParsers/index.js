@@ -28,3 +28,5 @@ export { parseKpiFile } from "./parsers/kpiParser";
 // ── Shared validation utilities ────────────────────────────────
 export { checkRequiredHeaders, buildHeaderErrorMessage } from "./validations/validateHeaders";
 export { isEmptyRow, validateRequiredField, validateNumericField, validateSchoolYear, collectErrors } from "./validations/validateRows";
+export { detectInventoryType, assertInventoryFileType, INVENTORY_TYPES } from "./validations/inventoryTypeGuard";
+export { isDivisionHeader, findDivisionColumn, assertInventorySheetLayout } from "./validations/inventoryLayout";

@@ -126,6 +126,84 @@ function computeEnrollmentTotals(data) {
   };
 }
 
+// Stable fallback so the resources memo below doesn't recompute on
+// every render while the query is still in flight.
+const EMPTY_RESOURCES = {
+  teachers: { total: 0, needs: 0, breakdown: {}, loading: true },
+  classrooms: { total: 0, needs: 0, breakdown: {}, loading: true },
+  seats: { total: 0, needs: 0, breakdown: {}, loading: true },
+  textbooks: { needs: 0, excess: 0, breakdown: {}, loading: true },
+};
+
+const EMPTY_COMPARE_RESOURCES = {
+  teachers: { total: 0, needs: 0, breakdown: {}, loading: false },
+  classrooms: { total: 0, needs: 0, breakdown: {}, loading: false },
+  seats: { total: 0, needs: 0, breakdown: {}, loading: false },
+  textbooks: { needs: 0, excess: 0, breakdown: {}, loading: false },
+};
+
+// ─── Helper: Crucial Resources category registry ───────────
+// Single source of truth for "does this resource category have
+// data?". The section's empty-state gate and its card rendering
+// both read from here, so a category can never be loaded into
+// memory yet reported as "no data available".
+//
+// Textbooks is measured by its shortage (needs) rather than an
+// inventory total — that is how the dashboard presents it.
+const RESOURCE_CATEGORIES = [
+  {
+    key: "teachers",
+    label: "Teachers",
+    total: (r) => r.teachers.total,
+    needs: (r) => r.teachers.needs,
+  },
+  {
+    key: "classrooms",
+    label: "Classrooms",
+    total: (r) => r.classrooms.total,
+    needs: (r) => r.classrooms.needs,
+  },
+  {
+    key: "seats",
+    label: "Seats",
+    total: (r) => r.seats.total,
+    needs: (r) => r.seats.needs,
+  },
+  {
+    key: "textbooks",
+    label: "Textbooks",
+    total: () => 0,
+    needs: (r) => r.textbooks.needs,
+  },
+];
+
+// A category counts as "has data" if it has a non-zero inventory
+// total OR a non-zero needs/shortage figure.
+function categoryHasData(category, res) {
+  if (!res) return false;
+  return (category.total(res) || 0) > 0 || (category.needs(res) || 0) > 0;
+}
+
+// True when at least one resource category has data.
+function hasResourceData(res) {
+  return RESOURCE_CATEGORIES.some((c) => categoryHasData(c, res));
+}
+
+// Labels of the categories that have data, in display order.
+function resourceTypesWithData(res) {
+  return RESOURCE_CATEGORIES.filter((c) => categoryHasData(c, res)).map(
+    (c) => c.label,
+  );
+}
+
+// Categories present in EITHER year — used by compare mode so a
+// metric that only exists in one of the two years still gets a row.
+function resourceTypesWithDataEither(primary, secondary) {
+  return RESOURCE_CATEGORIES.filter(
+    (c) => categoryHasData(c, primary) || categoryHasData(c, secondary),
+  ).map((c) => c.label);
+}
+
 function formatTransitionDate(dateStr) {
   const d = new Date(dateStr);
   const datePart = d.toLocaleDateString("en-US", {
@@ -166,18 +244,18 @@ async function fetchResourcesForYear(year) {
     { data: txJhs },
     { data: txShs },
   ] = await Promise.all([
-    supabase.from("teachers_kes").select("*").eq("school_year", year),
-    supabase.from("teachers_jhs").select("*").eq("school_year", year),
-    supabase.from("teachers_shs").select("*").eq("school_year", year),
-    supabase.from("classrooms_kes").select("*").eq("school_year", year),
-    supabase.from("classrooms_jhs").select("*").eq("school_year", year),
-    supabase.from("classrooms_shs").select("*").eq("school_year", year),
-    supabase.from("seats_kes").select("*").eq("school_year", year),
-    supabase.from("seats_jhs").select("*").eq("school_year", year),
-    supabase.from("seats_shs").select("*").eq("school_year", year),
-    supabase.from("textbooks_kes").select("*").eq("school_year", year),
-    supabase.from("textbooks_jhs").select("*").eq("school_year", year),
-    supabase.from("textbooks_shs").select("*").eq("school_year", year),
+    supabase.from("teachers_kes").select("*, files!inner(id, deleted_at)").eq("school_year", year).is("files.deleted_at", null),
+    supabase.from("teachers_jhs").select("*, files!inner(id, deleted_at)").eq("school_year", year).is("files.deleted_at", null),
+    supabase.from("teachers_shs").select("*, files!inner(id, deleted_at)").eq("school_year", year).is("files.deleted_at", null),
+    supabase.from("classrooms_kes").select("*, files!inner(id, deleted_at)").eq("school_year", year).is("files.deleted_at", null),
+    supabase.from("classrooms_jhs").select("*, files!inner(id, deleted_at)").eq("school_year", year).is("files.deleted_at", null),
+    supabase.from("classrooms_shs").select("*, files!inner(id, deleted_at)").eq("school_year", year).is("files.deleted_at", null),
+    supabase.from("seats_kes").select("*, files!inner(id, deleted_at)").eq("school_year", year).is("files.deleted_at", null),
+    supabase.from("seats_jhs").select("*, files!inner(id, deleted_at)").eq("school_year", year).is("files.deleted_at", null),
+    supabase.from("seats_shs").select("*, files!inner(id, deleted_at)").eq("school_year", year).is("files.deleted_at", null),
+    supabase.from("textbooks_kes").select("*, files!inner(id, deleted_at)").eq("school_year", year).is("files.deleted_at", null),
+    supabase.from("textbooks_jhs").select("*, files!inner(id, deleted_at)").eq("school_year", year).is("files.deleted_at", null),
+    supabase.from("textbooks_shs").select("*, files!inner(id, deleted_at)").eq("school_year", year).is("files.deleted_at", null),
   ]);
 
   const tKesTotal =
@@ -317,6 +395,49 @@ function ResourcesChartsPanel({ color, year, ongoing, resources }) {
     ? colorClasses[color].split(" ")
     : ["text-slate-600", "bg-slate-500"];
 
+  // Only render the charts whose category actually has data.
+  const available = new Set(resourceTypesWithData(resources));
+  const chartNodes = [];
+  if (available.has("Teachers")) {
+    chartNodes.push(
+      <ResourcesInventoryChart
+        key="teachers"
+        title="Teachers · Inventory vs Needs"
+        data={teachersData}
+      />,
+    );
+  }
+  if (available.has("Classrooms")) {
+    chartNodes.push(
+      <ResourcesInventoryChart
+        key="classrooms"
+        title="Classrooms · Inventory vs Needs"
+        data={classroomsData}
+      />,
+    );
+  }
+  if (available.has("Seats")) {
+    chartNodes.push(
+      <ResourcesInventoryChart
+        key="seats"
+        title="Seats · Inventory vs Needs"
+        data={seatsData}
+      />,
+    );
+  }
+  if (available.has("Textbooks")) {
+    chartNodes.push(<TextbooksChart key="textbooks" data={textbooksData} />);
+  }
+
+  const chartRows = [];
+  for (let i = 0; i < chartNodes.length; i += 2) {
+    chartRows.push(
+      <DashboardGrid key={`chart-row-${i}`} cols={2}>
+        {chartNodes.slice(i, i + 2)}
+      </DashboardGrid>,
+    );
+  }
+
   return (
     <div className="space-y-3">
       <p
@@ -326,25 +447,7 @@ function ResourcesChartsPanel({ color, year, ongoing, resources }) {
         {year}
         {ongoing && <Clock size={11} className="text-orange-400" />}
       </p>
-      <div className="space-y-4">
-        <DashboardGrid cols={2}>
-          <ResourcesInventoryChart
-            title="Teachers · Inventory vs Needs"
-            data={teachersData}
-          />
-          <ResourcesInventoryChart
-            title="Classrooms · Inventory vs Needs"
-            data={classroomsData}
-          />
-        </DashboardGrid>
-        <DashboardGrid cols={2}>
-          <ResourcesInventoryChart
-            title="Seats · Inventory vs Needs"
-            data={seatsData}
-          />
-          <TextbooksChart data={textbooksData} />
-        </DashboardGrid>
-      </div>
+      <div className="space-y-4">{chartRows}</div>
     </div>
   );
 }
@@ -385,6 +488,12 @@ export default function Dashboard() {
 
   const [showWelcomeToast, setShowWelcomeToast] = useState(false);
   const welcomeToastShownRef = useRef(false);
+
+  // ── Crucial Resources Views
+  // Declared up here because the scroll-to-section effect below
+  // dispatches into them.
+  const [resourceView, setResourceView] = useState("Summary");
+  const [resourceType, setResourceType] = useState("Teachers");
 
   useEffect(() => {
     if (location.state?.justLoggedIn && !welcomeToastShownRef.current) {
@@ -443,9 +552,6 @@ export default function Dashboard() {
   const compareYearDropdownRef = useRef(null);
 
   // ── Crucial Resources Views
-  const [resourceView, setResourceView] = useState("Summary");
-  const [resourceType, setResourceType] = useState("Teachers");
-
   const [activeCespesTab, setActiveCespesTab] = useState("Operations");
 
   // ── Dashboard Search
@@ -538,14 +644,16 @@ export default function Dashboard() {
       const { data, error } = await supabase
         .from("enrollment_data")
         .select(
-          "category, grand_total, school_name, elementary_data, junior_high_data, senior_high_s1_data, senior_high_s2_data",
+          "category, grand_total, school_name, elementary_data, junior_high_data, senior_high_s1_data, senior_high_s2_data, file_id, files!inner(id, deleted_at)",
         )
-        .eq("school_year", year);
+        .eq("school_year", year)
+        .is("files.deleted_at", null);
       if (error) throw error;
 
       const { data: allEnrollment } = await supabase
         .from("enrollment_data")
-        .select("school_year, category, grand_total");
+        .select("school_year, category, grand_total, file_id, files!inner(id, deleted_at)")
+        .is("files.deleted_at", null);
       let trendData = [];
       if (allEnrollment) {
         const trendYears = [
@@ -635,12 +743,7 @@ export default function Dashboard() {
     queryFn: ({ queryKey }) => fetchResourcesForYear(queryKey[1]),
   });
 
-  const resources = resourcesObj || {
-    teachers: { total: 0, needs: 0, breakdown: {}, loading: true },
-    classrooms: { total: 0, needs: 0, breakdown: {}, loading: true },
-    seats: { total: 0, needs: 0, breakdown: {}, loading: true },
-    textbooks: { needs: 0, excess: 0, breakdown: {}, loading: true },
-  };
+  const resources = resourcesObj || EMPTY_RESOURCES;
 
   // CESPES
   const { data: cespesObj } = useQuery({
@@ -649,20 +752,23 @@ export default function Dashboard() {
     queryFn: async ({ queryKey }) => {
       const [, year] = queryKey;
       const [ops, support, admin, perf, innov] = await Promise.all([
-        supabase.from("cespes_operations").select("*").eq("school_year", year),
+        supabase.from("cespes_operations").select("*, files!inner(id, deleted_at)").eq("school_year", year).is("files.deleted_at", null),
         supabase
           .from("cespes_support_operations")
-          .select("*")
-          .eq("school_year", year),
+          .select("*, files!inner(id, deleted_at)")
+          .eq("school_year", year)
+          .is("files.deleted_at", null),
         supabase
           .from("cespes_general_admin")
-          .select("*")
-          .eq("school_year", year),
+          .select("*, files!inner(id, deleted_at)")
+          .eq("school_year", year)
+          .is("files.deleted_at", null),
         supabase
           .from("cespes_individual_performance")
-          .select("*")
-          .eq("school_year", year),
-        supabase.from("cespes_innovation").select("*").eq("school_year", year),
+          .select("*, files!inner(id, deleted_at)")
+          .eq("school_year", year)
+          .is("files.deleted_at", null),
+        supabase.from("cespes_innovation").select("*, files!inner(id, deleted_at)").eq("school_year", year).is("files.deleted_at", null),
       ]);
       return {
         operations: ops.data || [],
@@ -690,7 +796,8 @@ export default function Dashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from("performance_indicators_data")
-        .select("*");
+        .select("*, files!inner(id, deleted_at)")
+        .is("files.deleted_at", null);
       return data || [];
     },
   });
@@ -705,9 +812,10 @@ export default function Dashboard() {
       const { data } = await supabase
         .from("enrollment_data")
         .select(
-          "category, grand_total, school_name, elementary_data, junior_high_data, senior_high_s1_data, senior_high_s2_data",
+          "category, grand_total, school_name, elementary_data, junior_high_data, senior_high_s1_data, senior_high_s2_data, file_id, files!inner(id, deleted_at)",
         )
-        .eq("school_year", year);
+        .eq("school_year", year)
+        .is("files.deleted_at", null);
       return {
         rows: data || [],
         summary: computeEnrollmentTotals(data || []),
@@ -730,12 +838,42 @@ export default function Dashboard() {
       queryFn: ({ queryKey }) => fetchResourcesForYear(queryKey[1]),
     });
 
-  const compareResources = compareResourcesObj || {
-    teachers: { total: 0, needs: 0, breakdown: {}, loading: false },
-    classrooms: { total: 0, needs: 0, breakdown: {}, loading: false },
-    seats: { total: 0, needs: 0, breakdown: {}, loading: false },
-    textbooks: { needs: 0, excess: 0, breakdown: {}, loading: false },
-  };
+  const compareResources = compareResourcesObj || EMPTY_COMPARE_RESOURCES;
+
+  // ── Resource categories that actually have data ───────────
+  // A category counts as available when it has a non-zero
+  // inventory total OR a non-zero needs/shortage figure. Only the
+  // available ones get a card / chart / filter entry, so a single
+  // uploaded parser is enough to light up its own category.
+  const availableResourceTypes = useMemo(
+    () => resourceTypesWithData(resources),
+    [resources],
+  );
+  const availableResourceTypesCompare = useMemo(
+    () => resourceTypesWithDataEither(resources, compareResources),
+    [resources, compareResources],
+  );
+
+  // Breakdown / By Level need a stable list for the current view.
+  const breakdownTypes = useMemo(
+    () =>
+      availableResourceTypes.length > 0 ? availableResourceTypes : ["Teachers"],
+    [availableResourceTypes],
+  );
+  const byLevelTypes = useMemo(
+    () =>
+      availableResourceTypesCompare.length > 0
+        ? availableResourceTypesCompare
+        : ["Teachers"],
+    [availableResourceTypesCompare],
+  );
+
+  // The breakdown type actually rendered. Derived (not an effect) so
+  // switching school year immediately falls back to a category that
+  // has data instead of showing an empty breakdown.
+  const effectiveResourceType = breakdownTypes.includes(resourceType)
+    ? resourceType
+    : breakdownTypes[0];
 
   // Compare Cespes
   const { data: compareCespesObj } = useQuery({
@@ -744,20 +882,23 @@ export default function Dashboard() {
     queryFn: async ({ queryKey }) => {
       const [, year] = queryKey;
       const [ops, support, admin, perf, innov] = await Promise.all([
-        supabase.from("cespes_operations").select("*").eq("school_year", year),
+        supabase.from("cespes_operations").select("*, files!inner(id, deleted_at)").eq("school_year", year).is("files.deleted_at", null),
         supabase
           .from("cespes_support_operations")
-          .select("*")
-          .eq("school_year", year),
+          .select("*, files!inner(id, deleted_at)")
+          .eq("school_year", year)
+          .is("files.deleted_at", null),
         supabase
           .from("cespes_general_admin")
-          .select("*")
-          .eq("school_year", year),
+          .select("*, files!inner(id, deleted_at)")
+          .eq("school_year", year)
+          .is("files.deleted_at", null),
         supabase
           .from("cespes_individual_performance")
-          .select("*")
-          .eq("school_year", year),
-        supabase.from("cespes_innovation").select("*").eq("school_year", year),
+          .select("*, files!inner(id, deleted_at)")
+          .eq("school_year", year)
+          .is("files.deleted_at", null),
+        supabase.from("cespes_innovation").select("*, files!inner(id, deleted_at)").eq("school_year", year).is("files.deleted_at", null),
       ]);
       return {
         operations: ops.data || [],
@@ -1074,6 +1215,21 @@ export default function Dashboard() {
       })
       : [{ year: selectedYear, rate: 0 }];
 
+  // The Performance Indicators section renders enrollment figures AND
+  // KPI rates (dropout / promotion / cohort survival) AND multi-year
+  // trend charts. Its empty-state gate used to look at enrollment only,
+  // so a year that had a Performance Indicators file but no enrollment
+  // file rendered "No data available" and hid every KPI figure that
+  // actually existed. Gate on everything the section draws.
+  const hasPerformanceData =
+    (enrollmentSummary.total || 0) > 0 ||
+    currentKpi.length > 0 ||
+    enrollmentTrend.length > 0 ||
+    dropoutTrend.length > 0;
+  const hasPerformanceDataCompare =
+    (compareEnrollmentSummary.total || 0) > 0 ||
+    currentKpiCompare.length > 0;
+
   const elemCsrCurrent = getKpiRate(currentKpi, "G1toG6 CSR & CompR", "CSR");
   const elemCsrCompare = getKpiRate(
     currentKpiCompare,
@@ -1242,13 +1398,11 @@ export default function Dashboard() {
 
   async function handleExportResources() {
     if (exportingSection) return;
-    const primaryHasData =
-      (resources.teachers?.total || 0) > 0 ||
-      (resources.classrooms?.total || 0) > 0;
+    // Check every resource category — a year with only seats or only
+    // textbooks data still exports fine.
+    const primaryHasData = hasResourceData(resources);
     const compareHasResourceData =
-      isComparing &&
-      ((compareResources.teachers?.total || 0) > 0 ||
-        (compareResources.classrooms?.total || 0) > 0);
+      isComparing && hasResourceData(compareResources);
     if (!primaryHasData && !compareHasResourceData) {
       alert("No resource data available for the selected school year(s).");
       return;
@@ -1788,8 +1942,8 @@ export default function Dashboard() {
               }
             >
               {!loading &&
-                enrollmentSummary.total === 0 &&
-                !(isComparing && compareEnrollmentSummary.total > 0) ? (
+                !hasPerformanceData &&
+                !(isComparing && hasPerformanceDataCompare) ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="mb-3 opacity-25 text-indigo-400">
                     <BarChart3 size={36} strokeWidth={1.5} />
@@ -2414,14 +2568,8 @@ export default function Dashboard() {
             >
               {resources.teachers.loading ? (
                 <SkeletonCards count={4} />
-              ) : !resources.teachers.loading &&
-                resources.teachers.total === 0 &&
-                resources.classrooms.total === 0 &&
-                !(
-                  isComparing &&
-                  (compareResources.teachers.total > 0 ||
-                    compareResources.classrooms.total > 0)
-                ) ? (
+              ) : !hasResourceData(resources) &&
+                !hasResourceData(compareResources) ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="mb-3 opacity-25 text-amber-500">
                     <School size={36} strokeWidth={1.5} />
@@ -2472,96 +2620,71 @@ export default function Dashboard() {
                   {resourceView === "Summary" &&
                     (isComparing ? (
                       <div className="space-y-2">
-                        <ComparisonRow
-                          label="Total Teachers"
-                          primary={resources.teachers.total}
-                          secondary={compareResources.teachers.total}
-                        />
-                        <ComparisonRow
-                          label="Total Classrooms"
-                          primary={resources.classrooms.total}
-                          secondary={compareResources.classrooms.total}
-                        />
-                        <ComparisonRow
-                          label="Total Seats"
-                          primary={resources.seats.total}
-                          secondary={compareResources.seats.total}
-                        />
-                        <ComparisonRow
-                          label="Textbooks Shortage"
-                          primary={resources.textbooks.needs}
-                          secondary={compareResources.textbooks.needs}
-                          bold
-                        />
+                        {resourceTypesWithDataEither(
+                          resources,
+                          compareResources,
+                        ).map((label) => {
+                          const key = label.toLowerCase();
+                          const isTextbooks = key === "textbooks";
+                          const primary = isTextbooks
+                            ? resources.textbooks.needs
+                            : resources[key].total;
+                          const secondary = isTextbooks
+                            ? compareResources.textbooks.needs
+                            : compareResources[key].total;
+                          return (
+                            <ComparisonRow
+                              key={label}
+                              label={
+                                isTextbooks
+                                  ? "Textbooks Shortage"
+                                  : `Total ${label}`
+                              }
+                              primary={primary}
+                              secondary={secondary}
+                              bold={isTextbooks}
+                            />
+                          );
+                        })}
                       </div>
                     ) : (
                       <DashboardGrid cols={2}>
-                        <TrendCard
-                          label="Total Teachers"
-                          value={
-                            resources.teachers.loading
-                              ? "..."
-                              : (resources.teachers.total || 0).toLocaleString()
-                          }
-                          change={
-                            resources.teachers.needs > 0
-                              ? `-${resources.teachers.needs.toLocaleString()} needs`
-                              : "No needs"
-                          }
-                          direction={
-                            resources.teachers.needs > 0 ? "down" : "up"
-                          }
-                          period="Total Inventory"
-                        />
-                        <TrendCard
-                          label="Total Classrooms"
-                          value={
-                            resources.classrooms.loading
-                              ? "..."
-                              : (
-                                resources.classrooms.total || 0
-                              ).toLocaleString()
-                          }
-                          change={
-                            resources.classrooms.needs > 0
-                              ? `-${resources.classrooms.needs.toLocaleString()} needs`
-                              : "No needs"
-                          }
-                          direction={
-                            resources.classrooms.needs > 0 ? "down" : "up"
-                          }
-                          period="Total Inventory"
-                        />
-                        <TrendCard
-                          label="Total Seats"
-                          value={
-                            resources.seats.loading
-                              ? "..."
-                              : (resources.seats.total || 0).toLocaleString()
-                          }
-                          change={
-                            resources.seats.needs > 0
-                              ? `-${resources.seats.needs.toLocaleString()} needs`
-                              : "No needs"
-                          }
-                          direction={resources.seats.needs > 0 ? "down" : "up"}
-                          period="Total Inventory"
-                        />
-                        <TrendCard
-                          label="Textbooks Shortage"
-                          value={
-                            resources.textbooks.loading
-                              ? "..."
-                              : (
-                                resources.textbooks.needs || 0
-                              ).toLocaleString()
-                          }
-                          change="Current total gap"
-                          direction={
-                            resources.textbooks.needs > 0 ? "down" : "up"
-                          }
-                          period="System-wide"
-                        />
+                        {availableResourceTypes.map((label) => {
+                          const key = label.toLowerCase();
+                          const isTextbooks = key === "textbooks";
+                          const total = isTextbooks
+                            ? resources.textbooks.needs
+                            : resources[key].total;
+                          const needs = isTextbooks
+                            ? resources.textbooks.needs
+                            : resources[key].needs;
+                          return (
+                            <TrendCard
+                              key={label}
+                              label={
+                                isTextbooks
+                                  ? "Textbooks Shortage"
+                                  : `Total ${label}`
+                              }
+                              value={
+                                resources[key].loading
+                                  ? "..."
+                                  : (total || 0).toLocaleString()
+                              }
+                              change={
+                                isTextbooks
+                                  ? "Current total gap"
+                                  : needs > 0
+                                    ? `-${needs.toLocaleString()} needs`
+                                    : "No needs"
+                              }
+                              direction={needs > 0 ? "down" : "up"}
+                              period={
+                                isTextbooks ? "System-wide" : "Total Inventory"
+                              }
+                            />
+                          );
+                        })}
                       </DashboardGrid>
                     ))}
 
@@ -2609,27 +2732,58 @@ export default function Dashboard() {
                         const textbooksData = Object.entries(
                           resources.textbooks.breakdown || {},
                         ).map(([level, val]) => ({ level, shortage: val }));
-                        return (
-                          <div className="space-y-4">
-                            <DashboardGrid cols={2}>
-                              <ResourcesInventoryChart
-                                title="Teachers · Inventory vs Needs"
-                                data={teachersData}
-                              />
-                              <ResourcesInventoryChart
-                                title="Classrooms · Inventory vs Needs"
-                                data={classroomsData}
-                              />
-                            </DashboardGrid>
-                            <DashboardGrid cols={2}>
-                              <ResourcesInventoryChart
-                                title="Seats · Inventory vs Needs"
-                                data={seatsData}
-                              />
-                              <TextbooksChart data={textbooksData} />
-                            </DashboardGrid>
-                          </div>
-                        );
+
+                        // Only render charts for the categories that
+                        // actually have data loaded.
+                        const available = new Set(availableResourceTypes);
+                        const chartNodes = [];
+                        if (available.has("Teachers")) {
+                          chartNodes.push(
+                            <ResourcesInventoryChart
+                              key="teachers"
+                              title="Teachers · Inventory vs Needs"
+                              data={teachersData}
+                            />,
+                          );
+                        }
+                        if (available.has("Classrooms")) {
+                          chartNodes.push(
+                            <ResourcesInventoryChart
+                              key="classrooms"
+                              title="Classrooms · Inventory vs Needs"
+                              data={classroomsData}
+                            />,
+                          );
+                        }
+                        if (available.has("Seats")) {
+                          chartNodes.push(
+                            <ResourcesInventoryChart
+                              key="seats"
+                              title="Seats · Inventory vs Needs"
+                              data={seatsData}
+                            />,
+                          );
+                        }
+                        if (available.has("Textbooks")) {
+                          chartNodes.push(
+                            <TextbooksChart
+                              key="textbooks"
+                              data={textbooksData}
+                            />,
+                          );
+                        }
+
+                        // Group into 2-column rows.
+                        const rows = [];
+                        for (let i = 0; i < chartNodes.length; i += 2) {
+                          rows.push(
+                            <DashboardGrid key={`row-${i}`} cols={2}>
+                              {chartNodes.slice(i, i + 2)}
+                            </DashboardGrid>,
+                          );
+                        }
+
+                        return <div className="space-y-4">{rows}</div>;
                       })()
                     ))}
 
@@ -2643,7 +2797,11 @@ export default function Dashboard() {
                               <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
                               {selectedYear}
                             </p>
-                            <ResourcesByLevel resources={resources} />
+                            <ResourcesByLevel
+                              resources={resources}
+                              allowedTypes={byLevelTypes}
+                              initialType={byLevelTypes[0]}
+                            />
                           </div>
                           <div>
                             <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600 mb-2">
@@ -2653,11 +2811,19 @@ export default function Dashboard() {
                                 <Clock size={11} className="text-orange-400" />
                               )}
                             </p>
-                            <ResourcesByLevel resources={compareResources} />
+                            <ResourcesByLevel
+                              resources={compareResources}
+                              allowedTypes={byLevelTypes}
+                              initialType={byLevelTypes[0]}
+                            />
                           </div>
                         </div>
                       ) : (
-                        <ResourcesByLevel resources={resources} />
+                        <ResourcesByLevel
+                              resources={resources}
+                              allowedTypes={byLevelTypes}
+                              initialType={byLevelTypes[0]}
+                            />
                       )}
                     </ErrorBoundary>
                   )}
@@ -2670,13 +2836,8 @@ export default function Dashboard() {
                           Detailed Resource Breakdown
                         </h4>
                         <DashboardFilters
-                          options={[
-                            "Teachers",
-                            "Classrooms",
-                            "Seats",
-                            "Textbooks",
-                          ]}
-                          active={resourceType}
+                          options={breakdownTypes}
+                          active={effectiveResourceType}
                           onChange={setResourceType}
                         />
                       </div>
@@ -2690,7 +2851,10 @@ export default function Dashboard() {
                             </p>
                             <PerformanceCard>
                               <div className="space-y-0.5">
-                                {renderBreakdownRows(resourceType, resources)}
+                                {renderBreakdownRows(
+                                  effectiveResourceType,
+                                  resources,
+                                )}
                               </div>
                             </PerformanceCard>
                           </div>
@@ -2705,7 +2869,7 @@ export default function Dashboard() {
                             <PerformanceCard>
                               <div className="space-y-0.5">
                                 {renderBreakdownRows(
-                                  resourceType,
+                                  effectiveResourceType,
                                   compareResources,
                                 )}
                               </div>
@@ -2715,7 +2879,10 @@ export default function Dashboard() {
                       ) : (
                         <PerformanceCard>
                           <div className="space-y-0.5">
-                            {renderBreakdownRows(resourceType, resources)}
+                            {renderBreakdownRows(
+                              effectiveResourceType,
+                              resources,
+                            )}
                           </div>
                         </PerformanceCard>
                       )}
@@ -2723,8 +2890,8 @@ export default function Dashboard() {
                       <InsightCard
                         icon={<Info size={14} />}
                         variant="info"
-                        title={`${resourceType} Distribution`}
-                        message={`Showing the distribution of ${resourceType.toLowerCase()} across Elementary, JHS, and SHS levels based on current inventory data.`}
+                        title={`${effectiveResourceType} Distribution`}
+                        message={`Showing the distribution of ${effectiveResourceType.toLowerCase()} across Elementary, JHS, and SHS levels based on current inventory data.`}
                       />
                     </div>
                   )}
@@ -3281,6 +3448,8 @@ function InstitutionalPlansCard({ selectedYear }) {
           "accomplishment_report",
         ])
         .eq("school_year", selectedYear)
+        // Files in the recycle bin must not be listed on the dashboard.
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (!error && data) {

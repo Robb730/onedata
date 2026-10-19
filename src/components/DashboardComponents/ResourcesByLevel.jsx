@@ -151,9 +151,16 @@ function SchoolResourceRow({ school, resourceType, level, config, maxVal }) {
 }
 
 export function ResourcesByLevel({ resources, initialType = "Teachers", allowedTypes = ["Teachers", "Classrooms", "Seats", "Textbooks"], colorOverride = null }) {
-  const [activeType, setActiveType] = useState(initialType);
+  const [selectedType, setSelectedType] = useState(initialType);
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [search, setSearch] = useState("");
+
+  // The allowed list shrinks when a school year has no data for a
+  // category. Fall back to the first allowed type so the panel never
+  // shows a category that isn't there.
+  const activeType = allowedTypes.includes(selectedType)
+    ? selectedType
+    : allowedTypes[0] || initialType;
 
   const baseConfig = RESOURCE_CONFIGS[activeType];
   if (!baseConfig) return null;
@@ -261,7 +268,7 @@ export function ResourcesByLevel({ resources, initialType = "Teachers", allowedT
           <DashboardFilters
             options={allowedTypes}
             active={activeType}
-            onChange={(t) => { setActiveType(t); setSelectedLevel(null); }}
+            onChange={(t) => { setSelectedType(t); setSelectedLevel(null); }}
           />
         </div>
       )}

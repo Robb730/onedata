@@ -5,10 +5,12 @@
  */
 
 import * as XLSX from "xlsx";
+import { assertInventoryFileType } from "../validations/inventoryTypeGuard";
+import { assertInventorySheetLayout } from "../validations/inventoryLayout";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const DB_DATA_START   = 6;  // Row 7 (0-indexed)
+const DB_DATA_START   = 5;  // Row 6 (header row is 5, data starts row 6)
 const KES_DATA_START  = 10; // Row 11
 const JHS_DATA_START  = 10; // Row 11
 const SHS_DATA_START  = 11; // Row 12
@@ -263,27 +265,18 @@ export async function parseSeatsFile(file) {
       try {
         const workbook  = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
         const available = workbook.SheetNames;
-        const result = { db: null, kes: null, jhs: null, shs: null, status: null, sheetSummary: [] };
 
-        function checkMasterlistLayout(allRows, sheetName) {
-          let foundDivision = false;
-          for (let i = 0; i < Math.min(allRows.length, 15); i++) {
-            const row = allRows[i] || [];
-            if (String(row[3] || "").trim().toLowerCase() === "division") {
-              foundDivision = true;
-              break;
-            }
-          }
-          if (!foundDivision) {
-            throw new Error(`Invalid layout in sheet "${sheetName}". Columns appear to be missing or shifted.`);
-          }
-        }
+        // Refuse files that are actually a different inventory type
+        // (e.g. a Classrooms workbook uploaded as Seats).
+        assertInventoryFileType(workbook, "seats");
+
+        const result = { db: null, kes: null, jhs: null, shs: null, status: null, sheetSummary: [] };
 
         console.log("Parsing Seats File. Sheets available:", available);
 
         if (available.includes(SEATS_SHEETS.DB)) {
           const rows = XLSX.utils.sheet_to_json(workbook.Sheets[SEATS_SHEETS.DB], { header: 1, defval: "" });
-          checkMasterlistLayout(rows, "DB");
+          assertInventorySheetLayout(rows, "DB");
           result.db = parseDBSheet(rows);
           console.log(`DB Sheet: found ${result.db.records.length} Baliwag records`);
           result.sheetSummary.push({ sheet: "DB", count: result.db.records.length });
@@ -291,7 +284,7 @@ export async function parseSeatsFile(file) {
 
         if (available.includes(SEATS_SHEETS.KES)) {
           const rows = XLSX.utils.sheet_to_json(workbook.Sheets[SEATS_SHEETS.KES], { header: 1, defval: "" });
-          checkMasterlistLayout(rows, "KES");
+          assertInventorySheetLayout(rows, "KES");
           result.kes = parseKESSheet(rows);
           console.log(`KES Sheet: found ${result.kes.records.length} Baliwag records`);
           result.sheetSummary.push({ sheet: "KES", count: result.kes.records.length });
@@ -299,7 +292,7 @@ export async function parseSeatsFile(file) {
 
         if (available.includes(SEATS_SHEETS.JHS)) {
           const rows = XLSX.utils.sheet_to_json(workbook.Sheets[SEATS_SHEETS.JHS], { header: 1, defval: "" });
-          checkMasterlistLayout(rows, "JHS");
+          assertInventorySheetLayout(rows, "JHS");
           result.jhs = parseJHSSheet(rows);
           console.log(`JHS Sheet: found ${result.jhs.records.length} Baliwag records`);
           result.sheetSummary.push({ sheet: "JHS", count: result.jhs.records.length });
@@ -307,7 +300,7 @@ export async function parseSeatsFile(file) {
 
         if (available.includes(SEATS_SHEETS.SHS)) {
           const rows = XLSX.utils.sheet_to_json(workbook.Sheets[SEATS_SHEETS.SHS], { header: 1, defval: "" });
-          checkMasterlistLayout(rows, "SHS");
+          assertInventorySheetLayout(rows, "SHS");
           result.shs = parseSHSSheet(rows);
           console.log(`SHS Sheet: found ${result.shs.records.length} Baliwag records`);
           result.sheetSummary.push({ sheet: "SHS", count: result.shs.records.length });
@@ -331,6 +324,11 @@ export async function parseSeatsFile(file) {
 
         resolve(result);
       } catch (err) {
+        // Type-mismatch errors already carry a user-facing message —
+        // don't bury it under a generic "failed to parse" prefix.
+        if (err?.code === "INVENTORY_TYPE_MISMATCH") {
+          return reject(err);
+        }
         reject(new Error(`Failed to parse seats file: ${err.message}`));
       }
     };

@@ -468,6 +468,24 @@ export default function UploadFilesPage() {
     const storagePath = `sections/${pathSegment}/${yearSegment}/${fileName}`;
     const bucket = getBucketForType(uploadType);
 
+    // Check for trashed parser files of the same type/year/section to replace
+    let replaceTargets = null;
+    if (STRUCTURED_UPLOAD_TYPES.includes(uploadType) && sectionId) {
+      const { data: trashedFiles } = await supabase
+        .from("files")
+        .select("id, file_path")
+        .eq("data_category", uploadType)
+        .eq("school_year", schoolYear)
+        .eq("section_id", sectionId)
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false })
+        .limit(1);
+
+      if (trashedFiles?.length) {
+        replaceTargets = trashedFiles;
+      }
+    }
+
     const newEntry = {
       id: String(Date.now()),
       name: fileName,
@@ -494,7 +512,11 @@ export default function UploadFilesPage() {
             .split("_")
             .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
             .join(" ");
-          throw new Error(`Invalid ${prettyType} template!`);
+          // Keep the parser's specific reason (e.g. "this file is actually
+          // a Classrooms Inventory file") so the user knows what to fix
+          // instead of just seeing a generic "invalid template".
+          const reason = err?.message ? ` ${err.message}` : "";
+          throw new Error(`Invalid ${prettyType} template!${reason}`);
         }
       }
 
@@ -567,7 +589,7 @@ export default function UploadFilesPage() {
           },
         });
 
-        return { ...newEntry, fileId: fileRow.id, storagePath };
+        return { ...newEntry, fileId: fileRow.id, storagePath, replaceTargets };
       } catch (innerErr) {
         if (storageCommitted && !upsert) {
           const { error: cleanupError } = await supabase.storage
@@ -973,13 +995,12 @@ export default function UploadFilesPage() {
     setUploadToastStatus("uploading");
 
     try {
-      const isReplace =
-        Array.isArray(replaceTargets) && replaceTargets.length > 0;
-
       // 1. Upload the replacement FIRST. If this throws, we bail out below
       //    and the old file/data is left completely untouched.
       const newWrittenPaths = [];
       let uploadedFileId = null;
+      let effectiveReplaceTargets = replaceTargets;
+
       if (Array.isArray(fileOrFiles)) {
         for (const file of fileOrFiles) {
           const result = await addToUploads(
@@ -988,11 +1009,15 @@ export default function UploadFilesPage() {
             uploadType,
             file,
             {
-              upsert: isReplace,
+              upsert: false, // upsert handled by replace logic below
             },
           );
           if (result?.storagePath) newWrittenPaths.push(result.storagePath);
           uploadedFileId ??= result?.fileId ?? null;
+          // Use auto-detected replaceTargets from first upload if not explicitly provided
+          if (!effectiveReplaceTargets && result?.replaceTargets?.length) {
+            effectiveReplaceTargets = result.replaceTargets;
+          }
           setUploadCompletedFiles((prev) => prev + 1);
         }
       } else {
@@ -1002,19 +1027,25 @@ export default function UploadFilesPage() {
           uploadType,
           fileOrFiles,
           {
-            upsert: isReplace,
+            upsert: false,
           },
         );
         if (result?.storagePath) newWrittenPaths.push(result.storagePath);
         uploadedFileId = result?.fileId ?? null;
+        if (!effectiveReplaceTargets && result?.replaceTargets?.length) {
+          effectiveReplaceTargets = result.replaceTargets;
+        }
         setUploadCompletedFiles(1);
       }
+
+      const isReplace =
+        Array.isArray(effectiveReplaceTargets) && effectiveReplaceTargets.length > 0;
 
       // 2. Only now, with the replacement confirmed on disk and in the DB,
       //    remove the old record.
       if (isReplace) {
         const bucket = getBucketForType(uploadType);
-        for (const target of replaceTargets) {
+        for (const target of effectiveReplaceTargets) {
           await deleteParsedDataForFile(uploadType, target.id);
           await supabase.from("files").delete().eq("id", target.id);
 
@@ -1116,11 +1147,10 @@ export default function UploadFilesPage() {
     setUploadToastStatus("uploading");
 
     try {
-      const isReplace =
-        Array.isArray(replaceTargets) && replaceTargets.length > 0;
-
       const newWrittenPaths = [];
       let uploadedFileId = null;
+      let effectiveReplaceTargets = replaceTargets;
+
       if (Array.isArray(fileOrFiles)) {
         for (const file of fileOrFiles) {
           const result = await addToUploads(
@@ -1129,11 +1159,14 @@ export default function UploadFilesPage() {
             uploadType,
             file,
             {
-              upsert: isReplace,
+              upsert: false,
             },
           );
           if (result?.storagePath) newWrittenPaths.push(result.storagePath);
           uploadedFileId ??= result?.fileId ?? null;
+          if (!effectiveReplaceTargets && result?.replaceTargets?.length) {
+            effectiveReplaceTargets = result.replaceTargets;
+          }
           setUploadCompletedFiles((prev) => prev + 1);
         }
       } else {
@@ -1143,17 +1176,23 @@ export default function UploadFilesPage() {
           uploadType,
           fileOrFiles,
           {
-            upsert: isReplace,
+            upsert: false,
           },
         );
         if (result?.storagePath) newWrittenPaths.push(result.storagePath);
         uploadedFileId = result?.fileId ?? null;
+        if (!effectiveReplaceTargets && result?.replaceTargets?.length) {
+          effectiveReplaceTargets = result.replaceTargets;
+        }
         setUploadCompletedFiles(1);
       }
 
+      const isReplace =
+        Array.isArray(effectiveReplaceTargets) && effectiveReplaceTargets.length > 0;
+
       if (isReplace) {
         const bucket = getBucketForType(uploadType);
-        for (const target of replaceTargets) {
+        for (const target of effectiveReplaceTargets) {
           await deleteParsedDataForFile(uploadType, target.id);
           await supabase.from("files").delete().eq("id", target.id);
           if (target.filePath && !newWrittenPaths.includes(target.filePath)) {
