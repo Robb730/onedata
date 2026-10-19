@@ -23,7 +23,7 @@ export async function fetchScopedDivisionRequests(userProfile, divisionId) {
     .select(
       `
       id, division_id, requester_id, requested_by_name, message, status,
-      deny_reason, reviewed_by, reviewed_at, created_at, updated_at,
+      deny_reason, reviewed_by, reviewed_by_name, reviewed_at, created_at, updated_at,
       requester:requester_id ( id, role, section_id,
         sections:section_id ( name )
       ),
@@ -62,6 +62,7 @@ export async function createDivisionAccessRequest({
         status: "pending",
         deny_reason: null,
         reviewed_by: null,
+        reviewed_by_name: null,
         reviewed_at: null,
       },
       { onConflict: "division_id,requester_id" },
@@ -79,6 +80,7 @@ export async function approveDivisionRequest(request, userProfile) {
     .update({
       status: "approved",
       reviewed_by: userProfile.id,
+      reviewed_by_name: userProfile.full_name ?? "Unknown",
       reviewed_at: new Date().toISOString(),
       deny_reason: null,
     })
@@ -99,6 +101,7 @@ export async function denyDivisionRequest(request, userProfile, reason) {
     .update({
       status: "denied",
       reviewed_by: userProfile.id,
+      reviewed_by_name: userProfile.full_name ?? "Unknown",
       reviewed_at: new Date().toISOString(),
       deny_reason: reason?.trim() || null,
     })
@@ -119,6 +122,7 @@ export async function revokeDivisionAccess(request, userProfile) {
     .update({
       status: "revoked",
       reviewed_by: userProfile.id,
+      reviewed_by_name: userProfile.full_name ?? "Unknown",
       reviewed_at: new Date().toISOString(),
     })
     .eq("id", request.id);

@@ -4,8 +4,15 @@ import { Search, Grid3x3, List, CalendarDays, ChevronDown, ArrowUpDown } from "l
 const STATUS_STYLES = {
   active: { dot: "bg-emerald-500", badge: "bg-emerald-50 text-emerald-600 border-emerald-200", label: "Active" },
   archived: { dot: "bg-slate-300", badge: "bg-slate-100 text-slate-500 border-slate-200", label: "Archived" },
+  reopened: { dot: "bg-amber-500", badge: "bg-amber-50 text-amber-700 border-amber-200", label: "Reopened" },
   scheduled: { dot: "bg-indigo-500", badge: "bg-indigo-50 text-indigo-600 border-indigo-200", label: "Scheduled" },
 };
+
+function getYearStyle(year) {
+  if (!year) return STATUS_STYLES.archived;
+  if (year.status === "archived" && year.is_reopened) return STATUS_STYLES.reopened;
+  return STATUS_STYLES[year.status] ?? STATUS_STYLES.archived;
+}
 
 export function RepositorySearchBar({
   searchQuery,
@@ -26,7 +33,7 @@ export function RepositorySearchBar({
 
   const showYearFilter = selectableYears.length > 0;
   const currentYear = selectableYears.find((y) => y.label === selectedYear);
-  const currentStyle = STATUS_STYLES[currentYear?.status] ?? STATUS_STYLES.archived;
+  const currentStyle = getYearStyle(currentYear);
 
   const [isYearOpen, setIsYearOpen] = useState(false);
   const yearRef = useRef(null);
@@ -153,9 +160,9 @@ export function RepositorySearchBar({
 
               {isYearOpen && (
                 <div className="absolute top-[calc(100%+6px)] right-0 sm:left-0 w-[200px] sm:min-w-[220px] bg-white border border-slate-200 rounded-xl shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-1.5 z-50 max-h-64 overflow-y-auto">
-                  {selectableYears.map(({ label, status }) => {
+                  {selectableYears.map(({ label, status, is_reopened }) => {
                     const isSelected = selectedYear === label;
-                    const style = STATUS_STYLES[status] ?? STATUS_STYLES.archived;
+                    const style = getYearStyle({ label, status, is_reopened });
                     return (
                       <button
                         key={label}

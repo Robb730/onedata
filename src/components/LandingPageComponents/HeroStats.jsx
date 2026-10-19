@@ -16,6 +16,8 @@ import {
 import { useLandingStats } from "../../hooks/useLandingStats";
 import { SectionHeader } from "./SectionHeader";
 import { ResourcesByLevel } from "../DashboardComponents/ResourcesByLevel";
+import { ErrorBoundary } from "../ErrorBoundary";
+import { Skeleton } from "../ui/Skeleton";
 
 function useMdUp() {
   const [md, setMd] = React.useState(() =>
@@ -33,7 +35,7 @@ function useMdUp() {
 
 function StatValue({ value, isFetching }) {
   if (isFetching) {
-    return <span className="inline-block h-[1.35rem] sm:h-[1.65rem] w-16 rounded bg-slate-200 animate-pulse align-middle" />;
+    return <Skeleton className="inline-block h-[1.35rem] sm:h-[1.65rem] w-16 align-middle" rounded="rounded" label="Loading statistic" />;
   }
   return <>{value.toLocaleString()}</>;
 }
@@ -510,7 +512,10 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
         )}
 
         {loading && (
-          <div className="text-center text-slate-400 text-sm py-16">Loading enrollment data…</div>
+          <div className="py-16 flex flex-col items-center gap-4">
+            <Skeleton className="h-4 w-52 max-w-full" rounded="rounded-md" label="Loading enrollment data" />
+            <Skeleton className="h-[220px] w-full" rounded="rounded-xl" />
+          </div>
         )}
 
         {!loading && error && (
@@ -533,7 +538,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                   action={<SeeDetailsButton open={learnersDetailsOpen} onClick={() => setLearnersDetailsOpen((v) => !v)} />}
                 >
                   {isFetching ? (
-                    <div className="h-[190px] sm:h-[220px] rounded-xl bg-slate-100 animate-pulse" />
+                    <Skeleton className="h-[190px] sm:h-[220px] w-full" rounded="rounded-xl" label="Loading chart" />
                   ) : noLearners ? (
                     <EmptyState icon={Users} height="h-[220px]" />
                   ) : (
@@ -638,7 +643,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                   action={<SeeDetailsButton open={byLevelDetailsOpen} onClick={() => setByLevelDetailsOpen((v) => !v)} />}
                 >
                   {isFetching ? (
-                    <div className="h-[210px] sm:h-[280px] rounded-xl bg-slate-100 animate-pulse" />
+                    <Skeleton className="h-[210px] sm:h-[280px] w-full" rounded="rounded-xl" label="Loading chart" />
                   ) : noLearners ? (
                     <EmptyState icon={Users} height="h-[280px]" />
                   ) : (
@@ -726,7 +731,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                   action={<SeeDetailsButton open={elemGradeDetailsOpen} onClick={() => setElemGradeDetailsOpen((v) => !v)} />}
                 >
                   {isFetching ? (
-                    <div className="h-[210px] sm:h-[280px] rounded-xl bg-slate-100 animate-pulse" />
+                    <Skeleton className="h-[210px] sm:h-[280px] w-full" rounded="rounded-xl" label="Loading chart" />
                   ) : noLearners ? (
                     <EmptyState icon={Users} height="h-[280px]" />
                   ) : (
@@ -814,7 +819,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                   subtitle={`${schools.total.toLocaleString()} total schools`}
                 >
                   {isFetching ? (
-                    <div className="h-[160px] sm:h-[180px] rounded-xl bg-slate-100 animate-pulse" />
+                    <Skeleton className="h-[160px] sm:h-[180px] w-full" rounded="rounded-xl" label="Loading chart" />
                   ) : noSchools ? (
                     <EmptyState icon={School} height="h-[180px]" />
                   ) : (
@@ -871,7 +876,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                 }
               >
                 {isFetching ? (
-                  <div className="h-[280px] rounded-xl bg-slate-100 animate-pulse" />
+                  <Skeleton className="h-[280px] w-full" rounded="rounded-xl" label="Loading chart" />
                 ) : teachers.total + teachers.totalNeeds === 0 ? (
                   <EmptyState icon={GraduationCap} height="h-[280px]" />
                 ) : (
@@ -880,13 +885,15 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
 
                 <DetailsPanel open={teachersDetailsOpen}>
                   {teachers.total + teachers.totalNeeds > 0 && (
-                    <ResourcesByLevel
-                      key="teachers-detail"
-                      resources={{ teachers, classrooms }}
-                      initialType="Teachers"
-                      allowedTypes={["Teachers"]}
-                      colorOverride={{ color: "#10b981", bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100" }}
-                    />
+                    <ErrorBoundary name="teachers-details">
+                      <ResourcesByLevel
+                        key="teachers-detail"
+                        resources={{ teachers, classrooms }}
+                        initialType="Teachers"
+                        allowedTypes={["Teachers"]}
+                        colorOverride={{ color: "#10b981", bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100" }}
+                      />
+                    </ErrorBoundary>
                   )}
                 </DetailsPanel>
               </ChartCard>
@@ -909,7 +916,7 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
                 }
               >
                 {isFetching ? (
-                  <div className="h-[280px] rounded-xl bg-slate-100 animate-pulse" />
+                  <Skeleton className="h-[280px] w-full" rounded="rounded-xl" label="Loading chart" />
                 ) : classrooms.total + classrooms.totalNeeds === 0 ? (
                   <EmptyState icon={Building} height="h-[280px]" />
                 ) : (
@@ -918,7 +925,9 @@ export function HeroStats({ selectedYear, onYearChange, availableYears }) {
 
                 <DetailsPanel open={classroomsDetailsOpen}>
                   {classrooms.total + classrooms.totalNeeds > 0 && (
-                    <ResourcesByLevel key="classrooms-detail" resources={{ teachers, classrooms }} initialType="Classrooms" allowedTypes={["Classrooms"]} />
+                    <ErrorBoundary name="classrooms-details">
+                      <ResourcesByLevel key="classrooms-detail" resources={{ teachers, classrooms }} initialType="Classrooms" allowedTypes={["Classrooms"]} />
+                    </ErrorBoundary>
                   )}
                 </DetailsPanel>
               </ChartCard>

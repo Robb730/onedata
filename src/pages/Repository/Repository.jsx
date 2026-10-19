@@ -8,6 +8,7 @@ import {
   COLOR_PRESETS,
 } from "../../components/RepositoryComponents";
 import { supabase } from "../../lib/supabaseClient";
+import { SkeletonCards } from "../../components/ui/Skeleton";
 
 // ── Helper: look up color preset by id ───────────────────────────
 function getColorPreset(id) {
@@ -120,9 +121,7 @@ export default function Repository({ onFolderClick }) {
 
         {/* ── States: loading / error / empty / grid ───────── */}
         {loading ? (
-          <div className="rounded-2xl sm:rounded-[28px] border border-white/70 bg-white/85 px-4 sm:px-6 py-16 sm:py-24 text-center text-sm text-slate-500 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-            Loading divisions…
-          </div>
+          <SkeletonCards count={8} />
         ) : error ? (
           <div className="rounded-2xl sm:rounded-[28px] border border-rose-100 bg-rose-50/80 px-4 sm:px-6 py-16 sm:py-24 text-center text-sm text-rose-600 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
             Failed to load divisions: {error}

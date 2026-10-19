@@ -1,15 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, User, Hash, Mail, Building2, UserCircle, ShieldCheck } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { CustomDropdown } from "./CustomDropdown";
 import ModalPortal from "../Modals/ModalPortal";
+import CreatingUserOverlay from "./CreatingUserOverlay";
 
 // Roles that are scoped to a DIVISION (pick from divisions table)
 const DIVISION_ROLES = ["Division Focal Person"];
 // Roles that are scoped to a SECTION (pick from sections table)
 const SECTION_ROLES = ["Section Officer", "Section Personnel"];
 
-export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
+export default function AddNewUserModal({ isOpen, onClose, onAdd, isSubmitting = false, focusEmailKey = 0 }) {
   const [name, setName] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [email, setEmail] = useState("");
@@ -20,6 +21,7 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
   const [divisions, setDivisions] = useState([]);
   const [sections, setSections] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
+  const emailInputRef = useRef(null);
 
   const roles = [
     "Administrator",
@@ -67,10 +69,30 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
     setSectionId("");
   }, [divisionId]);
 
+  // When returning from the duplicate-email error modal, focus the email
+  // field so the user can fix just the email and resubmit.
+  useEffect(() => {
+    if (focusEmailKey > 0 && isOpen && !isSubmitting) {
+      emailInputRef.current?.focus();
+      emailInputRef.current?.select?.();
+    }
+  }, [focusEmailKey, isOpen, isSubmitting]);
+
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleClose = () => {
+    if (isSubmitting) return;
+    onClose();
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
+    if (loadingOptions) {
+      alert("Please wait, loading options...");
+      return;
+    }
 
     if (needsDivision && !divisionId) {
       alert("Please select a division for this role.");
@@ -82,7 +104,9 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
     }
 
     if (name && idNumber && email && role) {
-      onAdd({
+      // No local reset here — the parent unmounts this modal on success
+      // (clearing state) and keeps it mounted with values intact on error.
+      await onAdd({
         name,
         idNumber,
         email,
@@ -90,13 +114,6 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
         divisionId: needsDivision ? divisionId : null,
         sectionId: isSectionRole ? sectionId : null,
       });
-      // Reset form
-      setName("");
-      setIdNumber("");
-      setEmail("");
-      setRole("Section Personnel");
-      setDivisionId("");
-      setSectionId("");
     }
   };
 
@@ -108,19 +125,28 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
     <ModalPortal>
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div className="modal-overlay absolute inset-0" aria-hidden="true" />
       <div
         className="relative z-10 bg-white rounded-[24px] shadow-[0_12px_40px_rgba(15,23,42,0.12)] w-full max-w-[460px] max-h-[90vh] flex flex-col overflow-hidden border border-slate-100 scale-100 animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
+        {isSubmitting ? (
+          /* Loading-only view — fields hidden, just the cute animation */
+          <div className="flex min-h-[420px] flex-col items-center justify-center p-6 sm:p-8">
+            <CreatingUserOverlay email={email} inline />
+          </div>
+        ) : (
+        <>
         {/* Header */}
         <div className="flex flex-col p-6 sm:p-7 border-b border-slate-100 bg-slate-50/30 relative shrink-0">
           <div className="absolute right-5 top-5">
             <button
-              onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+              onClick={handleClose}
+              disabled={isSubmitting}
+              aria-label="Close"
+              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
             >
               <X size={20} strokeWidth={2.5} />
             </button>
@@ -155,7 +181,8 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Enter full name"
-                className="w-full bg-slate-50/50 pl-10 pr-4 py-3 rounded-[12px] border border-slate-200/80 text-[0.85rem] font-semibold text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] transition-all"
+                disabled={isSubmitting}
+                className="w-full bg-slate-50/50 pl-10 pr-4 py-3 rounded-[12px] border border-slate-200/80 text-[0.85rem] font-semibold text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] transition-all disabled:opacity-60"
                 required
               />
             </div>
@@ -175,7 +202,8 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
                   value={idNumber}
                   onChange={(e) => setIdNumber(e.target.value)}
                   placeholder="e.g. SDO-24-01"
-                  className="w-full bg-slate-50/50 pl-10 pr-4 py-3 rounded-[12px] border border-slate-200/80 text-[0.85rem] font-semibold text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] transition-all"
+                  disabled={isSubmitting}
+                  className="w-full bg-slate-50/50 pl-10 pr-4 py-3 rounded-[12px] border border-slate-200/80 text-[0.85rem] font-semibold text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] transition-all disabled:opacity-60"
                   required
                 />
               </div>
@@ -190,10 +218,12 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
                 <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={16} strokeWidth={2} />
                 <input
                   type="email"
+                  ref={emailInputRef}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="user@deped.gov.ph"
-                  className="w-full bg-slate-50/50 pl-10 pr-4 py-3 rounded-[12px] border border-slate-200/80 text-[0.85rem] font-semibold text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] transition-all"
+                  disabled={isSubmitting}
+                  className="w-full bg-slate-50/50 pl-10 pr-4 py-3 rounded-[12px] border border-slate-200/80 text-[0.85rem] font-semibold text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] transition-all disabled:opacity-60"
                   required
                 />
               </div>
@@ -212,6 +242,7 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
               onChange={setRole}
               options={roles}
               icon={ShieldCheck}
+              disabled={isSubmitting}
               className="bg-slate-50/50"
             />
           </div>
@@ -229,7 +260,7 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
                   onChange={setDivisionId}
                   options={divisions.map(div => ({ value: div.id, label: div.name }))}
                   placeholder={loadingOptions ? "Loading divisions..." : "Select a division"}
-                  disabled={loadingOptions}
+                  disabled={loadingOptions || isSubmitting}
                   icon={Building2}
                   className="bg-white"
                 />
@@ -246,7 +277,7 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
                     onChange={setSectionId}
                     options={filteredSections.map(sec => ({ value: sec.id, label: sec.name }))}
                     placeholder={loadingOptions ? "Loading sections..." : !divisionId ? "Select a division first" : "Select a section"}
-                    disabled={loadingOptions || !divisionId}
+                    disabled={loadingOptions || !divisionId || isSubmitting}
                     icon={Building2}
                     className="bg-white"
                   />
@@ -259,19 +290,23 @@ export default function AddNewUserModal({ isOpen, onClose, onAdd }) {
           <div className="flex flex-col-reverse sm:flex-row items-stretch gap-3 pt-4 shrink-0">
             <button
               type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-3 border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-800 rounded-[12px] font-bold text-[0.85rem] transition-colors cursor-pointer"
+              onClick={handleClose}
+              disabled={isSubmitting}
+              className="flex-1 px-4 py-3 border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-800 rounded-[12px] font-bold text-[0.85rem] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 inline-flex items-center justify-center rounded-[12px] bg-blue-500 px-4 py-3 text-[0.85rem] font-bold text-white shadow-[0_4px_12px_rgba(59,130,246,0.25)] hover:bg-blue-600 active:bg-blue-700 hover:-translate-y-[1px] transition-all cursor-pointer"
+              disabled={isSubmitting || loadingOptions}
+              className="flex-1 inline-flex items-center justify-center gap-2 rounded-[12px] bg-blue-500 px-4 py-3 text-[0.85rem] font-bold text-white shadow-[0_4px_12px_rgba(59,130,246,0.25)] hover:bg-blue-600 active:bg-blue-700 hover:-translate-y-[1px] transition-all cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
               Create User
             </button>
           </div>
         </form>
+        </>
+        )}
       </div>
     </div>
     </ModalPortal>

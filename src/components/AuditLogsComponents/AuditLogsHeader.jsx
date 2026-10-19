@@ -1,4 +1,4 @@
-import { Download } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 
 /**
  * AuditLogsHeader — Page title, subtitle, and export action.
@@ -6,11 +6,13 @@ import { Download } from "lucide-react";
  * @param {string}   [title]
  * @param {string}   [subtitle]
  * @param {function} [onExport] — optional; export remains non-wired if omitted
+ * @param {boolean}  [isExporting]
  */
 export default function AuditLogsHeader({
   title = "Audit Logs",
   subtitle = "Complete history of all system activities, file actions, and user events.",
   onExport,
+  isExporting = false,
 }) {
   return (
     <div className="mb-5 sm:mb-7 flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -26,10 +28,11 @@ export default function AuditLogsHeader({
       <button
         type="button"
         onClick={onExport}
-        className="hidden lg:inline-flex shrink-0 items-center justify-center gap-2 rounded-[10px] bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer"
+        disabled={isExporting}
+        className="hidden lg:inline-flex shrink-0 items-center justify-center gap-2 rounded-[10px] bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(59,130,246,0.28)] hover:bg-blue-600 active:bg-blue-700 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait"
       >
-        <Download size={16} strokeWidth={2.25} />
-        Export Logs
+        {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} strokeWidth={2.25} />}
+        {isExporting ? "Exporting..." : "Export Logs"}
       </button>
     </div>
   );

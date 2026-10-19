@@ -23,6 +23,7 @@ import {
 import DeleteSectionWarningModal from "../../components/RepositoryComponents/DeleteSectionWarningModal";
 import PasswordConfirmModal from "../../components/RepositoryComponents/PasswordConfirmModal";
 import { CheckCircle, XCircle, X as CloseIcon, ChevronRight, User, FolderOpen, Activity } from "lucide-react";
+import { SkeletonCards } from "../../components/ui/Skeleton";
 
 export default function RepositoryDivisionPage() {
   const navigate = useNavigate();
@@ -778,9 +779,7 @@ export default function RepositoryDivisionPage() {
 
         {/* ── States: loading / error / grid ────────────────────── */}
         {loading ? (
-          <div className="rounded-2xl sm:rounded-[28px] border border-white/70 bg-white/85 px-4 sm:px-6 py-16 sm:py-24 text-center text-sm text-slate-500 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-            Loading sections…
-          </div>
+          <SkeletonCards count={6} />
         ) : error ? (
           <div className="rounded-2xl sm:rounded-[28px] border border-rose-100 bg-rose-50/80 px-4 sm:px-6 py-16 sm:py-24 text-center text-sm text-rose-600 shadow-[0_16px_54px_rgba(15,23,42,0.08)] backdrop-blur-xl">
             Failed to load sections: {error}

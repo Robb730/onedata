@@ -1,67 +1,98 @@
-import { useState } from "react";
+/**
+ * GenderCard — a gender total with its public/private split always visible.
+ *
+ * The split uses the same global Public/Private colors as the enrollment
+ * breakdown so the meaning stays consistent across the dashboard; `accent`
+ * only marks the gender itself.
+ *
+ * @param {string} label        — e.g. "Male"
+ * @param {number} total
+ * @param {number} publicCount
+ * @param {number} privateCount
+ * @param {string} [accent]     — hex color for the gender label
+ */
 
-export function GenderCard({ label, total, publicCount, privateCount, accent, hoverAccent }) {
-  const [hovered, setHovered] = useState(false);
+const PUBLIC_COLOR = "#3b82f6";
+const PRIVATE_COLOR = "#10b981";
 
-  const publicPct = total > 0 ? Math.round((publicCount / total) * 100) : 0;
-  const privatePct = 100 - publicPct;
+const pctLabel = (part, whole) => (whole > 0 ? `${Math.round((part / whole) * 100)}%` : "—");
+
+export function GenderCard({
+  label,
+  total = 0,
+  publicCount = 0,
+  privateCount = 0,
+  accent = "#334155",
+}) {
+  const publicPct = total > 0 ? (publicCount / total) * 100 : 0;
+  const privatePct = total > 0 ? (privateCount / total) * 100 : 0;
 
   return (
     <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        borderColor: hovered ? accent : "transparent",
-        transition: "all 0.2s ease",
-      }}
-      className="relative rounded-xl border bg-white p-4 shadow-sm overflow-hidden cursor-default"
+      className="rounded-[14px] border border-slate-100/80 bg-white p-4"
+      style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
     >
-      {/* Subtle color wash in background */}
-      <div
-        style={{ backgroundColor: accent, opacity: hovered ? 0.06 : 0.03, transition: "opacity 0.2s ease" }}
-        className="absolute inset-0 pointer-events-none"
-      />
-
-      {/* Default view — total */}
-      <div style={{ opacity: hovered ? 0 : 1, transition: "opacity 0.15s ease", position: hovered ? "absolute" : "relative" }}>
-        <p className="text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-1">{label}</p>
-        <p style={{ color: accent }} className="text-2xl font-bold tabular-nums">
+      {/* ── Gender total ────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[0.62rem] font-bold uppercase tracking-[0.08em] text-slate-400">
+          {label}
+        </span>
+        <span
+          className="text-[1.25rem] font-bold leading-none tracking-tight tabular-nums"
+          style={{ color: accent }}
+        >
           {total.toLocaleString()}
-        </p>
+        </span>
       </div>
 
-      {/* Hover view — public / private split */}
-      <div style={{ opacity: hovered ? 1 : 0, transition: "opacity 0.15s ease", position: hovered ? "relative" : "absolute", top: hovered ? "auto" : 0, left: hovered ? "auto" : 0, right: hovered ? "auto" : 0 }}>
-        <p className="text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-2">{label} breakdown</p>
+      {/* ── Proportion bar ──────────────────────────────────── */}
+      <div className="mt-3 flex h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+        <div
+          className="h-full transition-[width] duration-500 ease-out"
+          style={{ width: `${publicPct}%`, backgroundColor: PUBLIC_COLOR }}
+        />
+        <div
+          className="h-full transition-[width] duration-500 ease-out"
+          style={{ width: `${privatePct}%`, backgroundColor: PRIVATE_COLOR }}
+        />
+      </div>
 
-        {/* Progress bar */}
-        <div className="flex rounded-full overflow-hidden h-1.5 mb-3">
-          <div style={{ width: `${publicPct}%`, backgroundColor: accent }} />
-          <div style={{ width: `${privatePct}%`, backgroundColor: hoverAccent }} />
+      {/* ── Public / private counts ─────────────────────────── */}
+      <div className="mt-3 flex items-start">
+        <div className="flex-1">
+          <div className="flex items-center gap-1.5">
+            <span
+              className="h-1.5 w-1.5 shrink-0 rounded-full"
+              style={{ backgroundColor: PUBLIC_COLOR }}
+            />
+            <span className="text-[0.58rem] font-bold uppercase tracking-[0.08em] text-slate-400">
+              Public
+            </span>
+          </div>
+          <p className="mt-1 text-[0.82rem] font-bold leading-none tabular-nums text-slate-700">
+            {publicCount.toLocaleString()}
+          </p>
+          <p className="mt-1 text-[0.58rem] tabular-nums text-slate-400">
+            {pctLabel(publicCount, total)}
+          </p>
         </div>
 
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-1 mb-0.5">
-              <span style={{ backgroundColor: accent }} className="h-1.5 w-1.5 rounded-full" />
-              <span className="text-[0.6rem] text-slate-400 font-medium uppercase tracking-wide">Public</span>
-            </div>
-            <p style={{ color: accent }} className="text-base font-bold tabular-nums">
-              {publicCount.toLocaleString()}
-            </p>
-            <p className="text-[0.6rem] text-slate-400">{publicPct}%</p>
+        <div className="flex-1 border-l border-slate-100 pl-4">
+          <div className="flex items-center gap-1.5">
+            <span
+              className="h-1.5 w-1.5 shrink-0 rounded-full"
+              style={{ backgroundColor: PRIVATE_COLOR }}
+            />
+            <span className="text-[0.58rem] font-bold uppercase tracking-[0.08em] text-slate-400">
+              Private
+            </span>
           </div>
-          <div className="w-px bg-slate-100" />
-          <div className="flex-1">
-            <div className="flex items-center gap-1 mb-0.5">
-              <span style={{ backgroundColor: hoverAccent }} className="h-1.5 w-1.5 rounded-full" />
-              <span className="text-[0.6rem] text-slate-400 font-medium uppercase tracking-wide">Private</span>
-            </div>
-            <p style={{ color: hoverAccent }} className="text-base font-bold tabular-nums">
-              {privateCount.toLocaleString()}
-            </p>
-            <p className="text-[0.6rem] text-slate-400">{privatePct}%</p>
-          </div>
+          <p className="mt-1 text-[0.82rem] font-bold leading-none tabular-nums text-slate-700">
+            {privateCount.toLocaleString()}
+          </p>
+          <p className="mt-1 text-[0.58rem] tabular-nums text-slate-400">
+            {pctLabel(privateCount, total)}
+          </p>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../contexts/UserContext";
 import { CheckCircle, X as XIcon } from "lucide-react";
@@ -9,6 +9,7 @@ import ScheduledSchoolYearCard from "../../components/SchoolYearComponents/Sched
 import PreviousSchoolYearsTable from "../../components/SchoolYearComponents/PreviousSchoolYearsTable";
 import ScheduleSchoolYearDialog from "../../components/SchoolYearComponents/ScheduleSchoolYearDialog";
 import EditScheduledYearDialog from "../../components/SchoolYearComponents/EditScheduledYearDialog";
+import { Skeleton, SkeletonCards, SkeletonTable } from "../../components/ui/Skeleton";
 import {
   getSchoolYearPageData,
   scheduleSchoolYear,
@@ -26,6 +27,13 @@ export default function SchoolYearPage() {
   const { userProfile } = useUser();
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const queryClient = useQueryClient();
+
+  function invalidateTransitionQueries() {
+    queryClient.invalidateQueries({ queryKey: ["scheduledTransition"] });
+    queryClient.invalidateQueries({ queryKey: ["schoolYearData"] });
+    queryClient.invalidateQueries({ queryKey: ["schoolYears"] });
+  }
 
   const { data: schoolYearData, isLoading: loading, error: queryError, refetch: loadData } = useQuery({
     queryKey: ["schoolYearData"],
@@ -91,6 +99,7 @@ export default function SchoolYearPage() {
       await scheduleSchoolYear(formValues);
       closeCreateDialog();
       await loadData();
+      invalidateTransitionQueries();
       showSuccessToast(`School year "${formValues.label}" scheduled successfully.`);
       await logAuditEvent({
         action: "Other",
@@ -116,6 +125,7 @@ export default function SchoolYearPage() {
       await updateScheduledSchoolYear(formValues);
       closeEditDialog();
       await loadData();
+      invalidateTransitionQueries();
       showSuccessToast(`School year "${formValues.label}" updated successfully.`);
       await logAuditEvent({
         action: "Other",
@@ -138,9 +148,16 @@ export default function SchoolYearPage() {
 
   const handleCancelTransition = async () => {
     if (!scheduledYear) return;
+    const cancelledId = scheduledYear.id;
     try {
       await cancelScheduledTransition(scheduledYear.id);
       await loadData();
+      invalidateTransitionQueries();
+      try {
+        sessionStorage.removeItem(`transitionBannerDismissed:${cancelledId}`);
+      } catch {
+        /* sessionStorage unavailable — ignore */
+      }
       showSuccessToast(`Scheduled transition for "${scheduledYear.label}" cancelled.`);
       await logAuditEvent({
         action: "Other",
@@ -165,6 +182,7 @@ export default function SchoolYearPage() {
     try {
       await forceSchoolYearTransition();
       await loadData();
+      invalidateTransitionQueries();
       showSuccessToast("School year transition forced successfully.");
       await logAuditEvent({
         action: "Other",
@@ -190,6 +208,7 @@ export default function SchoolYearPage() {
     try {
       await reopenSchoolYear(yearId);
       await loadData();
+      invalidateTransitionQueries();
       showSuccessToast(`School year "${year?.label ?? yearId}" reopened successfully.`);
       await logAuditEvent({
         action: "Other",
@@ -215,6 +234,7 @@ export default function SchoolYearPage() {
     try {
       await closeReopenedSchoolYear(yearId);
       await loadData();
+      invalidateTransitionQueries();
       showSuccessToast(`School year "${year?.label ?? yearId}" closed successfully.`);
       await logAuditEvent({
         action: "Other",
@@ -238,8 +258,15 @@ export default function SchoolYearPage() {
 
   if (loading) {
     return (
-      <div className="min-h-full bg-slate-50/40 flex items-center justify-center py-24">
-        <p className="text-sm font-medium text-slate-400">Loading school year data…</p>
+      <div className="min-h-full bg-slate-50/40 overflow-x-hidden">
+        <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 py-5 sm:py-8 space-y-5">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-52" rounded="rounded-lg" label="Loading school year data" />
+            <Skeleton className="h-3.5 w-80 max-w-full" rounded="rounded-md" />
+          </div>
+          <SkeletonCards count={2} />
+          <SkeletonTable rows={4} columns={4} />
+        </div>
       </div>
     );
   }

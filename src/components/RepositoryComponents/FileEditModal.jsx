@@ -464,7 +464,10 @@ export default function FileEditModal({
   const archivedSchoolYear = useMemo(
     () =>
       schoolYears.find(
-        (y) => y.label === file?.school_year && y.status === "archived",
+        (y) =>
+          y.label === file?.school_year &&
+          y.status === "archived" &&
+          !y.is_reopened,
       ),
     [schoolYears, file?.school_year],
   );

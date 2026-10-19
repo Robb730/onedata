@@ -9,7 +9,7 @@ export { MetricProgress } from "./MetricProgress";
 export { DashboardHeader } from "./DashboardHeader";
 export { DashboardOverview } from "./DashboardOverview";
 export { DashboardFilters } from "./DashboardFilters";
-export { DataSummaryCard } from "./DataSummaryCard";
+export { EnrollmentBreakdown } from "./EnrollmentBreakdown";
 export { InsightCard } from "./InsightCard";
 export { DashboardAccordion } from "./DashboardAccordion";
 export { DashboardSection } from "./DashboardSection";
