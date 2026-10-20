@@ -6,7 +6,9 @@ import React from "react";
  *
  * @param {string[]} options   — list of option labels
  * @param {string}   active    — currently active option
- * @param {function} onChange  — callback with the selected option
+ * @param {function} onChange  — callback with the selected option and the
+ *                               clicked button element (used as a scroll
+ *                               anchor so the page doesn't jump)
  */
 export function DashboardFilters({ options = [], active, onChange }) {
   return (
@@ -21,7 +23,7 @@ export function DashboardFilters({ options = [], active, onChange }) {
             key={opt}
             role="tab"
             aria-selected={isActive}
-            onClick={() => onChange?.(opt)}
+            onClick={(e) => onChange?.(opt, e.currentTarget)}
             className={`
               relative shrink-0 rounded-[7px] px-3 py-[5px] sm:px-3.5 text-[0.7rem] font-semibold transition-all duration-200 cursor-pointer
               ${isActive

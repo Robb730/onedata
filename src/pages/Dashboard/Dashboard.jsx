@@ -1,5 +1,13 @@
 ﻿/* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  lazy,
+  startTransition,
+  Suspense,
+} from "react";
 import {
   TrendingUp,
   Info,
@@ -37,62 +45,90 @@ import {
   TrendCard,
   GenderCard,
 } from "../../components/DashboardComponents";
+import { useScrollAnchor } from "../../hooks/useScrollAnchor";
 
-const EnrollmentChart = lazy(() =>
+const importEnrollmentChart = () =>
   import("../../components/DashboardComponents/EnrollmentChart.jsx").then(
     (m) => ({
       default: m.EnrollmentChart,
     }),
-  ),
-);
-const DropoutChart = lazy(() =>
+  );
+const importDropoutChart = () =>
   import("../../components/DashboardComponents/DropoutChart.jsx").then((m) => ({
     default: m.DropoutChart,
-  })),
-);
-const PromotionChart = lazy(() =>
+  }));
+const importPromotionChart = () =>
   import("../../components/DashboardComponents/PromotionChart.jsx").then(
     (m) => ({
       default: m.PromotionChart,
     }),
-  ),
-);
-const CohortChart = lazy(() =>
+  );
+const importCohortChart = () =>
   import("../../components/DashboardComponents/CohortChart.jsx").then((m) => ({
     default: m.CohortChart,
-  })),
-);
-const ResourcesInventoryChart = lazy(() =>
+  }));
+const importResourcesInventoryChart = () =>
   import("../../components/DashboardComponents/ResourcesInventoryChart.jsx").then(
     (m) => ({
       default: m.ResourcesInventoryChart,
     }),
-  ),
-);
-const TextbooksChart = lazy(() =>
+  );
+const importTextbooksChart = () =>
   import("../../components/DashboardComponents/TextbooksChart.jsx").then(
     (m) => ({
       default: m.TextbooksChart,
     }),
-  ),
-);
-const EnrollmentByLevel = lazy(() =>
+  );
+const importEnrollmentByLevel = () =>
   import("../../components/DashboardComponents/EnrollmentByLevel.jsx").then(
     (m) => ({
       default: m.EnrollmentByLevel,
     }),
-  ),
-);
-const ResourcesByLevel = lazy(() =>
+  );
+const importResourcesByLevel = () =>
   import("../../components/DashboardComponents/ResourcesByLevel.jsx").then(
     (m) => ({
       default: m.ResourcesByLevel,
     }),
-  ),
-);
+  );
+
+// The factories above are also used to warm the module cache on mount (see
+// the preload effect), so the first click on a filter never has to suspend —
+// a suspension collapses the whole dashboard and throws the user to the top.
+const chartImporters = [
+  importEnrollmentChart,
+  importDropoutChart,
+  importPromotionChart,
+  importCohortChart,
+  importResourcesInventoryChart,
+  importTextbooksChart,
+  importEnrollmentByLevel,
+  importResourcesByLevel,
+];
+
+const EnrollmentChart = lazy(importEnrollmentChart);
+const DropoutChart = lazy(importDropoutChart);
+const PromotionChart = lazy(importPromotionChart);
+const CohortChart = lazy(importCohortChart);
+const ResourcesInventoryChart = lazy(importResourcesInventoryChart);
+const TextbooksChart = lazy(importTextbooksChart);
+const EnrollmentByLevel = lazy(importEnrollmentByLevel);
+const ResourcesByLevel = lazy(importResourcesByLevel);
 
 function ChartFallback() {
   return <Skeleton className="h-[220px] w-full" rounded="rounded-xl" label="Loading chart" />;
+}
+
+/**
+ * LazyChart — a Suspense boundary scoped to a single chart/table.
+ *
+ * A single boundary around the whole dashboard would swap every accordion for
+ * the fallback while a chunk downloads, collapsing the page and resetting the
+ * scroll position. Scoping it to the chart keeps the surrounding content
+ * mounted, so the viewport survives the swap.
+ */
+function LazyChart({ children }) {
+  return <Suspense fallback={<ChartFallback />}>{children}</Suspense>;
 }
 import { DEFAULT_CESPES_DATA } from "../../data/cespesTemplateData";
 import { Skeleton, SkeletonCards, SkeletonTable } from "../../components/ui/Skeleton";
@@ -400,33 +436,40 @@ function ResourcesChartsPanel({ color, year, ongoing, resources }) {
   const chartNodes = [];
   if (available.has("Teachers")) {
     chartNodes.push(
-      <ResourcesInventoryChart
-        key="teachers"
-        title="Teachers · Inventory vs Needs"
-        data={teachersData}
-      />,
+      <LazyChart key="teachers">
+        <ResourcesInventoryChart
+          title="Teachers · Inventory vs Needs"
+          data={teachersData}
+        />
+      </LazyChart>,
     );
   }
   if (available.has("Classrooms")) {
     chartNodes.push(
-      <ResourcesInventoryChart
-        key="classrooms"
-        title="Classrooms · Inventory vs Needs"
-        data={classroomsData}
-      />,
+      <LazyChart key="classrooms">
+        <ResourcesInventoryChart
+          title="Classrooms · Inventory vs Needs"
+          data={classroomsData}
+        />
+      </LazyChart>,
     );
   }
   if (available.has("Seats")) {
     chartNodes.push(
-      <ResourcesInventoryChart
-        key="seats"
-        title="Seats · Inventory vs Needs"
-        data={seatsData}
-      />,
+      <LazyChart key="seats">
+        <ResourcesInventoryChart
+          title="Seats · Inventory vs Needs"
+          data={seatsData}
+        />
+      </LazyChart>,
     );
   }
   if (available.has("Textbooks")) {
-    chartNodes.push(<TextbooksChart key="textbooks" data={textbooksData} />);
+    chartNodes.push(
+      <LazyChart key="textbooks">
+        <TextbooksChart data={textbooksData} />
+      </LazyChart>,
+    );
   }
 
   const chartRows = [];
@@ -486,6 +529,16 @@ export default function Dashboard() {
   const resourcesSectionRef = useRef(null);
   const navStateHandledRef = useRef(false);
 
+  // Keeps the viewport anchored to the control the user clicked while the
+  // filter view swaps underneath it.
+  const anchorScroll = useScrollAnchor();
+
+  // Switching a filter view must not move the page: the anchor keeps the
+  // clicked control in place, and the transition keeps the current view on
+  // screen until the next one is ready.
+  const handleFilterChange = (setter) => (option, element) =>
+    anchorScroll(element, () => startTransition(() => setter(option)));
+
   const [showWelcomeToast, setShowWelcomeToast] = useState(false);
   const welcomeToastShownRef = useRef(false);
 
@@ -494,6 +547,15 @@ export default function Dashboard() {
   // dispatches into them.
   const [resourceView, setResourceView] = useState("Summary");
   const [resourceType, setResourceType] = useState("Teachers");
+
+  // Warm the chart chunks up front. Without this, the first click on a
+  // filter that mounts a lazy chart suspends, and the fallback that replaces
+  // it collapses the dashboard and resets the scroll position.
+  useEffect(() => {
+    chartImporters.forEach((load) => {
+      load().catch(() => {});
+    });
+  }, []);
 
   useEffect(() => {
     if (location.state?.justLoggedIn && !welcomeToastShownRef.current) {
@@ -1901,13 +1963,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        <Suspense
-          fallback={
-            <div className="mt-8">
-              <ChartFallback />
-            </div>
-          }
-        >
+        <>
           {/* ── Performance Indicators ─────────────────────── */}
           {matchesPerformance && (
           <div ref={performanceSectionRef} className="scroll-mt-24">
@@ -1969,7 +2025,7 @@ export default function Dashboard() {
                         <DashboardFilters
                           options={["Summary", "By Level"]}
                           active={enrollmentView}
-                          onChange={setEnrollmentView}
+                          onChange={handleFilterChange(setEnrollmentView)}
                         />
                       )}
                     </div>
@@ -2033,7 +2089,9 @@ export default function Dashboard() {
                         )}
 
                         {enrollmentView === "By Level" && (
-                          <EnrollmentByLevel rows={enrollmentRows} />
+                          <LazyChart>
+                            <EnrollmentByLevel rows={enrollmentRows} />
+                          </LazyChart>
                         )}
                       </>
                     )}
@@ -2050,7 +2108,7 @@ export default function Dashboard() {
                       <DashboardFilters
                         options={["Dropout", "Promotion", "Cohort"]}
                         active={rateView}
-                        onChange={setRateView}
+                        onChange={handleFilterChange(setRateView)}
                       />
                     </div>
 
@@ -2105,7 +2163,9 @@ export default function Dashboard() {
                               <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
                               {selectedYear}
                             </p>
-                            <PromotionChart data={promotionByLevel} />
+                            <LazyChart>
+                              <PromotionChart data={promotionByLevel} />
+                            </LazyChart>
                           </div>
                           <div>
                             <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600 mb-2">
@@ -2116,7 +2176,9 @@ export default function Dashboard() {
                               )}
                             </p>
                             {compareHasData ? (
-                              <PromotionChart data={promotionByLevelCompare} />
+                              <LazyChart>
+                                <PromotionChart data={promotionByLevelCompare} />
+                              </LazyChart>
                             ) : (
                               <div className="flex items-center justify-center h-[220px] rounded-[10px] border border-dashed border-orange-100 bg-orange-50/30 text-[0.75rem] text-orange-400 font-medium text-center px-4">
                                 No promotion data yet for SY {compareYear}
@@ -2125,7 +2187,9 @@ export default function Dashboard() {
                           </div>
                         </div>
                       ) : (
-                        <PromotionChart data={promotionByLevel} />
+                        <LazyChart>
+                          <PromotionChart data={promotionByLevel} />
+                        </LazyChart>
                       ))}
 
                     {rateView === "Cohort" && (
@@ -2150,7 +2214,9 @@ export default function Dashboard() {
                             )}
                           </div>
                         )}
-                        <CohortChart data={cohortTrend} />
+                        <LazyChart>
+                          <CohortChart data={cohortTrend} />
+                        </LazyChart>
                       </div>
                     )}
                   </div>
@@ -2159,8 +2225,12 @@ export default function Dashboard() {
 
                   {/* Charts grid */}
                   <DashboardGrid cols={2}>
-                    <EnrollmentChart data={enrollmentTrend} />
-                    <DropoutChart data={dropoutTrend} />
+                    <LazyChart>
+                      <EnrollmentChart data={enrollmentTrend} />
+                    </LazyChart>
+                    <LazyChart>
+                      <DropoutChart data={dropoutTrend} />
+                    </LazyChart>
                   </DashboardGrid>
 
                   {/* Insight */}
@@ -2589,7 +2659,7 @@ export default function Dashboard() {
                     <DashboardFilters
                       options={["Summary", "Charts", "By Level", "Breakdown"]}
                       active={resourceView}
-                      onChange={setResourceView}
+                      onChange={handleFilterChange(setResourceView)}
                     />
                   </div>
 
@@ -2692,17 +2762,21 @@ export default function Dashboard() {
                   {resourceView === "Charts" &&
                     (isComparing ? (
                       <div className="space-y-5">
-                        <ResourcesChartsPanel
-                          color="blue"
-                          year={selectedYear}
-                          resources={resources}
-                        />
-                        <ResourcesChartsPanel
-                          color="orange"
-                          year={compareYear}
-                          ongoing={isOngoing(compareYear)}
-                          resources={compareResources}
-                        />
+                        <LazyChart>
+                          <ResourcesChartsPanel
+                            color="blue"
+                            year={selectedYear}
+                            resources={resources}
+                          />
+                        </LazyChart>
+                        <LazyChart>
+                          <ResourcesChartsPanel
+                            color="orange"
+                            year={compareYear}
+                            ongoing={isOngoing(compareYear)}
+                            resources={compareResources}
+                          />
+                        </LazyChart>
                       </div>
                     ) : (
                       (() => {
@@ -2739,37 +2813,39 @@ export default function Dashboard() {
                         const chartNodes = [];
                         if (available.has("Teachers")) {
                           chartNodes.push(
-                            <ResourcesInventoryChart
-                              key="teachers"
-                              title="Teachers · Inventory vs Needs"
-                              data={teachersData}
-                            />,
+                            <LazyChart key="teachers">
+                              <ResourcesInventoryChart
+                                title="Teachers · Inventory vs Needs"
+                                data={teachersData}
+                              />
+                            </LazyChart>,
                           );
                         }
                         if (available.has("Classrooms")) {
                           chartNodes.push(
-                            <ResourcesInventoryChart
-                              key="classrooms"
-                              title="Classrooms · Inventory vs Needs"
-                              data={classroomsData}
-                            />,
+                            <LazyChart key="classrooms">
+                              <ResourcesInventoryChart
+                                title="Classrooms · Inventory vs Needs"
+                                data={classroomsData}
+                              />
+                            </LazyChart>,
                           );
                         }
                         if (available.has("Seats")) {
                           chartNodes.push(
-                            <ResourcesInventoryChart
-                              key="seats"
-                              title="Seats · Inventory vs Needs"
-                              data={seatsData}
-                            />,
+                            <LazyChart key="seats">
+                              <ResourcesInventoryChart
+                                title="Seats · Inventory vs Needs"
+                                data={seatsData}
+                              />
+                            </LazyChart>,
                           );
                         }
                         if (available.has("Textbooks")) {
                           chartNodes.push(
-                            <TextbooksChart
-                              key="textbooks"
-                              data={textbooksData}
-                            />,
+                            <LazyChart key="textbooks">
+                              <TextbooksChart data={textbooksData} />
+                            </LazyChart>,
                           );
                         }
 
@@ -2797,11 +2873,13 @@ export default function Dashboard() {
                               <span className="h-[6px] w-[6px] rounded-full bg-blue-500" />
                               {selectedYear}
                             </p>
-                            <ResourcesByLevel
-                              resources={resources}
-                              allowedTypes={byLevelTypes}
-                              initialType={byLevelTypes[0]}
-                            />
+                            <LazyChart>
+                              <ResourcesByLevel
+                                resources={resources}
+                                allowedTypes={byLevelTypes}
+                                initialType={byLevelTypes[0]}
+                              />
+                            </LazyChart>
                           </div>
                           <div>
                             <p className="flex items-center gap-1.5 text-[0.72rem] font-bold text-orange-600 mb-2">
@@ -2811,19 +2889,23 @@ export default function Dashboard() {
                                 <Clock size={11} className="text-orange-400" />
                               )}
                             </p>
-                            <ResourcesByLevel
-                              resources={compareResources}
-                              allowedTypes={byLevelTypes}
-                              initialType={byLevelTypes[0]}
-                            />
+                            <LazyChart>
+                              <ResourcesByLevel
+                                resources={compareResources}
+                                allowedTypes={byLevelTypes}
+                                initialType={byLevelTypes[0]}
+                              />
+                            </LazyChart>
                           </div>
                         </div>
                       ) : (
-                        <ResourcesByLevel
-                              resources={resources}
-                              allowedTypes={byLevelTypes}
-                              initialType={byLevelTypes[0]}
-                            />
+                        <LazyChart>
+                          <ResourcesByLevel
+                            resources={resources}
+                            allowedTypes={byLevelTypes}
+                            initialType={byLevelTypes[0]}
+                          />
+                        </LazyChart>
                       )}
                     </ErrorBoundary>
                   )}
@@ -2838,7 +2920,7 @@ export default function Dashboard() {
                         <DashboardFilters
                           options={breakdownTypes}
                           active={effectiveResourceType}
-                          onChange={setResourceType}
+                          onChange={handleFilterChange(setResourceType)}
                         />
                       </div>
 
@@ -2910,7 +2992,7 @@ export default function Dashboard() {
 
           {/* Footer spacing */}
           <div className="h-8" />
-        </Suspense>
+        </>
       </div>
     </div>
   );
